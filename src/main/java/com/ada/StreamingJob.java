@@ -1,10 +1,10 @@
 package com.ada;
 
-import com.ada.DPIflinkFunction.TestAWF;
-import com.ada.DPIflinkFunction.TrackPointsToSegmentMap;
-import com.ada.DTflinkFunction.HausdorffKeyTIDFunction;
-import com.ada.DTflinkFunction.TrackPointTimeAndWater;
-import com.ada.DTflinkFunction.WaterAndDensityFMP;
+import com.ada.flinkFunction.DPIflinkFunction.TestAWF;
+import com.ada.flinkFunction.DPIflinkFunction.TrackPointsToSegmentMap;
+import com.ada.flinkFunction.DTflinkFunction.HausdorffKeyTIDFunction;
+import com.ada.flinkFunction.TrackPointTimeAndWater;
+import com.ada.flinkFunction.DTflinkFunction.WaterAndDensityFMP;
 import com.ada.common.Constants;
 import com.ada.dispatchElem.TwoThreeData;
 import com.ada.proto.MyPoint;
@@ -77,11 +77,9 @@ public class StreamingJob {
 
 //        init( "trackPoint3DT", "192.168.131.199:9093,192.168.131.199:9094,192.168.131.199:9095");
 
-		source.assignTimestampsAndWatermarks(new TrackPointElemTimeAndWater())
-				.setParallelism(Constants.topicPartition)
+		source.assignTimestampsAndWatermarks(new TrackPointTimeAndWater())
 //				.flatMap(new TrackPointsToSegmentMap())
 //				.setParallelism(Constants.topicPartition)
-
 				.timeWindowAll(Time.seconds(Constants.windowSize))
 				.process(new TestAWF())
 

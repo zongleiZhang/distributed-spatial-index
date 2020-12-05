@@ -1,4 +1,4 @@
-package com.ada.DPIflinkFunction;
+package com.ada.flinkFunction.DPIflinkFunction;
 
 import com.ada.GlobalTree.GDirNode;
 import com.ada.GlobalTree.GTree;

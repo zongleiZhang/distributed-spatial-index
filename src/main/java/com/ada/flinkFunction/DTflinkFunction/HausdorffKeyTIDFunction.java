@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction.DTflinkFunction;
 
 import com.ada.GlobalTree.GDataNode;
 import com.ada.GlobalTree.GDirNode;

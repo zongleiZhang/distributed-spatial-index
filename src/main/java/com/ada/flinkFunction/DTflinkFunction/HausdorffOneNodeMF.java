@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction.DTflinkFunction;
 
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RCtree;

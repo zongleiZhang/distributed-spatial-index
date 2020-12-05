@@ -1,6 +1,6 @@
 package com.ada.GlobalTree;
 
-import com.ada.DTflinkFunction.DTConstants;
+import com.ada.flinkFunction.DTflinkFunction.DTConstants;
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;
@@ -8,7 +8,6 @@ import com.ada.common.Path;
 import com.ada.trackSimilar.*;
 import org.jetbrains.annotations.NotNull;
 
-import javax.swing.text.html.parser.DTDConstants;
 import java.util.*;
 
 public class GTree {

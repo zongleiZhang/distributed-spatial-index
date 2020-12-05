@@ -1,4 +1,4 @@
-package com.ada.DPIflinkFunction;
+package com.ada.flinkFunction.DPIflinkFunction;
 
 import com.ada.GlobalTree.GTree;
 import com.ada.Grid.DensityGrid;
@@ -42,7 +42,6 @@ public class TestAWF extends ProcessAllWindowFunction<TrackPointElem, String, Ti
 
 //        testGlocalTree(elements);
 
-        useRCtree(elements, out);
 
 //        normalProcess(elements, out);
 
@@ -114,56 +113,6 @@ public class TestAWF extends ProcessAllWindowFunction<TrackPointElem, String, Ti
         count = 1;
     }
 
-    private void useRCtree(Iterable<TrackPointElem> elements,  Collector<String> out) {
-        long logicStartTime = startWindow - Constants.logicWindow*Constants.windowSize*1000;
-        int[] countt = new int[]{0};
-        List<Long> removeKey = new ArrayList<>();
-        segmentss.forEach((key, value) -> {
-            if (key < logicStartTime){
-                removeKey.add(key);
-                for (TrackPointElem segment : value) {
-                    localIndex.delete(segment);
-//                    localIndex.check();
-                    countt[0]++;
-//                    density.alterElemNum(segment,-1);
-                }
-            }
-        });
-
-        for (Long aLong : removeKey) {
-            segmentss.remove(aLong);
-        }
-
-        List<Tuple2<TrackPointElem,Rectangle>> queryEdema = new ArrayList<>();
-        List<TrackPointElem> indexEdema = new ArrayList<>();
-        int flag = 0;
-        for (TrackPointElem elem : elements) {
-            if (flag == 30){
-                flag = 0;
-                Rectangle rectangle = (new Rectangle(new Point(elem.data.clone()), new Point(elem.data.clone()))).extendLength(35.0);
-                queryEdema.add(new Tuple2<>(elem, rectangle));
-            }
-            indexEdema.add(elem);
-            localIndex.insert(elem);
-//            localIndex.check();
-            countt[0]++;
-            flag++;
-        }
-
-
-        segmentss.put(startWindow,indexEdema);
-
-        for (Tuple2<TrackPointElem,Rectangle> queryElem : queryEdema) {
-            List<TrackPointElem> indexData = localIndex.pointQuery(queryElem.f1);
-            StringBuilder buffer = new StringBuilder();
-            buffer.append(Constants.appendTrackPoint(queryElem.f0));
-            for (TrackPointElem re : indexData) {
-                buffer.append("\t");
-                buffer.append(Constants.appendTrackPoint(re));
-            }
-            out.collect(buffer.toString());
-        }
-    }
 
 //    private void testGlocalTree(Iterable<Segment> elements) {
 //        long logicStartTime = startWindow - Constants.logicWindow*Constants.windowSize;

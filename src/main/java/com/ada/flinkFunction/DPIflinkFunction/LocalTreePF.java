@@ -1,4 +1,4 @@
-package com.ada.DPIflinkFunction;
+package com.ada.flinkFunction.DPIflinkFunction;
 
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
