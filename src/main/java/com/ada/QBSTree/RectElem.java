@@ -1,7 +1,7 @@
 package com.ada.QBSTree;
 
-import com.ada.trackSimilar.Point;
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Point;
+import com.ada.geometry.Rectangle;
 
 public class RectElem extends ElemRoot{
 

@@ -1,7 +1,7 @@
 package com.ada.dispatchElem;
 
 import com.ada.common.Constants;
-import com.ada.trackSimilar.TrackPoint;
+import com.ada.geometry.TrackPoint;
 
 public class OneTwoPoint extends OneTwoData {
     public TrackPoint point;

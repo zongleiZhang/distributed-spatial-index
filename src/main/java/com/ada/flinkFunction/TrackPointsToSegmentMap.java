@@ -1,8 +1,8 @@
 package com.ada.flinkFunction;
 
 import com.ada.common.Constants;
-import com.ada.trackSimilar.Segment;
-import com.ada.trackSimilar.TrackPoint;
+import com.ada.geometry.Segment;
+import com.ada.geometry.TrackPoint;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.util.Collector;
 

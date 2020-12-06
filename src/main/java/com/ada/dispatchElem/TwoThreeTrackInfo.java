@@ -1,6 +1,6 @@
 package com.ada.dispatchElem;
 
-import com.ada.trackSimilar.Message;
+import com.ada.geometry.Message;
 
 public class TwoThreeTrackInfo extends TwoThreeData{
     /**

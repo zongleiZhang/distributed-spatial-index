@@ -1,4 +1,4 @@
-package com.ada.trackSimilar;
+package com.ada.geometry;
 
 public interface Message {
     public long getTimeStamp();

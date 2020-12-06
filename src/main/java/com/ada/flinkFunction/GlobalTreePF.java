@@ -5,7 +5,7 @@ import com.ada.GlobalTree.GTree;
 import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;
 import com.ada.dispatchElem.*;
-import com.ada.trackSimilar.Segment;
+import com.ada.geometry.Segment;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.state.ValueState;

@@ -3,13 +3,10 @@ package com.ada;
 import com.ada.flinkFunction.GlobalTreePF;
 import com.ada.flinkFunction.TrackPointsToSegmentMap;
 import com.ada.flinkFunction.TrackPointTimeAndWater;
-import com.ada.flinkFunction.WaterAndDensityFMP;
 import com.ada.common.Constants;
-import com.ada.dispatchElem.TwoThreeData;
 import com.ada.proto.MyPoint;
-import com.ada.trackSimilar.Segment;
-import com.ada.trackSimilar.TrackPoint;
-import org.apache.flink.api.common.functions.FlatMapFunction;
+import com.ada.geometry.Segment;
+import com.ada.geometry.TrackPoint;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.serialization.AbstractDeserializationSchema;
 import org.apache.flink.api.java.functions.KeySelector;
@@ -19,7 +16,6 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
-import org.apache.flink.util.Collector;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -31,47 +27,7 @@ public class StreamingJob {
 
 	public static void main(String[] args) throws Exception {
 		DisIndexProcess();
-		DisTrackProcess();
 	}
-
-
-	private static void DisTrackProcess() throws Exception {
-		init( "trackPoint2000", "192.168.100.1:9092");
-
-//        init( "Point5000", "192.168.131.199:9092,192.168.131.199:9093,192.168.131.199:9094");
-
-		source
-				.flatMap(new WaterAndDensityFMP())
-				.setParallelism(Constants.topicPartition)
-				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> key, "key")
-				.flatMap(new HausdorffKeyTIDFunction())
-				.setParallelism(Constants.keyTIDPartition)
-				.flatMap(new FlatMapFunction<TwoThreeData, String>() {
-					@Override
-					public void flatMap(TwoThreeData value, Collector<String> out) throws Exception {
-						if (false)
-							out.collect("132");
-					}
-				})
-//				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> Constants.divideSubTaskKayMap.get(key), "key")
-//				.flatMap(new HausdorffDivideMF())
-//				.setParallelism(Constants.dividePartition)
-
-//				.flatMap(new HausdorffOneNodeMF())
-//				.setParallelism(1)
-
-				.print()
-//				.writeAsText("/home/chenliang/data/zzlDI/" +
-//						Constants.logicWindow + "_" +
-//						Constants.t + "_" +
-//						".txt", FileSystem.WriteMode.OVERWRITE)
-//				.setParallelism(1/*Constants.dividePartition*/)
-				;
-		env.execute("logicWindow: " + Constants.logicWindow +
-				" t: " + Constants.t +
-				" topK: " + Constants.topK);
-	}
-
 
 	private static void DisIndexProcess() throws Exception {
 		init( "trackPoint1", "10.10.0.1:9092,10.10.0.2:9092");
@@ -83,7 +39,7 @@ public class StreamingJob {
 				.flatMap(new TrackPointsToSegmentMap())
 				.keyBy((KeySelector<Segment, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getTID()%Constants.globalPartition) )
 				.timeWindow(Time.seconds(Constants.windowSize))
-				.process()
+//				.process()
 
 				.process(new GlobalTreePF())
 				.setParallelism(Constants.globalPartition)

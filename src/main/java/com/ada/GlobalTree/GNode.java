@@ -2,16 +2,17 @@ package com.ada.GlobalTree;
 
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
-import com.ada.trackSimilar.GLeafAndBound;
-import com.ada.trackSimilar.Rectangle;
-import com.ada.trackSimilar.TrackKeyTID;
-import org.roaringbitmap.RoaringBitmap;
+import com.ada.geometry.Rectangle;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Getter
+@Setter
 public abstract class GNode implements Serializable {
 
     transient public int elemNum;
@@ -20,37 +21,32 @@ public abstract class GNode implements Serializable {
 
     transient public int position;
 
-    public GridRectangle region;
+    public GridRectangle gridRegion;
 
-    public Rectangle rectangle;
-
-    public RoaringBitmap bitmap;
+    public Rectangle region;
 
     transient public GTree tree;
 
+    public GNode(){}
+
+    public GNode(GDirNode parent, int position, GridRectangle gridRegion, int elemNum, GTree tree) {
+        this.parent = parent;
+        this.position = position;
+        this.gridRegion = gridRegion;
+        this.region = gridRegion.toRectangle();
+        this.elemNum = elemNum;
+        this.tree = tree;
+    }
+
     public boolean check(Map<Integer, TrackKeyTID> trackMap) {
         int total = 0;
-        for (int i = region.low.x; i <= region.high.x; i++) {
-            for (int j = region.low.y; j <= region.high.y; j++)
+        for (int i = gridRegion.low.x; i <= gridRegion.high.x; i++) {
+            for (int j = gridRegion.low.y; j <= gridRegion.high.y; j++)
                 total += tree.density[i][j];
         }
         if (elemNum != total)
             throw new IllegalArgumentException("elemNum error");
-        for (Integer TID : bitmap) {
-            TrackKeyTID track = trackMap.get(TID);
-            if (this instanceof GDataNode){
-                GDataNode dataNode = (GDataNode) this;
-                GLeafAndBound gb = new GLeafAndBound(dataNode, 0.0);
-                if (track.enlargeTuple.f0 != dataNode &&
-                        !track.passP.contains(dataNode) &&
-                        (track.topKP.isEmpty() || !track.topKP.getList().contains(gb)))
-                    throw new IllegalArgumentException("bitmap error " + TID);
-            }else {
-                if (track.enlargeTuple.f0 != this)
-                    throw new IllegalArgumentException("track.enlargeTuple.f0 != this " + TID);
-            }
-        }
-        if (!region.toRectangle().equals(rectangle))
+        if (!gridRegion.toRectangle().equals(region))
             throw new IllegalArgumentException("rectangle error");
         if(!isRoot()) {
             if (parent.child[position] != this)
@@ -64,58 +60,6 @@ public abstract class GNode implements Serializable {
                 ((GDirNode ) this).child[chNum].check(trackMap);
         }
         return true;
-    }
-
-    public GTree getTree() {
-        return tree;
-    }
-
-    public void setTree(GTree tree) {
-        this.tree = tree;
-    }
-
-    public GNode(){}
-
-    public GNode(GDirNode parent, int position, GridRectangle region, int elemNum, GTree tree) {
-        this.parent = parent;
-        this.position = position;
-        this.region = region;
-        this.rectangle = region.toRectangle();
-        this.elemNum = elemNum;
-        bitmap = new RoaringBitmap();
-        this.tree = tree;
-    }
-
-    public int getElemNum() {
-        return elemNum;
-    }
-
-    public void setElemNum(int elemNum) {
-        this.elemNum = elemNum;
-    }
-
-    public GDirNode getParent() {
-        return parent;
-    }
-
-    public void setParent(GDirNode parent) {
-        this.parent = parent;
-    }
-
-    public int getPosition() {
-        return position;
-    }
-
-    public void setPosition(int position) {
-        this.position = position;
-    }
-
-    public GridRectangle getRegion() {
-        return region;
-    }
-
-    public void setRegion(GridRectangle region) {
-        this.region = region;
     }
 
     /**

@@ -4,7 +4,7 @@ import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;
 import com.ada.common.Path;
-import com.ada.trackSimilar.*;
+import com.ada.geometry.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -69,7 +69,6 @@ public class GTree {
         for (GNode leaf : root.child)
             leafs.add((GDataNode) leaf);
         root.setLeafs(leafs);
-
     }
 
 
@@ -81,6 +80,8 @@ public class GTree {
     public void deleteOldDensity(int[][] oldDensity) {
         Constants.addArrsToArrs(density,oldDensity,false);
     }
+
+
 
     /**
      * 获取一个矩形内的元素数量
@@ -170,7 +171,7 @@ public class GTree {
      */
     private void updateTreeInfo() {
         for (GDataNode leaf : leafIDMap.values()) {
-            int eleNum = getRangeEleNum(leaf.region);
+            int eleNum = getRangeEleNum(leaf.gridRegion);
             leaf.updateLeafElemNum(eleNum);
         }
     }
@@ -278,7 +279,7 @@ public class GTree {
      */
     private void adjustNodes(@NotNull Map<GNode, GNode> dirNodes) {
         for (GNode node : dirNodes.keySet()) {
-            GDataNode dataNode = new GDataNode(node.parent, node.position, node.region,
+            GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
                     node.elemNum, node.tree,-1);
             GNode newNode = dataNode.adjustNode();
             newNode.countLeafs();
@@ -304,8 +305,8 @@ public class GTree {
             for (int i = 0; i < matrix.length; i++) {
                 GDataNode dataNode = newLeafNodes.get(i);
                 GridPoint gPoint = new GridPoint();
-                for (int j =  dataNode.region.low.x; j <= dataNode.region.high.x; j++) {
-                    for (int k = dataNode.region.low.y; k <= dataNode.region.high.y; k++) {
+                for (int j = dataNode.gridRegion.low.x; j <= dataNode.gridRegion.high.x; j++) {
+                    for (int k = dataNode.gridRegion.low.y; k <= dataNode.gridRegion.high.y; k++) {
                         gPoint.x = j;
                         gPoint.y = k;
                         GDataNode gDataNode = oldDirNode.searchGPoint(gPoint);
@@ -409,74 +410,6 @@ public class GTree {
         return list;
     }
 
-    public void countPartitions(Rectangle MBR, TrackKeyTID track) {
-        root.getIntersectLeafNodes(MBR, track.passP);
-        List<GDataNode> topKLeafs = new ArrayList<>();
-        root.getIntersectLeafNodes(track.rect, topKLeafs);
-        countEnlargeBound(track, new ArrayList<>(topKLeafs), MBR);
-        topKLeafs.removeAll(track.passP);
-        if (!topKLeafs.isEmpty()) {
-            List<GLeafAndBound> list = new ArrayList<>(topKLeafs.size());
-            for (GDataNode leaf : topKLeafs) {
-                double bound = Constants.countEnlargeBound(MBR, leaf.rectangle);
-                list.add(new GLeafAndBound(leaf, bound));
-            }
-            track.topKP.setList(list);
-        }
-    }
-
-    public void countTopKAndEnlargeBound(TrackKeyTID track, List<GDataNode> MBRLeafs, List<GDataNode> pruneAreaLeafs, Rectangle MBR) {
-        countEnlargeBound(track, pruneAreaLeafs, MBR);
-        pruneAreaLeafs.removeAll(MBRLeafs);
-        List<GLeafAndBound> list = new ArrayList<>(pruneAreaLeafs.size());
-        for (GDataNode leaf : pruneAreaLeafs) {
-            double bound = Constants.countEnlargeBound(MBR, leaf.rectangle);
-            list.add(new GLeafAndBound(leaf,bound));
-        }
-        track.topKP.setList(list);
-    }
-
-    /**
-     * 计算轨迹track的阈值的最大扩展数
-     * @param removeLeafs 移除的节点
-     */
-    public void countEnlargeBound(TrackKeyTID track, List<GDataNode> removeLeafs, Rectangle MBR) {
-        Rectangle pruneArea;
-        if (root.rectangle.isInternal(track.rect))
-            pruneArea = track.rect;
-        else
-            pruneArea = track.rect.createIntersection(root.rectangle);
-        GNode node = root.getInternalNode(pruneArea);
-        List<GDataNode> nodeLeafs = new ArrayList<>(node.getLeafs());
-        nodeLeafs.removeAll(removeLeafs);
-        track.enlargeTuple.f0 = node;
-        Rectangle newRect = node.rectangle.extendToEnoughBig();
-        track.enlargeTuple.f1 = Constants.countEnlargeOutBound(MBR, newRect);
-        for (GDataNode leaf : nodeLeafs) {
-            double enlargeBound = Constants.countEnlargeBound(MBR, leaf.rectangle);
-            if (enlargeBound < track.enlargeTuple.f1) {
-                track.enlargeTuple.f0 = leaf;
-                track.enlargeTuple.f1 = enlargeBound;
-            }
-        }
-    }
-
-
-    /**
-     * 轨迹track的topKP变多，需要重新计算topKP和enlargeTuple
-     * @return 扩展的topKP
-     */
-    public List<GDataNode> enlargePartitions(TrackKeyTID track, Rectangle MBR) {
-        List<GDataNode> leafs = new ArrayList<>();
-        root.getIntersectLeafNodes(track.rect, leafs);
-        countEnlargeBound(track, new ArrayList<>(leafs), MBR);
-        leafs.removeAll(track.passP);
-        for (GLeafAndBound lb : track.topKP.getList())
-            leafs.remove(lb.leaf);
-        if (!leafs.isEmpty())
-            DTConstants.addTrackTopK(track,MBR, leafs);
-        return leafs;
-    }
 }
 
 

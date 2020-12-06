@@ -1,7 +1,7 @@
 package com.ada.common;
 
-import com.ada.trackSimilar.Segment;
-import com.ada.trackSimilar.TrackPoint;
+import com.ada.geometry.Segment;
+import com.ada.geometry.TrackPoint;
 
 import java.io.BufferedReader;
 import java.io.File;

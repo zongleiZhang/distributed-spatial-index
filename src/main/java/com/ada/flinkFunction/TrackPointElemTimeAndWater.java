@@ -1,7 +1,7 @@
 package com.ada.flinkFunction;
 
 
-import com.ada.trackSimilar.TrackPointElem;
+import com.ada.geometry.TrackPointElem;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.watermark.Watermark;
 

@@ -3,13 +3,16 @@ package com.ada.GlobalTree;
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Rectangle;
+import lombok.Getter;
+import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
-import org.roaringbitmap.RoaringBitmap;
 
 import java.util.Collections;
 import java.util.List;
 
+@Getter
+@Setter
 public class GDataNode extends GNode implements Comparable<GDataNode>{
     public int leafID;
 
@@ -21,17 +24,11 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
         this.leafID = leafID;
     }
 
-    public int getLeafID() {
-        return leafID;
-    }
 
     public List<GDataNode> getLeafs() {
         return Collections.singletonList(this);
     }
 
-    public void setLeafID(int leafID) {
-        this.leafID = leafID;
-    }
 
     boolean isRootLeaf(){
         return parent.parent == null && parent.child[0] instanceof GDataNode
@@ -146,26 +143,26 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 
     private GDirNode fourSplit(int num0, int num1, int num2, int num3){
         GDirNode node;
-        node = new GDirNode(parent, position, region, elemNum, tree, new GNode[4]);
+        node = new GDirNode(parent, position, gridRegion, elemNum, tree, new GNode[4]);
 
-        int[] elemNums = tree.getElemNumArray(region, 0);
+        int[] elemNums = tree.getElemNumArray(gridRegion, 0);
         int newX = getNewXY(elemNums,num0 + num1);
 
-        GridRectangle rectangle00 = new GridRectangle(region.low, new GridPoint(region.low.x + newX, region.high.y));
+        GridRectangle rectangle00 = new GridRectangle(gridRegion.low, new GridPoint(gridRegion.low.x + newX, gridRegion.high.y));
         int[] elemNums00 = tree.getElemNumArray(rectangle00, 1);
         int newY0 = getNewXY(elemNums00, num0);
         int elemNum0 = getElemNum(elemNums00, 0, newY0);
         int elemNum1 = getElemNum(elemNums00, newY0+1, elemNums00.length-1);
-        GridRectangle rectangle0 = new GridRectangle(region.low, new GridPoint(region.low.x + newX, region.low.y + newY0));
-        GridRectangle rectangle1 = new GridRectangle(new GridPoint(region.low.x, region.low.y + newY0 + 1), new GridPoint(region.low.x + newX, region.high.y));
+        GridRectangle rectangle0 = new GridRectangle(gridRegion.low, new GridPoint(gridRegion.low.x + newX, gridRegion.low.y + newY0));
+        GridRectangle rectangle1 = new GridRectangle(new GridPoint(gridRegion.low.x, gridRegion.low.y + newY0 + 1), new GridPoint(gridRegion.low.x + newX, gridRegion.high.y));
 
-        GridRectangle rectangle11 = new GridRectangle(new GridPoint(region.low.x + newX+1, region.low.y), region.high);
+        GridRectangle rectangle11 = new GridRectangle(new GridPoint(gridRegion.low.x + newX+1, gridRegion.low.y), gridRegion.high);
         int[] elemNums11 = tree.getElemNumArray(rectangle11, 1);
         int newY1 = getNewXY(elemNums11, num2);
         int elemNum2 = getElemNum(elemNums11, 0, newY1);
         int elemNum3 = getElemNum(elemNums11, newY1+1, elemNums11.length-1);
-        GridRectangle rectangle2 = new GridRectangle(new GridPoint(region.low.x + newX + 1, region.low.y), new GridPoint(region.high.x, region.low.y +newY1));
-        GridRectangle rectangle3 = new GridRectangle(new GridPoint(region.low.x + newX + 1, region.low.y + newY1 + 1), region.high);
+        GridRectangle rectangle2 = new GridRectangle(new GridPoint(gridRegion.low.x + newX + 1, gridRegion.low.y), new GridPoint(gridRegion.high.x, gridRegion.low.y +newY1));
+        GridRectangle rectangle3 = new GridRectangle(new GridPoint(gridRegion.low.x + newX + 1, gridRegion.low.y + newY1 + 1), gridRegion.high);
 
         node.child[0] = new GDataNode(node, 0, rectangle0, elemNum0, tree, -1);
         node.child[1] = new GDataNode(node, 1, rectangle1, elemNum1, tree, -1);

@@ -1,11 +1,8 @@
-package com.ada.trackSimilar;
+package com.ada.geometry;
 
-import com.ada.GlobalTree.GNode;
 import com.ada.common.Constants;
-import org.jetbrains.annotations.NotNull;
 
 import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -404,5 +401,4 @@ public class Rectangle implements Cloneable, Serializable {
 			newRect.high.data[1] += tmp;
 		return newRect;
 	}
-
 }

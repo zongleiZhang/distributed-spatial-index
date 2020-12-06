@@ -2,7 +2,7 @@ package com.ada.GlobalTree;
 
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Rectangle;
 
 import java.util.List;
 
@@ -30,19 +30,19 @@ public class GDirNode extends GNode{
     boolean checkGDirNode() {
         if (elemNum != child[0].elemNum + child[1].elemNum + child[2].elemNum + child[3].elemNum)
             throw new IllegalArgumentException("elemNum error");
-        if ( region.low.y != child[0].region.low.y ||
-                child[0].region.high.y+1 != child[1].region.low.y ||
-                child[1].region.high.y != region.high.y ||
-                region.low.y != child[2].region.low.y ||
-                child[2].region.high.y+1 != child[3].region.low.y ||
-                child[3].region.high.y != region.high.y ||
-                region.low.x != child[0].region.low.x ||
-                region.low.x != child[1].region.low.x ||
-                region.high.x != child[2].region.high.x ||
-                region.high.x != child[3].region.high.x ||
-                child[0].region.high.x != child[1].region.high.x ||
-                child[0].region.high.x+1 != child[2].region.low.x ||
-                child[0].region.high.x+1 != child[3].region.low.x)
+        if ( gridRegion.low.y != child[0].gridRegion.low.y ||
+                child[0].gridRegion.high.y+1 != child[1].gridRegion.low.y ||
+                child[1].gridRegion.high.y != gridRegion.high.y ||
+                gridRegion.low.y != child[2].gridRegion.low.y ||
+                child[2].gridRegion.high.y+1 != child[3].gridRegion.low.y ||
+                child[3].gridRegion.high.y != gridRegion.high.y ||
+                gridRegion.low.x != child[0].gridRegion.low.x ||
+                gridRegion.low.x != child[1].gridRegion.low.x ||
+                gridRegion.high.x != child[2].gridRegion.high.x ||
+                gridRegion.high.x != child[3].gridRegion.high.x ||
+                child[0].gridRegion.high.x != child[1].gridRegion.high.x ||
+                child[0].gridRegion.high.x+1 != child[2].gridRegion.low.x ||
+                child[0].gridRegion.high.x+1 != child[3].gridRegion.low.x)
             throw new IllegalArgumentException("region error");
         return true;
     }
@@ -57,7 +57,7 @@ public class GDirNode extends GNode{
 
     public GDataNode searchGPoint(GridPoint gPoint) {
         for (GNode gNode : child) {
-            if (gNode.region.isInternal(gPoint))
+            if (gNode.gridRegion.isInternal(gPoint))
                 return gNode.searchGPoint(gPoint);
         }
         return null;
@@ -65,8 +65,8 @@ public class GDirNode extends GNode{
 
     void getIntersectLeafIDs(Rectangle rectangle, List<Integer> leafIDs) {
         for (GNode node : child) {
-            if (rectangle.isIntersection(node.rectangle)) {
-                if (rectangle.isInternal(node.rectangle))
+            if (rectangle.isIntersection(node.region)) {
+                if (rectangle.isInternal(node.region))
                     node.getAllLeafID(leafIDs);
                 else
                     node.getIntersectLeafIDs(rectangle, leafIDs);
@@ -76,8 +76,8 @@ public class GDirNode extends GNode{
 
     public void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs) {
         for (GNode node : child) {
-            if (rectangle.isIntersection(node.rectangle)) {
-                if (rectangle.isInternal(node.rectangle))
+            if (rectangle.isIntersection(node.region)) {
+                if (rectangle.isInternal(node.region))
                     leafs.addAll(node.getLeafs());
                 else
                     node.getIntersectLeafNodes(rectangle, leafs);
@@ -87,7 +87,7 @@ public class GDirNode extends GNode{
 
     public GNode getInternalNode(Rectangle rectangle){
         for (GNode gNode : child) {
-            if (gNode.rectangle.isInternal(rectangle))
+            if (gNode.region.isInternal(rectangle))
                 return gNode.getInternalNode(rectangle);
         }
         return this;

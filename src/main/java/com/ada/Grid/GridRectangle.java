@@ -1,7 +1,7 @@
 package com.ada.Grid;
 
-import com.ada.trackSimilar.Point;
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Point;
+import com.ada.geometry.Rectangle;
 
 import java.io.Serializable;
 import java.util.Objects;

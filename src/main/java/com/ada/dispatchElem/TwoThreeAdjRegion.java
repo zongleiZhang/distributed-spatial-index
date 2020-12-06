@@ -1,6 +1,6 @@
 package com.ada.dispatchElem;
 
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Rectangle;
 
 public class TwoThreeAdjRegion extends TwoThreeData{
     public Rectangle region;
