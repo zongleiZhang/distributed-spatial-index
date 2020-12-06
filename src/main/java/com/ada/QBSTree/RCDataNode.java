@@ -10,16 +10,12 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 
 	public List<T> elms;
 
-	public Set<Integer> TIDs;
-
 	public RCDataNode() {}
 
 	public RCDataNode(int depth, RCDirNode<T> parent, int position, Rectangle centerRegion, Rectangle region,
                       List<Integer> preDepths, int elemNum, RCtree<T> tree, List<T> elms) {
 		super(depth, parent, position, centerRegion,region, preDepths, elemNum, tree);
 		this.elms = elms;
-		if (tree.hasTIDs)
-			TIDs = Constants.getTIDs(elms);
 	}
 
 	public List<T> getElms() {
@@ -35,8 +31,6 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 		elemNum++;
 		elms.add(elem);
 		elem.leaf = this;
-		if (tree.hasTIDs)
-			TIDs.add(((TrackInfo)elem).obtainTID());
 		if (elem instanceof RectElem)
 			updateRegion( ((RectElem) elem).rect,1);
 		else
@@ -50,50 +44,6 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 			leaves.add(this);
 	}
 
-	@Override
-	void getRegionTIDs(Rectangle region, Set<Integer> allTIDs, Set<Integer> intersections){
-		List<Segment> segments = (List<Segment>) elms;
-		for (Segment segment : segments) {
-			if (segment.getTID() == 979 && Constants.isEqual(segment.p2.data[0], 6541.8508))
-				System.out.print("");
-			if (region.isIntersection(segment)) {
-				if (region.isInternal(segment.rect))
-					allTIDs.add(segment.getTID());
-				else
-					intersections.add(segment.getTID());
-			}
-		}
-	}
-
-	@Override
-	void getRegionTIDs(Rectangle region, Set<Integer> allTIDs){
-		if (elms.get(0) instanceof RectElem){
-			List<RectElem> rectElems = (List<RectElem>) elms;
-			for (RectElem rectElem : rectElems) {
-				if (region.isInternal(rectElem.rect))
-					allTIDs.add(((TrackInfo)rectElem).obtainTID());
-			}
-		}else {
-			for (T elm : elms) {
-				if (region.isInternal(elm))
-					allTIDs.add(((TrackInfo) elm).obtainTID());
-			}
-		}
-	}
-
-    @Override
-    void trackInternal(Rectangle region, List<Integer> TIDs){
-        List<RectElem> rectElems = (List<RectElem>) elms;
-        for (RectElem elem : rectElems) {
-            if(elem.rect.isInternal(region))
-                TIDs.add(((TrackHauOne) elem).trajectory.TID);
-        }
-    }
-
-	@Override
-	public void getAllTIDs(Set<Integer> TIDs) {
-		TIDs.addAll(this.TIDs);
-	}
 
 	@Override
 	Rectangle calculateRegion(){
@@ -165,20 +115,6 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 		}
 		if(!elms.remove(elem))
 			return false;
-		if (tree.hasTIDs){
-			boolean flag = true;
-			int tid = ((TrackInfo) elem).obtainTID();
-			for (T elm : elms) {
-				TrackInfo e = (TrackInfo) elm;
-				if (e.obtainTID() == tid) {
-					flag = false;
-					break;
-				}
-			}
-			if (flag)
-				TIDs.remove(tid);
-		}
-
 		if (elem instanceof RectElem)
 			updateRegion(((RectElem) elem).rect,2);
 		else

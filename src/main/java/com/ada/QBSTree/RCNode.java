@@ -70,25 +70,6 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 
 
 	/**
-	 * 获取指定的矩形区域内包含的轨迹集合
-	 * @param region 指定的矩形区域
-	 * @param allTIDs 获取指定区域内的轨迹ID集合，包括与边界相交的轨迹ID
-	 * @param intersections 获取指定区域边界相交轨迹ID集合
-	 */
-	abstract void getRegionTIDs(Rectangle region, Set<Integer> allTIDs, Set<Integer> intersections);
-
-	/**
-	 * 获取指定的矩形区域内包含的轨迹集合
-	 * @param region 指定的矩形区域
-	 * @param allTIDs 获取指定区域内的轨迹ID集合，包括与边界相交的轨迹ID
-	 */
-	abstract void getRegionTIDs(Rectangle region, Set<Integer> allTIDs);
-
-	public abstract void getAllTIDs(Set<Integer> TIDs);
-
-	abstract void trackInternal(Rectangle region, List<Integer> TIDs);
-
-	/**
 	 * 本节点深度发生变化时，导致失衡的最小子树。
 	 * @param cache true使用延迟更新，false不使用延迟更新
 	 * @param subNode 当cache为false时该参数有效，表示非叶节点的第subNode个子节点的深度发生变化。
@@ -332,9 +313,9 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 	}
 
 
-	boolean check(Map<Integer, TrackKeyTID> trackMap) {
+	boolean check() {
 		if (this instanceof RCDataNode) {
-			if (!checkRCDataNode(trackMap))
+			if (!checkRCDataNode())
 				return false;
 		}else {
 			if (!checkRCDirNode())
@@ -346,7 +327,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 		}
 		if(this instanceof RCDirNode){
 			for(int chNum = 0; chNum<4; chNum++)
-				((RCDirNode<T>) this).child[chNum].check(trackMap);
+				((RCDirNode<T>) this).child[chNum].check();
 		}
 		return true;
 	}
@@ -383,25 +364,8 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 	/**
 	 * 检查叶子结点是否合法
 	 */
-	private boolean checkRCDataNode(Map<Integer, TrackKeyTID> trackMap) {
+	private boolean checkRCDataNode() {
 		RCDataNode<T> dataNode = (RCDataNode<T>) this;
-		if (!dataNode.elms.isEmpty() && dataNode.elms.get(0) instanceof TrackKeyTID){
-			for (T elem : dataNode.elms){
-				TrackKeyTID track = (TrackKeyTID) elem;
-				if (track.topKP.isEmpty())
-					throw new IllegalArgumentException("track error " + track.trajectory.TID);
-			}
-		}
-
-		if (!dataNode.elms.isEmpty() && dataNode.elms.get(0) instanceof Segment){
-			for (T elem : dataNode.elms){
-				Segment segment = (Segment) elem;
-				TrackKeyTID track = trackMap.get(segment.obtainTID());
-				if (!track.trajectory.elems.contains(segment))
-					throw new IllegalArgumentException("segment error " + track.trajectory.TID);
-			}
-		}
-
 		if (!dataNode.elms.isEmpty() && dataNode.elms.get(0) instanceof RectElem){
 			for (T elem : dataNode.elms){
 				RectElem rectElem = (RectElem) elem;
@@ -417,14 +381,6 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 				throw new IllegalArgumentException("!cur.centerRegion.isInternal(elem)");
 			if (elem.leaf != dataNode)
 				throw new IllegalArgumentException("elem.leaf != cur");
-		}
-		if (tree.hasTIDs){
-			Set<Integer> minus = Constants.getTIDs(dataNode.elms);
-			if (minus.size() != dataNode.TIDs.size())
-				throw new IllegalArgumentException("minus.size() != cur.TIDs.size()");
-			minus.removeAll(dataNode.TIDs);
-			if (minus.size() != 0)
-				throw new IllegalArgumentException("minus.size() != 0");
 		}
 		Rectangle checkRectangle = dataNode.calculateRegion();
 		if (!Constants.rectangleEqual(checkRectangle, region))

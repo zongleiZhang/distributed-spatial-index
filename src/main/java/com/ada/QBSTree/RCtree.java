@@ -23,17 +23,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 	public int cacheSize;
 
-	public List<Integer> leafID1;
-
-	public List<Integer> leafID2;
-
-	public List<Integer> newLeafID;
-
-	/**
-	 * 处理轨迹数据时要在叶节点存储TID集合
-	 */
-	public boolean hasTIDs = false;
-
 	public  RCtree(){}
 
 	/**
@@ -41,19 +30,13 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	 * @param lowBound the upper bound of the leaf node's data number.
 	 * @param balanceFactor the low bound of the leaf node's data number.
 	 */
-	public RCtree(int lowBound, int balanceFactor, int precision, Rectangle centerRegion, int cacheSize, boolean hasTIDs) {
+	public RCtree(int lowBound, int balanceFactor, int precision, Rectangle centerRegion, int cacheSize) {
 		this.lowBound = lowBound;
 		this.balanceFactor = balanceFactor;
 		this.upBound = 5*lowBound;
 		this.precision = precision;
 		cache = new ArrayList<>();
 		this.cacheSize = cacheSize;
-		leafID1 = new ArrayList<>();
-		leafID2 = new ArrayList<>();
-		this.hasTIDs = hasTIDs;
-		Set<Integer> TIDs = null;
-		if (hasTIDs)
-			TIDs = new HashSet<>();
 		root = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), 0, this, new ArrayList<>());
 	}
 
@@ -267,8 +250,8 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 
 
-	public boolean check(Map<Integer, TrackKeyTID> trackMap) {
-		return root.check(trackMap);
+	public boolean check() {
+		return root.check();
 	}
 
 

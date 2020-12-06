@@ -92,45 +92,7 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 		}
 	}
 
-	@Override
-	void getRegionTIDs(Rectangle region, Set<Integer> allTIDs, Set<Integer> intersections){
-		for (RCNode<T> rcNode : child) {
-			if (rcNode.region != null && region.isIntersection(rcNode.region)){
-				if (region.isInternal(rcNode.region))
-					rcNode.getAllTIDs(allTIDs);
-				else
-					rcNode.getRegionTIDs(region,allTIDs,intersections);
-			}
-		}
-	}
 
-
-	@Override
-	void getRegionTIDs(Rectangle region, Set<Integer> allTIDs){
-		for (RCNode<T> rcNode : child) {
-			if (rcNode.region != null && region.isIntersection(rcNode.region)){
-				if (region.isInternal(rcNode.region))
-					rcNode.getAllTIDs(allTIDs);
-				else
-					rcNode.getRegionTIDs(region,allTIDs);
-			}
-		}
-	}
-
-    @Override
-    void trackInternal(Rectangle region, List<Integer> TIDs){
-        for (RCNode<T> rcNode : child) {
-            if (rcNode.region != null && rcNode.region.isInternal(region)){
-                rcNode.trackInternal(region, TIDs);
-            }
-        }
-    }
-
-	@Override
-	public void getAllTIDs(Set<Integer> TIDs) {
-		for (RCNode<T> rcNode : child)
-			rcNode.getAllTIDs(TIDs);
-	}
 
 	@Override
 	Rectangle calculateRegion(){
@@ -284,11 +246,6 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 		List<T> elms = new ArrayList<>();
 		getAllElement(elms);
 		RCDirNode<T> res;
-		boolean flag = false;
-		if (tree.hasTIDs) {
-			flag = true;
-			tree.hasTIDs = false;
-		}
 		RCDataNode<T> dataNode = new RCDataNode<>(0,null,-1, centerRegion, region, new ArrayList<>()
 				,elemNum,tree,elms);
 		res = dataNode.recursionSplit();
@@ -296,13 +253,6 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 		res.position = position;
 		if(parent != null)
 			parent.child[position] = res;
-		if (flag){
-			tree.hasTIDs = true;
-			List<RCDataNode<T>> leaves = new ArrayList<>();
-			res.getLeafNodes(leaves);
-			for (RCDataNode<T> leaf : leaves)
-				leaf.TIDs = Constants.getTIDs(leaf.elms);
-		}
 		return res;
 	}
 
