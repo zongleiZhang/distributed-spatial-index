@@ -100,24 +100,12 @@ public class Constants implements Serializable {
             pro.load(in);
             in.close();
             topicPartition = Integer.parseInt(pro.getProperty("topicPartition"));
-
-
-
-            File f = new File(confFileName);
-            BufferedReader br = new BufferedReader(new FileReader(f));
-            Map<String,String> confMap = new HashMap<>();
-            String line;
-            while ((line = br.readLine())!=null){
-                String[] split = line.split(":");
-                confMap.put(split[0],split[1]);
-            }
-            topicPartition = Integer.parseInt(confMap.get("topicPartition"));
-            globalPartition = Integer.parseInt(confMap.get("globalPartition"));
-            dividePartition = Integer.parseInt(confMap.get("dividePartition"));
-            densityFre = Integer.parseInt(confMap.get("densityFre"));
-            globalLowBound = Integer.parseInt(confMap.get("globalLowBound"));
-            windowSize = Integer.parseInt(confMap.get("windowSize"));
-            logicWindow = Integer.parseInt(confMap.get("logicWindow"));
+            globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
+            dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
+            densityFre = Integer.parseInt(pro.getProperty("densityFre"));
+            globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
+            windowSize = Integer.parseInt(pro.getProperty("windowSize"));
+            logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
         }catch (Exception e){
             e.printStackTrace();
         }

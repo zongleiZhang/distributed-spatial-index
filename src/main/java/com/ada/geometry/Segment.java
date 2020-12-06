@@ -1,6 +1,7 @@
 package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
+import com.ada.model.DensityToGlobalInt;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.Objects;
 /**
  * 点无序
  */
-public class Segment extends RectElem implements Serializable {
+public class Segment extends RectElem implements Serializable, DensityToGlobalInt {
     public TrackPoint p1;
     public TrackPoint p2;
 
@@ -31,6 +32,10 @@ public class Segment extends RectElem implements Serializable {
         return p1.TID;
     }
 
+    @Override
+    public Integer getDensityToGlobalKey() {
+        return p1.TID;
+    }
 
     @Override
     public boolean equals(Object o) {
