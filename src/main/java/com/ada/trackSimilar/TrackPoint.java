@@ -1,12 +1,17 @@
 package com.ada.trackSimilar;
 
 import com.ada.common.ClassMct;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static java.lang.Integer.parseInt;
 
+@Getter
+@Setter
 public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, Comparable<TrackPoint> {
 	public long timestamp;
 	public int TID;
@@ -44,8 +49,8 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 						parseInt(dev[1].substring(8, 10)), parseInt(dev[2].substring(0, 2)),
 						parseInt(dev[2].substring(3, 5)), parseInt(dev[2].substring(6, 8)));
 				this.timestamp = (timestamp.getTimeInMillis()/1000L)*1000L;
-				double lon = Double.valueOf(dev[3]);
-				double lat = Double.valueOf(dev[4]);
+				double lon = Double.parseDouble(dev[3]);
+				double lat = Double.parseDouble(dev[4]);
 				data = ClassMct.LBToXY(lat, lon);
 				if( data[0]<0 || data[0]>200000000 || data[1]<0 || data[1]>200000000 ) {
 					data[0] = 0;
@@ -54,22 +59,6 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 				data[0] = 0;
 			}
 		}
-	}
-
-	public long getTimestamp() {
-		return timestamp;
-	}
-
-	public void setTimestamp(long timestamp) {
-		this.timestamp = timestamp;
-	}
-
-	public int getTID() {
-		return TID;
-	}
-
-	public void setTID(int TID) {
-		this.TID = TID;
 	}
 
 	public boolean isEmpty(){
@@ -112,21 +101,14 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 
 	@Override
 	public String toString() {
-		StringBuilder sBuffer = new StringBuilder();
-		Calendar timestamp = Calendar.getInstance();
-		timestamp.setTimeInMillis(this.timestamp);
 		DecimalFormat df = new DecimalFormat("#.0000");
-		sBuffer.append(TID).append(" ");
-		sBuffer.append(df.format(data[0])).append(" ");
-		sBuffer.append(df.format(data[1])).append(" ");
-		sBuffer.append(this.timestamp).append(" ");
-		sBuffer.append(timestamp.get(Calendar.YEAR)).append("-");
-		sBuffer.append(timestamp.get(Calendar.MONTH)+1).append("-");
-		sBuffer.append(timestamp.get(Calendar.DAY_OF_MONTH)).append(" ");
-		sBuffer.append(timestamp.get(Calendar.HOUR_OF_DAY)).append(":");
-		sBuffer.append(timestamp.get(Calendar.MINUTE)).append(":");
-		sBuffer.append(timestamp.get(Calendar.SECOND));
-		return sBuffer.toString();
+		Date date = new Date(this.timestamp);
+		SimpleDateFormat myFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		return TID + " " +
+				df.format(data[0]) + " " +
+				df.format(data[1]) + " " +
+				this.timestamp + " " +
+				myFormat.format(date) + "-";
 	}
 
 	@Override
@@ -135,13 +117,13 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 		if (!(o instanceof TrackPoint)) return false;
 		if (!super.equals(o)) return false;
 		TrackPoint point = (TrackPoint) o;
-		return getTimestamp() == point.getTimestamp() &&
+		return getTimeStamp() == point.getTimeStamp() &&
 				getTID() == point.getTID();
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(super.hashCode(), getTimestamp(), getTID());
+		return Objects.hash(super.hashCode(), getTimeStamp(), getTID());
 	}
 
 }

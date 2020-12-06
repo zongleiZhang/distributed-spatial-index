@@ -2,9 +2,10 @@ package com.ada.flinkFunction.DPIflinkFunction;
 
 import com.ada.GlobalTree.GDirNode;
 import com.ada.GlobalTree.GTree;
+import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;
 import com.ada.dispatchElem.*;
-import com.ada.trackSimilar.TrackPoint;
+import com.ada.trackSimilar.Segment;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.state.ValueState;
@@ -12,6 +13,7 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.queryablestate.client.QueryableStateClient;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -24,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, Integer, TimeWindow> {
+public class GlobalTreePF extends ProcessWindowFunction<Segment, OneTwoData, Integer, TimeWindow> {
     private int subTask;
     private long startWindow;
     private GTree globalTree;
@@ -40,85 +42,82 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
 
     private long count;
 
-    public GlobalTreePF(){ }
+    public  GlobalTreePF(){ }
 
     @Override
-    public void process(Integer tuple, Context context, Iterable<TrackPoint> elements, Collector<OneTwoData> out) throws Exception {
-//        startWindow = context.window().getStart();
-//        StringBuilder stringBuffer = new StringBuilder();
-//        for (int i = 0; i < subTask; i++)
-//            stringBuffer.append("---------------");
-//        System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
-//
-//
-//        //根据Global Index给输入项分区
-//        for (TrackPoint segment : elements) {
-//            if (segment.data != null) {
-//                globalTree.addPoint(segment);
-//            }
-//            List<Integer> leafs = globalTree.searchLeafNodes(GridRectangle.rectangleToGridRectangle(segment.rect));
-//            for (Integer leaf : leafs)
-//                out.collect(new Tuple2<>(Constants.divideSubTaskKayMap.get(leaf), segment));
-//        }
-//
-//
-//        if ( (count/10)%Constants.densityFre == 0){
-//            densities.put(startWindow, globalTree.density.data);
-//            Constants.addArrsToArrs(density, globalTree.density.data,true);
-//            globalTree.density.data = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-//            removeOutdate();
-//        }
-//
-//        //subTask 0 从Local Index中收集索引密度信息调整Global Index。
-//        // 然后将调整结果同步到别的subTask和相关的Local Index中。
-//        if ( (count/10L)%(Constants.balanceFre) == 0L){
-//            if (subTask == 0){
-//                Constants.addArrsToArrs(globalTree.density.data, density, true);
-//                //从Local Index中收集索引密度信息
-//                getDivideGrid();
-//
-//                //调整Global Index
-//                boolean isAdjust = globalTree.updateTree();
-//
-//                globalTree.density.data = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-//
-//                //发生了Global Index的调整，同步Global Index到其他subTask中。
-//                if (isAdjust){
-//                    globalTreeRoot.update(globalTree.root);
-//                    globalHeartbeat.update(count+1);
-//
-//                    //通知Local Index其索引区域发生的变化
-//                    for (Tuple2<Integer, Segment> tuple2 : globalTree.divideRegionInfo) {
-//                        tuple2.f1.p1.timestamp = count+10;
-//                        out.collect(tuple2);
-//                    }
-//
-//                    //通知Local Index索引项迁移信息
-//                    for (Segment segment : globalTree.migrateInfo) {
-//                        out.collect(new Tuple2<>(Constants.divideSubTaskKayMap.get((int) -segment.p1.timestamp), segment));
-//                        out.collect(new Tuple2<>(Constants.divideSubTaskKayMap.get((int) -segment.p2.timestamp), segment));
-//                    }
-//
-//                    //通知被弃用的Local Index
-//                    for (Integer discardLeafID : globalTree.discardLeafIDs)
-//                        out.collect(new Tuple2<>(Constants.divideSubTaskKayMap.get(discardLeafID), null));
-//
-//                    globalTree.discardLeafIDs.clear();
-//                    globalTree.migrateInfo.clear();
-//                    globalTree.divideRegionInfo.clear();
-//                }else
-//                    globalHeartbeat.update(count);
-//                waitSyn(count+1);
-//            }else {
-//                densityGrid.update(density);
-//                globalHeartbeat.update(count);
-////                waitDensityGridSyn(count + 1);
-//
-//                synGlobalTree();
-//                globalHeartbeat.update(count+1);
-//            }
-//        }
-//        count = (count/10L + 1L)*10L;
+    public void process(Integer tuple, Context context, Iterable<Segment> elements, Collector<OneTwoData> out) throws Exception {
+        startWindow = context.window().getStart();
+        StringBuilder stringBuffer = new StringBuilder();
+        for (int i = 0; i < subTask; i++)
+            stringBuffer.append("---------------");
+        System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
+
+
+        //根据Global Index给输入项分区
+        for (Segment segment : elements) {
+            List<Integer> leafs = globalTree.searchLeafNodes(GridRectangle.rectangleToGridRectangle(segment.rect));
+            for (Integer leaf : leafs)
+                out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get(leaf), segment));
+        }
+
+
+        if ( (count/10)%Constants.densityFre == 0){
+            densities.put(startWindow, globalTree.density.data);
+            Constants.addArrsToArrs(density, globalTree.density.data,true);
+            globalTree.density.data = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+            removeOutdate();
+        }
+
+        //subTask 0 从Local Index中收集索引密度信息调整Global Index。
+        // 然后将调整结果同步到别的subTask和相关的Local Index中。
+        if ( (count/10L)%(Constants.balanceFre) == 0L){
+            if (subTask == 0){
+                Constants.addArrsToArrs(globalTree.density.data, density, true);
+                //从Local Index中收集索引密度信息
+                getDivideGrid();
+
+                //调整Global Index
+                boolean isAdjust = globalTree.updateTree();
+
+                globalTree.density.data = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+
+                //发生了Global Index的调整，同步Global Index到其他subTask中。
+                if (isAdjust){
+                    globalTreeRoot.update(globalTree.root);
+                    globalHeartbeat.update(count+1);
+
+                    //通知Local Index其索引区域发生的变化
+                    for (Tuple2<Integer, Segment> tuple2 : globalTree.divideRegionInfo) {
+                        tuple2.f1.p1.timestamp = count+10;
+                        out.collect(tuple2);
+                    }
+
+                    //通知Local Index索引项迁移信息
+                    for (Segment segment : globalTree.migrateInfo) {
+                        out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get((int) -segment.p1.timestamp), segment));
+                        out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get((int) -segment.p2.timestamp), segment));
+                    }
+
+                    //通知被弃用的Local Index
+                    for (Integer discardLeafID : globalTree.discardLeafIDs)
+                        out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get(discardLeafID), null));
+
+                    globalTree.discardLeafIDs.clear();
+                    globalTree.migrateInfo.clear();
+                    globalTree.divideRegionInfo.clear();
+                }else
+                    globalHeartbeat.update(count);
+                waitSyn(count+1);
+            }else {
+                densityGrid.update(density);
+                globalHeartbeat.update(count);
+//                waitDensityGridSyn(count + 1);
+
+                synGlobalTree();
+                globalHeartbeat.update(count+1);
+            }
+        }
+        count = (count/10L + 1L)*10L;
     }
 
     private void removeOutdate() {
@@ -146,7 +145,7 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
         while (true){
             try {
                 CompletableFuture<ValueState<Long>> resultFuture =
-                        client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKayMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
+                        client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKeyMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
                 Long remoteHeart = resultFuture.join().value();
                 if (remoteHeart == count || remoteHeart == count+1 ) {
                     if (remoteHeart == count + 1) {
@@ -155,7 +154,7 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
                                 TypeInformation.of(new TypeHint<GDirNode>() {
                                 }).createSerializer(new ExecutionConfig()));
                         CompletableFuture<ValueState<GDirNode>> resultFuture1 =
-                                client.getKvState(jobID, "globalTreeRoot", Constants.globalSubTaskKayMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalTreeRootDescriptor);
+                                client.getKvState(jobID, "globalTreeRoot", Constants.globalSubTaskKeyMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalTreeRootDescriptor);
                         globalTree.root = resultFuture1.join().value();
                     }
                     break;
@@ -177,7 +176,7 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
         while (true) {
             try {
                 CompletableFuture<ValueState<Long>> resultFuture =
-                        client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKayMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
+                        client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKeyMap.get(0), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
                 Long remoteHeart = resultFuture.join().value();
                 if (remoteHeart == time)
                     break;
@@ -199,13 +198,13 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
         flags.put(0,true);
         boolean flag = false;
         while (!flag) {
-            for (Integer key : Constants.globalSubTaskKayMap.keySet() ) {
+            for (Integer key : Constants.globalSubTaskKeyMap.keySet() ) {
                 try {
                     if (!flags.keySet().contains(key))
                         flags.put(key, false);
                     if (!flags.get(key)) {
                         CompletableFuture<ValueState<Long>> resultFuture =
-                                client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKayMap.get(key), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
+                                client.getKvState(jobID, "globalHeartbeat", Constants.globalSubTaskKeyMap.get(key), BasicTypeInfo.INT_TYPE_INFO, globalHeartbeatDescriptor);
                         ValueState<Long> res = resultFuture.join();
                         Long remoteHeart = res.value();
                         if ( remoteHeart == time )
@@ -273,9 +272,9 @@ public class GlobalTreePF extends ProcessWindowFunction<TrackPoint, OneTwoData, 
                         }).createSerializer(new ExecutionConfig()));
         Map<Integer, Boolean> flags = new HashMap<>();
         boolean flag = false;
-        flags.put(Constants.globalSubTaskKayMap.get(0), true);
+        flags.put(Constants.globalSubTaskKeyMap.get(0), true);
         while (!flag) {
-            for (Integer key : Constants.globalSubTaskKayMap.values()) {
+            for (Integer key : Constants.globalSubTaskKeyMap.values()) {
                 try {
                     if (!flags.keySet().contains(key))
                         flags.put(key, false);

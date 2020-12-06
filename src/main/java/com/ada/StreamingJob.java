@@ -1,6 +1,6 @@
 package com.ada;
 
-import com.ada.flinkFunction.DPIflinkFunction.TestAWF;
+import com.ada.flinkFunction.DPIflinkFunction.GlobalTreePF;
 import com.ada.flinkFunction.DPIflinkFunction.TrackPointsToSegmentMap;
 import com.ada.flinkFunction.DTflinkFunction.HausdorffKeyTIDFunction;
 import com.ada.flinkFunction.TrackPointTimeAndWater;
@@ -8,10 +8,12 @@ import com.ada.flinkFunction.DTflinkFunction.WaterAndDensityFMP;
 import com.ada.common.Constants;
 import com.ada.dispatchElem.TwoThreeData;
 import com.ada.proto.MyPoint;
+import com.ada.trackSimilar.Segment;
 import com.ada.trackSimilar.TrackPoint;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.serialization.AbstractDeserializationSchema;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -78,20 +80,18 @@ public class StreamingJob {
 //        init( "trackPoint3DT", "192.168.131.199:9093,192.168.131.199:9094,192.168.131.199:9095");
 
 		source.assignTimestampsAndWatermarks(new TrackPointTimeAndWater())
-//				.flatMap(new TrackPointsToSegmentMap())
-//				.setParallelism(Constants.topicPartition)
-				.timeWindowAll(Time.seconds(Constants.windowSize))
-				.process(new TestAWF())
+				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> key%numPartitions, "TID")
+				.flatMap(new TrackPointsToSegmentMap())
+				.keyBy((KeySelector<Segment, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getTID()%Constants.globalPartition) )
+				.timeWindow(Time.seconds(Constants.windowSize))
+				.process()
 
-//				.keyBy((KeySelector<Segment, Integer>) value -> Constants.globalSubTaskKayMap.get(value.getTID()%Constants.globalPartition) )
-//				.timeWindow(Time.seconds(Constants.windowSize))
-//				.process(new GlobalTreePF())
-//				.setParallelism(Constants.globalPartition)
+				.process(new GlobalTreePF())
+				.setParallelism(Constants.globalPartition)
 //				.keyBy(0/*(KeySelector<Tuple2<Integer, Segment>, Integer>) value -> value.f0*/)
 //				.timeWindow(Time.seconds(Constants.windowSize))
 //				.process(new LocalTreePF())
 //				.setParallelism(Constants.dividePartition)
-
 //				.writeAsText("/home/chenliang/data/zzlDI/mutiNodeRES" + Constants.logicWindow /*+".txt"*/, FileSystem.WriteMode.OVERWRITE)
 				.writeAsText("F:\\data\\oneNodeRES" + Constants.logicWindow +".txt", FileSystem.WriteMode.OVERWRITE)
 //				.print()
@@ -99,21 +99,6 @@ public class StreamingJob {
 		env.execute("Distributed index");
 	}
 
-	private static void testGlocalTree() throws Exception {
-
-		init( "trackPoint111", "10.10.0.1:9092,10.10.0.2:9092,10.10.0.3:9092");
-
-		source.assignTimestampsAndWatermarks(new TrackPointTimeAndWater())
-				.setParallelism(1)
-				.flatMap(new TrackPointsToSegmentMap())
-				.setParallelism(1)
-				.timeWindowAll(Time.milliseconds(Constants.windowSize))
-				.process(new TestAWF())
-				.print()
-				.setParallelism(1);
-
-		env.execute("Distributed index");
-	}
 
 	private static void init( String topic, String bootstrap) throws Exception {
 		env = StreamExecutionEnvironment.getExecutionEnvironment();

@@ -1,6 +1,5 @@
 package com.ada.GlobalTree;
 
-import com.ada.flinkFunction.DTflinkFunction.DTConstants;
 import com.ada.Grid.GridPoint;
 import com.ada.Grid.GridRectangle;
 import com.ada.common.Constants;

@@ -341,7 +341,7 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
                 if (!flags.get(key)) {
                     try {
                         CompletableFuture<ValueState<Long>> resultFuture =
-                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKayMap.get(key),
+                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKeyMap.get(key),
                                         BasicTypeInfo.INT_TYPE_INFO, divideHeartbeatDescriptor);
                         Long remoteHeart = resultFuture.join().value();
                         if (remoteHeart == count + 1)
@@ -384,7 +384,7 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
                 if (!flags.get(key)) {
                     try {
                         CompletableFuture<ValueState<Long>> resultFuture =
-                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKayMap.get(key),
+                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKeyMap.get(key),
                                         BasicTypeInfo.INT_TYPE_INFO, divideHeartbeatDescriptor);
                         Long remoteHeart = resultFuture.join().value();
                         if (remoteHeart >= count) {
@@ -393,7 +393,7 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
                                     TypeInformation.of(new TypeHint<Segment>() {
                                     }).createSerializer(new ExecutionConfig()));
                             CompletableFuture<ListState<Segment>> resultFuture1 =
-                                    client.getKvState(jobID, "migrateOutData", Constants.divideSubTaskKayMap.get(key),
+                                    client.getKvState(jobID, "migrateOutData", Constants.divideSubTaskKeyMap.get(key),
                                             BasicTypeInfo.INT_TYPE_INFO, migrateOutDataDescriptor);
                             ListState<Segment> listState = resultFuture1.join();
                             listState.get().forEach(segment -> {
