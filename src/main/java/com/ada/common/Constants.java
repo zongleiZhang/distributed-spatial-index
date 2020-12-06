@@ -31,9 +31,10 @@ public class Constants implements Serializable {
      */
     public static int dividePartition;
 
+    /**
+     * kafka的topic的并行度
+     */
     public static int topicPartition;
-
-    public static int keyTIDPartition;
 
     /**
      * subTask: globalSubTask
@@ -50,7 +51,6 @@ public class Constants implements Serializable {
     public static List<Integer> usedLeafID = new ArrayList<>();
 
     public static List<Integer> canUseLeafID = new ArrayList<>();
-
 
     /**
      * 密度统计的频度
@@ -69,8 +69,8 @@ public class Constants implements Serializable {
      * 存放JobID的文件位置
      */
 //    private final static String jobIDFileName = "output.txt";
-    private final static String jobIDFileName = "/opt/flink-1.9.1/log/flink-chenliang-standalonesession-0-131-199.log";
-//    private final static String jobIDFileName = "F:\\softwares\\flink-1.9.1\\log\\flink-zonglei.zhang-jobmanager.log";
+//    private final static String jobIDFileName = "/opt/flink-1.9.1/log/flink-chenliang-standalonesession-0-131-199.log";
+    private final static String jobIDFileName = "F:\\softwares\\flink-1.9.1\\log\\flink-zonglei.zhang-jobmanager.log";
 
 //    private final static String confFileName = "/home/chenliang/data/zzlDIC/conf.txt";
     private final static String confFileName = "conf.txt";
@@ -86,25 +86,23 @@ public class Constants implements Serializable {
      */
     public final static int gridDensity = 511;
 
-    public static int topK;
-
-    public static int t;
-
-    public static int KNum;
-
-    public static double extend;
-
     public static long windowSize;
 
     public static int logicWindow;
-
-    public static String similar;
 
     public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
 
 
     static {
         try {
+            Properties pro = new Properties();
+            FileInputStream in = new FileInputStream(confFileName);
+            pro.load(in);
+            in.close();
+            topicPartition = Integer.parseInt(pro.getProperty("topicPartition"));
+
+
+
             File f = new File(confFileName);
             BufferedReader br = new BufferedReader(new FileReader(f));
             Map<String,String> confMap = new HashMap<>();
@@ -116,16 +114,10 @@ public class Constants implements Serializable {
             topicPartition = Integer.parseInt(confMap.get("topicPartition"));
             globalPartition = Integer.parseInt(confMap.get("globalPartition"));
             dividePartition = Integer.parseInt(confMap.get("dividePartition"));
-            keyTIDPartition = Integer.parseInt(confMap.get("keyTIDPartition"));
             densityFre = Integer.parseInt(confMap.get("densityFre"));
             globalLowBound = Integer.parseInt(confMap.get("globalLowBound"));
             windowSize = Integer.parseInt(confMap.get("windowSize"));
             logicWindow = Integer.parseInt(confMap.get("logicWindow"));
-            topK = Integer.parseInt(confMap.get("topK"));
-            KNum = Integer.parseInt(confMap.get("KNum"));
-            similar = confMap.get("similar");
-            extend = Double.parseDouble(confMap.get("extend"));
-            t = Integer.parseInt(confMap.get("t"));
         }catch (Exception e){
             e.printStackTrace();
         }

@@ -38,7 +38,7 @@ public abstract class GNode implements Serializable {
         this.tree = tree;
     }
 
-    public boolean check(Map<Integer, TrackKeyTID> trackMap) {
+    public boolean check() {
         int total = 0;
         for (int i = gridRegion.low.x; i <= gridRegion.high.x; i++) {
             for (int j = gridRegion.low.y; j <= gridRegion.high.y; j++)
@@ -57,7 +57,7 @@ public abstract class GNode implements Serializable {
             if (!((GDirNode) this).checkGDirNode())
                 return false;
             for(int chNum = 0; chNum<4; chNum++)
-                ((GDirNode ) this).child[chNum].check(trackMap);
+                ((GDirNode ) this).child[chNum].check();
         }
         return true;
     }

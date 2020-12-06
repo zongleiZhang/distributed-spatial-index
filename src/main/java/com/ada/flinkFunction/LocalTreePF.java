@@ -443,7 +443,7 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
         Rectangle rectangle = newRootRectangle[0].toRectangle().extendToInt();//density.root.getRegion();
         rectangle = new Rectangle(new Point(rectangle.low.data[0]-600.0, rectangle.low.data[1]-600.0),
                 new Point(rectangle.high.data[0]+600.0, rectangle.high.data[1]+600.0));
-        localIndex = new RCtree<>(10,1,17, rectangle,0, false);
+//        localIndex = new RCtree<>(10,1,17, rectangle,0, false);
     }
 
     @Override

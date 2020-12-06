@@ -36,13 +36,13 @@ public class GTree {
      */
     transient public List<GDataNode> newLeafs;
 
-    public boolean check(Map<Integer, TrackKeyTID> trackMap){
+    public boolean check(){
         List<GDataNode> leafs = new ArrayList<>(root.getLeafs());
         if (!Constants.collectionsEqual(leafs, leafIDMap.values()))
             throw new IllegalArgumentException("leafs are not equal.");
 //        List<GDataNode> res = Constants.collectDis(leafs);
 //        System.out.println("\t" + res.get(0).elemNum + "\t"+ res.get(1).elemNum + "\t"+ res.get(2).elemNum + "\t"+ res.get(3).elemNum + "\t"+ res.get(4).elemNum + "\t");
-        return root.check(trackMap);
+        return root.check();
     }
 
 
