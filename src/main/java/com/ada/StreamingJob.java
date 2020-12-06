@@ -1,18 +1,12 @@
 package com.ada;
 
-import com.ada.flinkFunction.TrackPointsToSegmentMap;
-import com.ada.flinkFunction.TrackPointTimeAndWater;
 import com.ada.common.Constants;
 import com.ada.proto.MyPoint;
-import com.ada.geometry.Segment;
 import com.ada.geometry.TrackPoint;
-import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.serialization.AbstractDeserializationSchema;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 
 import java.io.FileInputStream;
