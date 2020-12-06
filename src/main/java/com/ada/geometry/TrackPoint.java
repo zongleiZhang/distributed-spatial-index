@@ -12,7 +12,7 @@ import static java.lang.Integer.parseInt;
 
 @Getter
 @Setter
-public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, Comparable<TrackPoint> {
+public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoint> {
 	public long timestamp;
 	public int TID;
 
@@ -66,26 +66,6 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 	}
 
 	@Override
-	public int obtainTID(){
-		return TID;
-	}
-
-	@Override
-	public long obtainTimeStamp(){
-		return timestamp;
-	}
-
-	@Override
-	public long getTimeStamp(){
-		return timestamp;
-	}
-
-	@Override
-	public TrackPoint toMessage(){
-		return this;
-	}
-
-	@Override
 	public int compareTo(TrackPoint o) {
 		int res = Long.compare(this.timestamp, o.timestamp);
 		if (res == 0)
@@ -117,13 +97,13 @@ public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, C
 		if (!(o instanceof TrackPoint)) return false;
 		if (!super.equals(o)) return false;
 		TrackPoint point = (TrackPoint) o;
-		return getTimeStamp() == point.getTimeStamp() &&
+		return getTimestamp() == point.getTimestamp() &&
 				getTID() == point.getTID();
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(super.hashCode(), getTimeStamp(), getTID());
+		return Objects.hash(super.hashCode(), getTimestamp(), getTID());
 	}
 
 }

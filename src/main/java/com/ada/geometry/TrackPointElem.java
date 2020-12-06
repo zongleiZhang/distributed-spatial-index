@@ -3,13 +3,17 @@ package com.ada.geometry;
 import com.ada.QBSTree.ElemRoot;
 import com.ada.QBSTree.RCDataNode;
 import com.ada.common.ClassMct;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.text.DecimalFormat;
 import java.util.*;
 
 import static java.lang.Integer.parseInt;
 
-public class TrackPointElem extends ElemRoot implements TrackInfo,Comparable<TrackPoint>{
+@Getter
+@Setter
+public class TrackPointElem extends ElemRoot implements Comparable<TrackPoint>{
     public long timestamp;
     public int TID;
 
@@ -59,37 +63,6 @@ public class TrackPointElem extends ElemRoot implements TrackInfo,Comparable<Tra
                 data[0] = 0;
             }
         }
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public int getTID() {
-        return TID;
-    }
-
-    public void setTID(int TID) {
-        this.TID = TID;
-    }
-
-    @Override
-    public int obtainTID(){
-        return TID;
-    }
-
-    @Override
-    public long obtainTimeStamp(){
-        return timestamp;
-    }
-
-    @Override
-    public Message toMessage() {
-        return null;
     }
 
     @Override

@@ -2,11 +2,14 @@ package com.ada.QBSTree;
 
 import com.ada.common.Path;
 import com.ada.geometry.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.*;
 
-
+@Setter
+@Getter
 public class RCtree<T extends ElemRoot> implements Serializable {
 
 	public RCNode<T> root;
@@ -187,29 +190,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		return res;
 	}
 
-
-
-	public <M extends RectElem> void alterELem(M oldElem, Rectangle newRegion) {
-		Point newCenter = newRegion.getCenter();
-		if (oldElem.leaf.centerRegion.isInternal(newCenter)){
-			if (!oldElem.leaf.elms.remove(oldElem))
-				throw new IllegalArgumentException("leaf does not contains oldElem.");
-			oldElem.leaf.elemNum--;
-			oldElem.leaf.updateRegion(oldElem.rect,2);
-			oldElem.rect = newRegion;
-			oldElem.data = newCenter.data;
-			oldElem.leaf.elms.add(oldElem);
-			oldElem.leaf.elemNum++;
-			oldElem.leaf.updateRegion(oldElem.rect,1);
-		}else {
-			delete((T) oldElem);
-			oldElem.rect = newRegion;
-			oldElem.data = newCenter.data;
-			insert((T) oldElem);
-		}
-	}
-
-
 	
 	/**
 	 * 查找指定的索引项elem所在的叶节点
@@ -247,36 +227,9 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		return res;
 	}
 
-
-
-
 	public boolean check() {
 		return root.check();
 	}
-
-
-	/**
-	 * 获取指定区域region相交的轨迹ID集，包括与边界相交的轨迹ID
-	 * @param region 指定的区域
-	 */
-	public Set<Integer> getRegionIntersectTIDs(Rectangle region) {
-		Set<Integer> allTIDs = new HashSet<>();
-		root.getRegionTIDs(region, allTIDs);
-		return allTIDs;
-	}
-
-	/**
-	 * 获取指定区域region内部的轨迹ID集，不包括与边界相交的轨迹ID
-	 * @param region 指定的区域
-	 */
-	public Set<Integer> getRegionInternalTIDs(Rectangle region) {
-		Set<Integer> allTIDs = new HashSet<>();
-		Set<Integer> intersections = new HashSet<>();
-		root.getRegionTIDs(region, allTIDs, intersections);
-		allTIDs.removeAll(intersections);
-		return allTIDs;
-	}
-
 
     /**
      * 第一次计算root的region
@@ -309,22 +262,4 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		}
 	}
 
-    public List<Integer> trackInternal(Rectangle MBR) {
-        List<Integer> TIDs = new ArrayList<>();
-        root.trackInternal(MBR, TIDs);
-        return TIDs;
-    }
-
-
-	void setNewRoot(RCNode<T> oldRoot, RCNode<T> newRoot) {
-    	if (this instanceof DualRootTree){
-    		if (root == oldRoot){
-    			root = newRoot;
-			}else {
-				((DualRootTree<T>) this).outerRoot = newRoot;
-			}
-		}else {
-    		root = newRoot;
-		}
-	}
 }

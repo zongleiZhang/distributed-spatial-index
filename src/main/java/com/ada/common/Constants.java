@@ -161,16 +161,6 @@ public class Constants implements Serializable {
         }
     }
 
-    public static Set<Integer> getTIDs(Collection os){
-        Set<Integer> TIDs = new HashSet<>();
-        for (Object o : os) {
-            TrackInfo info = (TrackInfo) o;
-            TIDs.add(info.obtainTID());
-        }
-        return TIDs;
-    }
-
-
     public static String appendSegment(Segment queryElem) {
         DecimalFormat df = new DecimalFormat("#.0000");
         return queryElem.getTID() + " " +
