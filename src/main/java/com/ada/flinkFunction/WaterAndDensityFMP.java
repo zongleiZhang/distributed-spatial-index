@@ -1,4 +1,4 @@
-package com.ada.flinkFunction.DTflinkFunction;
+package com.ada.flinkFunction;
 
 import com.ada.common.Constants;
 import com.ada.dispatchElem.OneTwoData;
