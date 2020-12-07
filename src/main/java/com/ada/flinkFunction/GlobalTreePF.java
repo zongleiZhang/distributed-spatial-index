@@ -68,10 +68,10 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                 Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
 
             //调整Global Index
-            boolean isAdjust = globalTree.updateTree();
+            Map<GNode, GNode> nodeMap = globalTree.updateTree();
 
             //Global Index发生了调整
-            if (isAdjust){
+            if (!nodeMap.isEmpty()){
                 //通知Local Index其索引区域发生的变化
                 for (Tuple2<Integer, Segment> tuple2 : globalTree.divideRegionInfo) {
                     tuple2.f1.p1.timestamp = count+10;

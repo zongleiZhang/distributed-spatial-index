@@ -171,9 +171,8 @@ public class GTree {
 
     /**
      * 根据新的网格密度数据更新树结构
-     * @return 有结构调整返回true，没有结构调整返回false。
      */
-    public boolean updateTree(){
+    public Map<GNode, GNode> updateTree(){
         //将GlobalTree中的所有节点的elemNum清零
         root.setAllElemNumZero();
 
@@ -181,12 +180,12 @@ public class GTree {
         updateTreeInfo();
 
         //获取需要调整结构的子树集合
-        Map<GNode, GNode> nodes = new HashMap<>();
-        getAdjustNode(nodes);
+        Map<GNode, GNode> map = new HashMap<>();
+        getAdjustNode(map);
 
         //更新dirNodes中的每个子树
-        adjustNodes(nodes);
-        return !nodes.isEmpty();
+        adjustNodes(map);
+        return map;
     }
 
     /**
