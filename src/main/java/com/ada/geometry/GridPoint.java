@@ -1,7 +1,6 @@
-package com.ada.Grid;
+package com.ada.geometry;
 
 import com.ada.common.Constants;
-import com.ada.geometry.Point;
 
 import java.util.Objects;
 

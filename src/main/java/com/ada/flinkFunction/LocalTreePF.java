@@ -1,7 +1,7 @@
 package com.ada.flinkFunction;
 
-import com.ada.Grid.GridPoint;
-import com.ada.Grid.GridRectangle;
+import com.ada.geometry.GridPoint;
+import com.ada.geometry.GridRectangle;
 import com.ada.QBSTree.ElemRoot;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;

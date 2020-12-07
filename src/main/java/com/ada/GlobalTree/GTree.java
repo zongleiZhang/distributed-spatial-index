@@ -1,7 +1,7 @@
 package com.ada.GlobalTree;
 
-import com.ada.Grid.GridPoint;
-import com.ada.Grid.GridRectangle;
+import com.ada.geometry.GridPoint;
+import com.ada.geometry.GridRectangle;
 import com.ada.common.Constants;
 import com.ada.common.Path;
 import com.ada.geometry.*;

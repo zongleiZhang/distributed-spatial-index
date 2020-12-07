@@ -1,7 +1,7 @@
 package com.ada.GlobalTree;
 
-import com.ada.Grid.GridPoint;
-import com.ada.Grid.GridRectangle;
+import com.ada.geometry.GridPoint;
+import com.ada.geometry.GridRectangle;
 import com.ada.geometry.Rectangle;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,7 +9,6 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter

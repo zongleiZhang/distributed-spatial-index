@@ -1,7 +1,5 @@
-package com.ada.Grid;
+package com.ada.geometry;
 
-import com.ada.geometry.Point;
-import com.ada.geometry.Rectangle;
 import lombok.Getter;
 import lombok.Setter;
 
