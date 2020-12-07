@@ -49,10 +49,6 @@ public class Constants implements Serializable {
      */
     public static Map<Integer,Integer> divideSubTaskKeyMap = new HashMap<>();
 
-    public static List<Integer> usedLeafID = new ArrayList<>();
-
-    public static List<Integer> canUseLeafID = new ArrayList<>();
-
     /**
      * 全局索引做动态负载均衡的频度
      */
@@ -104,8 +100,6 @@ public class Constants implements Serializable {
         }
         balanceFre = logicWindow/5;
 
-        for (int i = dividePartition-1; i >= 0; i--)
-            canUseLeafID.add(i);
         int maxParallelism = 128;
 //        int maxParallelism = 256;
         Set<Integer> usedSubtask = new HashSet<>();
@@ -151,20 +145,6 @@ public class Constants implements Serializable {
                 df.format(elem.data[1]);
     }
 
-    public static Integer getLeafID(){
-        if (canUseLeafID.isEmpty()){
-            throw new IllegalArgumentException("LeafID is FPed");
-        }else {
-            Integer leafID = canUseLeafID.remove(canUseLeafID.size() - 1);
-            usedLeafID.add(leafID);
-            return leafID;
-        }
-    }
-
-    public static void discardLeafID(Integer leafID){
-        canUseLeafID.add(leafID);
-        usedLeafID.remove(leafID);
-    }
 
     public static String getJobIDStr() throws IOException {
         File f = new File(Constants.jobIDFileName);

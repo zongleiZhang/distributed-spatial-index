@@ -41,6 +41,36 @@ public class GTree {
      */
     transient public List<GDataNode> newLeafs;
 
+    private DispatchLeafID dispatchLeafID;
+
+    class DispatchLeafID{
+        List<Integer> usedLeafID;
+
+        List<Integer> canUseLeafID;
+
+        DispatchLeafID(){
+            usedLeafID = new ArrayList<>();
+            canUseLeafID = new ArrayList<>();
+            for (int i = Constants.dividePartition-1; i >= 0; i--)
+                canUseLeafID.add(i);
+        }
+
+        Integer getLeafID(){
+            if (canUseLeafID.isEmpty()){
+                throw new IllegalArgumentException("LeafID is FPed");
+            }else {
+                Integer leafID = canUseLeafID.remove(canUseLeafID.size() - 1);
+                usedLeafID.add(leafID);
+                return leafID;
+            }
+        }
+
+        void discardLeafID(Integer leafID){
+            canUseLeafID.add(leafID);
+            usedLeafID.remove(leafID);
+        }
+    }
+
     public boolean check(){
         List<GDataNode> leafs = new ArrayList<>(root.getLeafs());
         if (!Constants.collectionsEqual(leafs, leafIDMap.values()))
@@ -74,6 +104,7 @@ public class GTree {
         for (GNode leaf : root.child)
             leafs.add((GDataNode) leaf);
         root.setLeafs(leafs);
+        dispatchLeafID = new DispatchLeafID();
     }
 
     /**
@@ -124,16 +155,16 @@ public class GTree {
         newLeafs = new ArrayList<>();
         leafIDMap = new HashMap<>();
         Integer leafID;
-        leafID = Constants.getLeafID();
+        leafID = dispatchLeafID.getLeafID();
         ((GDataNode) root.child[0]).setLeafID(leafID);
         leafIDMap.put(leafID, ((GDataNode) root.child[0]));
-        leafID = Constants.getLeafID();
+        leafID = dispatchLeafID.getLeafID();
         ((GDataNode) root.child[1]).setLeafID(leafID);
         leafIDMap.put(leafID, ((GDataNode) root.child[1]));
-        leafID = Constants.getLeafID();
+        leafID = dispatchLeafID.getLeafID();
         ((GDataNode) root.child[2]).setLeafID(leafID);
         leafIDMap.put(leafID, ((GDataNode) root.child[2]));
-        leafID = Constants.getLeafID();
+        leafID = dispatchLeafID.getLeafID();
         ((GDataNode) root.child[3]).setLeafID(leafID);
         leafIDMap.put(leafID, ((GDataNode) root.child[3]));
     }
@@ -142,7 +173,7 @@ public class GTree {
      * 根据新的网格密度数据更新树结构
      * @return 有结构调整返回true，没有结构调整返回false。
      */
-    public Map<GNode, GNode> updateTree(){
+    public boolean updateTree(){
         //将GlobalTree中的所有节点的elemNum清零
         root.setAllElemNumZero();
 
@@ -155,7 +186,7 @@ public class GTree {
 
         //更新dirNodes中的每个子树
         adjustNodes(nodes);
-        return nodes;
+        return !nodes.isEmpty();
     }
 
     /**
@@ -269,8 +300,8 @@ public class GTree {
     /**
      * 更新dirNodes中的每个子树
      */
-    private void adjustNodes(@NotNull Map<GNode, GNode> dirNodes) {
-        for (GNode node : dirNodes.keySet()) {
+    private void adjustNodes(@NotNull Map<GNode, GNode> nodes) {
+        for (GNode node : nodes.keySet()) {
             GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
                     node.elemNum, node.tree,-1);
             GNode newNode = dataNode.adjustNode();
@@ -282,7 +313,7 @@ public class GTree {
                 node.parent.alterLeafs(node.getLeafs(), newNode.getLeafs());
             }
             dispatchLeafID(node, newNode);
-            dirNodes.replace(node, newNode);
+            nodes.replace(node, newNode);
         }
     }
 
@@ -319,7 +350,7 @@ public class GTree {
                     reassigningID.add(map[0]);
                 for (int i = 0; i < newLeafNodes.size(); i++) {
                     if (!reassigningID.contains(i)){
-                        Integer leafID = Constants.getLeafID();
+                        Integer leafID = dispatchLeafID.getLeafID();
                         newLeafNodes.get(i).setLeafID(leafID);
                         this.leafIDMap.put(leafID, newLeafNodes.get(i));
                     }
@@ -333,7 +364,7 @@ public class GTree {
                     if (!reassignedID.contains(i)){
                         Integer leafID = oldLeafNodes.get(i).leafID;
                         discardLeafIDs.add(leafID);
-                        Constants.discardLeafID(leafID);
+                        dispatchLeafID.discardLeafID(leafID);
                     }
                 }
             }
@@ -347,7 +378,7 @@ public class GTree {
             this.leafIDMap.put(leafID, newLeafNodes.get(maxNumLeaf));
             newLeafNodes.remove(maxNumLeaf);
             for (GDataNode newLeafNode : newLeafNodes) {
-                newLeafNode.setLeafID(Constants.getLeafID());
+                newLeafNode.setLeafID(dispatchLeafID.getLeafID());
                 this.leafIDMap.put(newLeafNode.leafID, newLeafNode);
             }
             newLeafs.addAll(newLeafNodes);
@@ -362,7 +393,7 @@ public class GTree {
             for (GDataNode oldLeafNode : oldLeafNodes) {
                 leafID = oldLeafNode.leafID;
                 discardLeafIDs.add(leafID);
-                Constants.discardLeafID(leafID);
+                dispatchLeafID.discardLeafID(leafID);
             }
             newLeafs.add((GDataNode) newNode);
         }else {
