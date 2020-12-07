@@ -6,7 +6,7 @@ import com.ada.flinkFunction.GlobalTreePF;
 import com.ada.flinkFunction.TrackPointTimeAndWater;
 import com.ada.flinkFunction.TrackPointsToSegmentMap;
 import com.ada.geometry.Segment;
-import com.ada.model.DensityToGlobalInt;
+import com.ada.model.DensityToGlobalElem;
 import com.ada.proto.MyPoint;
 import com.ada.geometry.TrackPoint;
 import org.apache.flink.api.common.functions.Partitioner;
@@ -18,7 +18,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -42,7 +41,7 @@ public class StreamingJob {
 				.keyBy((KeySelector<Segment, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getTID()%Constants.globalPartition) )
 				.timeWindow(Time.seconds(Constants.windowSize))
 				.process(new DensityPF())
-				.keyBy((KeySelector<DensityToGlobalInt, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getDensityToGlobalKey()%Constants.globalPartition))
+				.keyBy((KeySelector<DensityToGlobalElem, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getDensityToGlobalKey()%Constants.globalPartition))
 				.timeWindow(Time.seconds(Constants.windowSize))
 				.process(new GlobalTreePF())
 //				.setParallelism(Constants.globalPartition)

@@ -4,18 +4,18 @@ import com.ada.common.Constants;
 import com.ada.geometry.Point;
 import com.ada.geometry.Segment;
 import com.ada.model.Density;
-import com.ada.model.DensityToGlobalInt;
+import com.ada.model.DensityToGlobalElem;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalInt, Integer, TimeWindow> {
+public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalElem, Integer, TimeWindow> {
 
     @Override
     public void process(Integer integer,
                         Context context,
                         Iterable<Segment> elements,
-                        Collector<DensityToGlobalInt> out){
+                        Collector<DensityToGlobalElem> out){
         int[][] grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         for (Segment segment : elements) {
             Point point = segment.getRect().getCenter();

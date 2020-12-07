@@ -106,6 +106,11 @@ public class GDirNode extends GNode{
             gNode.setAllElemNumZero();
     }
 
+    /**
+     * 更新本节点及祖先节点的leafs成员
+     * @param oldLeafs 被顶替的leafs
+     * @param newLeafs 顶替的leafs
+     */
     void alterLeafs(List<GDataNode> oldLeafs, List<GDataNode> newLeafs) {
         leafs.removeAll(oldLeafs);
         leafs.addAll(newLeafs);

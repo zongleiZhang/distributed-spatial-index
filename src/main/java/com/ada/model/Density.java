@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class Density implements DensityToGlobalInt, Serializable {
+public class Density implements DensityToGlobalElem, Serializable {
     public int[][] grids;
     public int key;
 

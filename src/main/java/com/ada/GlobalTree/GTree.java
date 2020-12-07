@@ -17,6 +17,11 @@ public class GTree {
     public GDirNode root;
 
     /**
+     * 全局索引叶节点索引项数量的下届
+     */
+    public static int globalLowBound;
+
+    /**
      * 密度网格
      */
     transient public int[][] density;
@@ -71,18 +76,6 @@ public class GTree {
         root.setLeafs(leafs);
     }
 
-
-    public void addNewDensity(int[][] newDensity) {
-        Constants.addArrsToArrs(density,newDensity,true);
-    }
-
-
-    public void deleteOldDensity(int[][] oldDensity) {
-        Constants.addArrsToArrs(density,oldDensity,false);
-    }
-
-
-
     /**
      * 获取一个矩形内的元素数量
      */
@@ -128,7 +121,6 @@ public class GTree {
 
     public void mainSubtaskInit(){
         discardLeafIDs = new ArrayList<>();
-//        migrateInfo = new ArrayList<>();
         newLeafs = new ArrayList<>();
         leafIDMap = new HashMap<>();
         Integer leafID;
@@ -182,19 +174,19 @@ public class GTree {
      */
     private void getAdjustNode(Map<GNode, GNode> nodes) {
         leafIDMap.values().forEach(leafNode -> {
-            if ( leafNode.elemNum > 2* Constants.globalLowBound ||
-                    (leafNode.elemNum < Constants.globalLowBound && !leafNode.isRootLeaf()) ) {
+            if ( leafNode.elemNum > 2*globalLowBound ||
+                    (leafNode.elemNum < globalLowBound && !leafNode.isRootLeaf()) ) {
                 GNode addNode;
-                if (leafNode.elemNum < 4.5 * Constants.globalLowBound){ //叶节点不可以分裂
+                if (leafNode.elemNum < 4.5 * globalLowBound){ //叶节点不可以分裂
                     addNode = leafNode.parent;
                     while (true) {
                         if (addNode.isRoot()){
                             break;
-                        }else if (addNode.elemNum < Constants.globalLowBound) {
+                        }else if (addNode.elemNum < globalLowBound) {
                             addNode = addNode.parent;
-                        }else if (addNode.elemNum <= 2* Constants.globalLowBound ){
+                        }else if (addNode.elemNum <= 2* globalLowBound ){
                             break;
-                        }else if ( addNode.elemNum < 4.5 * Constants.globalLowBound ) {
+                        }else if ( addNode.elemNum < 4.5 * globalLowBound ) {
                             addNode = addNode.parent;
                         }else {
                             break;
@@ -315,7 +307,7 @@ public class GTree {
                     }
                 }
             }
-            int[][] leafIDMap = Constants.redisPatchLeafID(matrix, 20*Constants.globalLowBound);
+            int[][] leafIDMap = Constants.redisPatchLeafID(matrix, 100*globalLowBound);
             for (int[] map : leafIDMap) {
                 int leafId = oldLeafNodes.get(map[1]).leafID;
                 newLeafNodes.get(map[0]).setLeafID(leafId);

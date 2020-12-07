@@ -1,12 +1,13 @@
 package com.ada.geometry;
 
 import com.ada.common.Constants;
+import com.ada.model.GlobalToLocalValue;
 
 import java.awt.geom.Line2D;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class Rectangle implements Cloneable, Serializable {
+public class Rectangle implements Cloneable, Serializable, GlobalToLocalValue {
 	public Point low; // 左下角的点
 	public Point high; // 右上角的点
 

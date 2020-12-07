@@ -113,6 +113,9 @@ public abstract class GNode implements Serializable {
 
     public abstract GNode getInternalNode(Rectangle rectangle);
 
+    /**
+     * 填充中间节点的leafs成员
+     */
     void countLeafs(){
         if (this instanceof GDirNode){
             GDirNode dirNode = (GDirNode) this;

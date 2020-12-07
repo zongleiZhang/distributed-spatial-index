@@ -1,5 +1,5 @@
 package com.ada.model;
 
-public interface DensityToGlobalInt {
+public interface DensityToGlobalElem {
     public Integer getDensityToGlobalKey();
 }

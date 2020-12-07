@@ -1,6 +1,7 @@
 package com.ada.common;
 
 import com.ada.GlobalTree.GDataNode;
+import com.ada.GlobalTree.GTree;
 import com.ada.Grid.GridRectangle;
 import com.ada.Hungarian.Hungary;
 import com.ada.geometry.*;
@@ -53,11 +54,6 @@ public class Constants implements Serializable {
     public static List<Integer> canUseLeafID = new ArrayList<>();
 
     /**
-     * 密度统计的频度
-     */
-    public static int densityFre;
-
-    /**
      * 全局索引做动态负载均衡的频度
      */
     public static int balanceFre;
@@ -75,12 +71,6 @@ public class Constants implements Serializable {
 //    private final static String confFileName = "/home/chenliang/data/zzlDIC/conf.txt";
     private final static String confFileName = "conf.txt";
 
-
-    /**
-     * 全局索引叶节点索引项数量的下届
-     */
-    public static int globalLowBound;
-
     /**
      * 网格密度
      */
@@ -89,6 +79,10 @@ public class Constants implements Serializable {
     public static long windowSize;
 
     public static int logicWindow;
+
+    public static double radius; //查询矩形的大小
+
+    public static int ratio; //查询和更新的比例
 
     public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
 
@@ -102,15 +96,13 @@ public class Constants implements Serializable {
             topicPartition = Integer.parseInt(pro.getProperty("topicPartition"));
             globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
             dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
-            densityFre = Integer.parseInt(pro.getProperty("densityFre"));
-            globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
+            GTree.globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
             windowSize = Integer.parseInt(pro.getProperty("windowSize"));
             logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
         }catch (Exception e){
             e.printStackTrace();
         }
-
-        balanceFre = ((logicWindow/7)/densityFre)*densityFre;
+        balanceFre = logicWindow/5;
 
         for (int i = dividePartition-1; i >= 0; i--)
             canUseLeafID.add(i);
@@ -291,15 +283,6 @@ public class Constants implements Serializable {
         if (!set2.isEmpty())
             return false;
         return true;
-    }
-
-
-    /**
-     * 判断segment是不是一个分布式空间索引的查询项
-     */
-    public static boolean isQuerySegmentItem(Segment segment){
-        return segment.data == null &&
-                segment.p1.timestamp > segment.p2.timestamp;
     }
 
 }

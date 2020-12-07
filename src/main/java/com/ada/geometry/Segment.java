@@ -1,17 +1,16 @@
 package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
-import com.ada.model.DensityToGlobalInt;
+import com.ada.model.DensityToGlobalElem;
+import com.ada.model.GlobalToLocalValue;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
  * 点无序
  */
-public class Segment extends RectElem implements Serializable, DensityToGlobalInt {
+public class Segment extends RectElem implements Serializable, DensityToGlobalElem, GlobalToLocalValue {
     public TrackPoint p1;
     public TrackPoint p2;
 

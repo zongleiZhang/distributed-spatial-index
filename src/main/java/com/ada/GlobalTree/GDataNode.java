@@ -30,6 +30,9 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
     }
 
 
+    /**
+     * 当根节点的4个子节点都是叶子结点且本叶节点是其中之一时，返回true，否则返回false
+     */
     boolean isRootLeaf(){
         return parent.parent == null && parent.child[0] instanceof GDataNode
                 && parent.child[1] instanceof GDataNode && parent.child[2] instanceof GDataNode
@@ -37,13 +40,13 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
     }
 
     GNode adjustNode() {
-        int M = (int) (Constants.globalLowBound*1.5);
+        int M = (int) (GTree.globalLowBound*1.5);
         GDirNode dirNode;
         if ( elemNum >= M*15 ){
             dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4, elemNum/4);
             for (int i = 0; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
-        }else if (elemNum >= Constants.globalLowBound && elemNum < 2*Constants.globalLowBound){
+        }else if (elemNum >= GTree.globalLowBound && elemNum < 2*GTree.globalLowBound){
             if (isRoot()) {
                 dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4, elemNum / 4);
                 return dirNode;
@@ -64,7 +67,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //                    elemNum += 0;
 //            }
         }else if (elemNum >= 5*M && elemNum < 7*M){
-            int m = Constants.globalLowBound;
+            int m = GTree.globalLowBound;
             dirNode = fourSplit( (int) (0.95*m), (int) (1.0*m), (int) (0.85*m), -1);
 //            for (int i = 0; i < 3; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
@@ -92,7 +95,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8.5*M && elemNum < 11*M){
-            int tmp = (int) (Constants.globalLowBound*1.2);
+            int tmp = (int) (GTree.globalLowBound*1.2);
             dirNode = fourSplit( tmp, tmp, (elemNum - tmp*2)/2, -1);
 //            for (int i = 0; i < 2; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
