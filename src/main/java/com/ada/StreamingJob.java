@@ -1,12 +1,10 @@
 package com.ada;
 
 import com.ada.common.Constants;
-import com.ada.flinkFunction.DensityPF;
-import com.ada.flinkFunction.GlobalTreePF;
-import com.ada.flinkFunction.TrackPointTimeAndWater;
-import com.ada.flinkFunction.TrackPointsToSegmentMap;
+import com.ada.flinkFunction.*;
 import com.ada.geometry.Segment;
 import com.ada.model.DensityToGlobalElem;
+import com.ada.model.GlobalToLocalElem;
 import com.ada.proto.MyPoint;
 import com.ada.geometry.TrackPoint;
 import org.apache.flink.api.common.functions.Partitioner;
@@ -38,21 +36,18 @@ public class StreamingJob {
 		source.assignTimestampsAndWatermarks(new TrackPointTimeAndWater())
 				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> key%numPartitions, "TID")
 				.flatMap(new TrackPointsToSegmentMap())
-				.keyBy((KeySelector<Segment, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getTID()%Constants.globalPartition) )
+				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getTID()%Constants.globalPartition) )
 				.timeWindow(Time.seconds(Constants.windowSize))
 				.process(new DensityPF())
-				.keyBy((KeySelector<DensityToGlobalElem, Integer>) value -> Constants.globalSubTaskKeyMap.get(value.getDensityToGlobalKey()%Constants.globalPartition))
+				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getDensityToGlobalKey()%Constants.globalPartition))
 				.timeWindow(Time.seconds(Constants.windowSize))
 				.process(new GlobalTreePF())
-//				.setParallelism(Constants.globalPartition)
-//				.keyBy(0/*(KeySelector<Tuple2<Integer, Segment>, Integer>) value -> value.f0*/)
-//				.timeWindow(Time.seconds(Constants.windowSize))
-//				.process(new LocalTreePF())
-//				.setParallelism(Constants.dividePartition)
-//				.writeAsText("/home/chenliang/data/zzlDI/mutiNodeRES" + Constants.logicWindow /*+".txt"*/, FileSystem.WriteMode.OVERWRITE)
-//				.writeAsText("F:\\data\\oneNodeRES" + Constants.logicWindow +".txt", FileSystem.WriteMode.OVERWRITE)
-//				.print()
-//				.setParallelism(1/*Constants.dividePartition*/)
+				.setParallelism(Constants.globalPartition)
+				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key%Constants.dividePartition))
+				.timeWindow(Time.seconds(Constants.windowSize))
+				.process(new LocalTreePF())
+				.setParallelism(Constants.dividePartition)
+				.print()
 				;
 		env.execute("Distributed index");
 	}

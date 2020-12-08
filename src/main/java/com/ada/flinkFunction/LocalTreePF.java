@@ -8,6 +8,7 @@ import com.ada.common.Constants;
 import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
+import com.ada.model.GlobalToLocalElem;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.state.ListState;
@@ -17,7 +18,6 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
@@ -30,19 +30,15 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>, String, Tuple, TimeWindow> {
+public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String, Integer, TimeWindow> {
     private boolean isFirst = true;
     private boolean isClose;
     private int subTask;
     private RCtree<Segment> localIndex;
-//    private DensityGrid density;
     private Map<Long,List<Segment>> segmentss;
     private long count;
     private long startWindow;
 
-
-//    private transient ValueState<Long> densityHeartbeat;   //心跳信息
-//    private transient ValueState<Tuple2<short[][], Integer>> densityGrid;
     private transient ValueState<Long> divideHeartbeat;   //心跳信息
     private transient ListState<Segment> migrateOutData;
     private QueryableStateClient client = null;
@@ -53,28 +49,21 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
     private Map<Integer, Segment> migrateTo; //索引项迁出信息
     private GridRectangle[] newRootRectangle;  //Local Index重建信息
 
-
     @Override
-    public void process(Tuple tuple, Context context, Iterable<Tuple2<Integer, Segment>> elements, Collector<String> out) throws Exception {
+    public void process(Integer key, Context context, Iterable<GlobalToLocalElem> elements, Collector<String> out) throws Exception {
         startWindow = context.window().getStart();
         if (isFirst)
             openThisSubtask();
 
-        if (subTask == 4 && count == 310)
-            subTask += 0;
-
         StringBuilder stringBuffer = new StringBuilder();
-        stringBuffer.append("               ");
-        stringBuffer.append("               ");
-        stringBuffer.append("               ");
-        stringBuffer.append("---------------");
-        stringBuffer.append("---------------");
+        stringBuffer.append("                                             ");
+        stringBuffer.append("------------------------------");
         for (int i = 0; i < subTask; i++)
             stringBuffer.append("---------------");
         int total = 0;
         for (List<Segment> value : segmentss.values())
             total += value.size();
-        System.out.println(stringBuffer + "Local--" + subTask + " "+ ((Tuple1) tuple).f0 + ": " + count/10L + "\t" + total);
+        System.out.println(stringBuffer + "Local--" + subTask + " "+ ((Tuple1) key).f0 + ": " + count/10L + "\t" + total);
 
         //将输入数据分类成索引项信息indexData、索引项迁入信息migrateFrom、
         // 索引项迁出信息migrateTo、Local Index重建信息newRootRectangle。
@@ -448,21 +437,6 @@ public class LocalTreePF extends ProcessWindowFunction<Tuple2<Integer, Segment>,
 
     @Override
     public void open(Configuration parameters) {
-//        ValueStateDescriptor<Long> densityHeartbeatDescriptor =
-//                new ValueStateDescriptor<>(
-//                        "densityHeartbeatDescriptor", // the state name
-//                        TypeInformation.of(new TypeHint<Long>() {})); // default value of the state, if nothing was set
-//        densityHeartbeatDescriptor.setQueryable("densityHeartbeat");
-//        densityHeartbeat = getRuntimeContext().getState(densityHeartbeatDescriptor);
-
-//        ValueStateDescriptor<Tuple2<short[][], Integer>> densityGridDescriptor =
-//                new ValueStateDescriptor<>(
-//                        "densityGridDescriptor", // the state name
-//                        TypeInformation.of(new TypeHint<Tuple2<short[][], Integer>>() {})); // default value of the state, if nothing was set
-//        densityGridDescriptor.setQueryable("densityGrid");
-//        densityGrid = getRuntimeContext().getState(densityGridDescriptor);
-
-
         ValueStateDescriptor<Long> divideHeartbeatDescriptor =
                 new ValueStateDescriptor<>(
                         "divideHeartbeatDescriptor", // the state name

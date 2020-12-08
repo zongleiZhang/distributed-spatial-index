@@ -111,6 +111,8 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             }
         }
         migrateFromMap.putAll(migrateOutMap);
+        for (Map.Entry<Integer, AdjustLocalRegion> entry : migrateFromMap.entrySet())
+            out.collect(new GlobalToLocalElem(entry.getKey(), 3, entry.getValue()));
     }
 
     private void openWindow() {
