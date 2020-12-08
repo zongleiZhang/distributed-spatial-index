@@ -42,23 +42,23 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
         int M = (int) (GTree.globalLowBound*1.5);
         GDirNode dirNode;
         if ( elemNum >= M*15 ){
-            dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4, elemNum/4);
+            dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4);
             for (int i = 0; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
         }else if (elemNum >= GTree.globalLowBound && elemNum < 2*GTree.globalLowBound){
             if (isRoot()) {
-                dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4, elemNum / 4);
+                dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4);
                 return dirNode;
             }else {
                 return this;
             }
         }else if (elemNum >= 2.5*M && elemNum < 5*M){
             if ( elemNum > 4*M )
-                dirNode = fourSplit((int)(0.95*elemNum/4), (int)(0.90*elemNum/4), (int)(0.98*elemNum/4), elemNum/4);
+                dirNode = fourSplit((int)(0.95*elemNum/4), (int)(0.90*elemNum/4), (int)(0.98*elemNum/4));
             else if ( elemNum > 3*M )
-                dirNode = fourSplit((int)(0.8*elemNum/4), (int)(0.85*elemNum/4), (int)(0.9*elemNum/4), -1);
+                dirNode = fourSplit((int)(0.8*elemNum/4), (int)(0.85*elemNum/4), (int)(0.9*elemNum/4));
             else
-                dirNode = fourSplit((int)(0.85*elemNum/4), (int)(0.9*elemNum/4), (int)(0.9*elemNum/4), -1);
+                dirNode = fourSplit((int)(0.85*elemNum/4), (int)(0.9*elemNum/4), (int)(0.9*elemNum/4));
 //            for (int i = 0; i < 4; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
 //                    elemNum += 0;
@@ -67,7 +67,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //            }
         }else if (elemNum >= 5*M && elemNum < 7*M){
             int m = GTree.globalLowBound;
-            dirNode = fourSplit( (int) (0.95*m), (int) (1.0*m), (int) (0.85*m), -1);
+            dirNode = fourSplit( (int) (0.95*m), (int) (1.0*m), (int) (0.85*m));
 //            for (int i = 0; i < 3; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
 //                    elemNum += 0;
@@ -76,7 +76,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 7*M && elemNum < 8*M){
-            dirNode = fourSplit( (int) (0.85*M),  (int) (0.75*M),  (int) (0.9*M), -1);
+            dirNode = fourSplit( (int) (0.85*M),  (int) (0.75*M),  (int) (0.9*M));
 //            for (int i = 0; i < 3; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
 //                        elemNum += 0;
@@ -85,7 +85,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8*M && elemNum < 8.5*M){
-            dirNode = fourSplit( (int)(1.2*M), (int)(1.0*M), (int)(1.1*M), -1);
+            dirNode = fourSplit( (int)(1.2*M), (int)(1.0*M), (int)(1.1*M));
 //            for (int i = 0; i < 3; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
 //                    elemNum += 0;
@@ -95,7 +95,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8.5*M && elemNum < 11*M){
             int tmp = (int) (GTree.globalLowBound*1.2);
-            dirNode = fourSplit( tmp, tmp, (elemNum - tmp*2)/2, -1);
+            dirNode = fourSplit( tmp, tmp, (elemNum - tmp*2)/2);
 //            for (int i = 0; i < 2; i++){
 //                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
 //                    elemNum += 0;
@@ -105,14 +105,14 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
             dirNode.child[2] = ((GDataNode) dirNode.child[2]).adjustNode();
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 11 * M){
-            dirNode = fourSplit( (int) (0.9*M), (int)(0.9*((elemNum-M)/3)), (int)(0.9*((elemNum-M)/3)), -1);
+            dirNode = fourSplit( (int) (0.9*M), (int)(0.9*((elemNum-M)/3)), (int)(0.9*((elemNum-M)/3)));
 //            if (dirNode.child[0].elemNum > 2.2*Constants.globalLowBound)
 //                elemNum += 0;
             for (int i = 1; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
         }else {
             if (parent == null) {
-                dirNode = fourSplit(elemNum / 4, elemNum / 4, elemNum / 4, elemNum / 4);
+                dirNode = fourSplit(elemNum / 4, elemNum / 4, elemNum / 4);
                 return dirNode;
             }else {
                 throw new IllegalArgumentException("Elem number error.");
@@ -143,7 +143,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
 //    }
 
 
-    private GDirNode fourSplit(int num0, int num1, int num2, int num3){
+    private GDirNode fourSplit(int num0, int num1, int num2){
         GDirNode node;
         node = new GDirNode(parent, position, gridRegion, elemNum, tree, new GNode[4]);
 
@@ -204,27 +204,13 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
         return newX;
     }
 
-    public void getAllLeafNodes(List<GDataNode> leafNodes) {
-        leafNodes.add(this);
-    }
-
     public GDataNode searchGPoint(GridPoint gPoint) {
         return this;
-    }
-
-    void getIntersectLeafIDs(Rectangle rectangle, List<Integer> leafIDs) {
-            leafIDs.add(leafID);
     }
 
     public void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs) {
         leafs.add(this);
     }
-
-    public GNode getInternalNode(Rectangle rectangle){
-        return this;
-    }
-
-    public void getAllDirNode(List<GDirNode> dirNodes){ }
 
     @Override
     public int compareTo(@NotNull GDataNode o) {

@@ -1,15 +1,17 @@
 package com.ada.flinkFunction;
 
+import com.ada.GlobalTree.GDataNode;
 import com.ada.GlobalTree.GNode;
 import com.ada.GlobalTree.GTree;
 import com.ada.common.Constants;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
+import com.ada.model.AdjustLocalRegion;
 import com.ada.model.Density;
 import com.ada.model.DensityToGlobalElem;
 import com.ada.model.GlobalToLocalElem;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -51,8 +53,8 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                 Point point = segment.rect.getCenter();
                 Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
                 leafs = globalTree.searchLeafNodes(queryRect);
-                for (Integer leaf : leafs) {
-                    out.collect(new GlobalToLocalElem(leaf, 2, queryRect));
+                for (Integer leafID : leafs) {
+                    out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
                 }
             }
             element = ite.next();
@@ -70,32 +72,46 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             //调整Global Index
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
 
-            //Global Index发生了调整
-            if (!nodeMap.isEmpty()){
-                //通知Local Index其索引区域发生的变化
-                for (Tuple2<Integer, Segment> tuple2 : globalTree.divideRegionInfo) {
-                    tuple2.f1.p1.timestamp = count+10;
-                    out.collect(tuple2);
-                }
+            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
+            if (!nodeMap.isEmpty() && subTask == 0)
+                adjustLocalTasksRegion(nodeMap, out);
 
-                //通知Local Index索引项迁移信息
-                for (Segment segment : globalTree.migrateInfo) {
-                    out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get((int) -segment.p1.timestamp), segment));
-                    out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get((int) -segment.p2.timestamp), segment));
-                }
-
-                //通知被弃用的Local Index
-                for (Integer discardLeafID : globalTree.discardLeafIDs)
-                    out.collect(new Tuple2<>(Constants.divideSubTaskKeyMap.get(discardLeafID), null));
-
-                globalTree.discardLeafIDs.clear();
-                globalTree.migrateInfo.clear();
-                globalTree.divideRegionInfo.clear();
-            }
+            globalTree.discardLeafIDs.clear();
         }
         count++;
     }
 
+    private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap,
+                                        Collector<GlobalToLocalElem> out){
+        Map<Integer, AdjustLocalRegion> migrateOutMap = new HashMap<>();
+        Map<Integer, AdjustLocalRegion> migrateFromMap = new HashMap<>();
+        for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
+            for (GDataNode oldLeaf : entry.getKey().getLeafs()) {
+                List<GDataNode> migrateOutLeafs = new ArrayList<>();
+                entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
+                List<Integer> migrateOutLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateOutLeafs, node -> node.leafID);
+                migrateOutLeafIDs.remove(new Integer(oldLeaf.leafID));
+                migrateOutMap.put(oldLeaf.leafID, new AdjustLocalRegion(migrateOutLeafIDs, null, null));
+            }
+            for (GDataNode newLeaf : entry.getValue().getLeafs()) {
+                List<GDataNode> migrateFromLeafs = new ArrayList<>();
+                entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
+                List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
+                migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
+                migrateFromMap.put(newLeaf.leafID, new AdjustLocalRegion(null, migrateFromLeafIDs, newLeaf.region));
+            }
+        }
+        Iterator<Map.Entry<Integer, AdjustLocalRegion>> ite = migrateOutMap.entrySet().iterator();
+        while (ite.hasNext()){
+            Map.Entry<Integer, AdjustLocalRegion> entry = ite.next();
+            AdjustLocalRegion elem = migrateFromMap.get(entry.getKey());
+            if (elem != null){
+                elem.setMigrateOutST(entry.getValue().getMigrateOutST());
+                ite.remove();
+            }
+        }
+        migrateFromMap.putAll(migrateOutMap);
+    }
 
     private void openWindow() {
         try {

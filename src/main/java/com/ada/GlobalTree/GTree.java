@@ -1,5 +1,6 @@
 package com.ada.GlobalTree;
 
+import com.ada.common.collections.Collections;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
 import com.ada.common.Constants;
@@ -29,21 +30,16 @@ public class GTree {
     /**
      * 叶节点ID与叶节点的map映射
      */
-    transient public Map<Integer, GDataNode> leafIDMap;
+    transient private Map<Integer, GDataNode> leafIDMap;
 
     /**
-     * 弃用的叶节点ID
+     * 弃用的叶节点ID，待废弃
      */
     transient public List<Integer> discardLeafIDs;
 
-    /**
-     * 新的叶节点
-     */
-    transient public List<GDataNode> newLeafs;
-
     private DispatchLeafID dispatchLeafID;
 
-    class DispatchLeafID{
+    static class DispatchLeafID{
         List<Integer> usedLeafID;
 
         List<Integer> canUseLeafID;
@@ -88,23 +84,33 @@ public class GTree {
         GridRectangle gridRectangle;
         gridRectangle = new GridRectangle(new GridPoint(0,0), new GridPoint(200, 200));
         root.child[0] = new GDataNode(root,0, gridRectangle,0, this,0);
-
         gridRectangle =  new GridRectangle(new GridPoint(0,201), new GridPoint(200, 511));
         root.child[1] = new GDataNode(root,1, gridRectangle,0, this,1);
-
         gridRectangle = new GridRectangle(new GridPoint(201,0), new GridPoint(511, 200));
         root.child[2] = new GDataNode(root,2, gridRectangle,0, this,2);
-
         gridRectangle = new GridRectangle(new GridPoint(201,201), new GridPoint(511, 511));
         root.child[3] = new GDataNode(root,3, gridRectangle,0,  this,3);
-
         density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-
         List<GDataNode> leafs = new ArrayList<>();
         for (GNode leaf : root.child)
             leafs.add((GDataNode) leaf);
         root.setLeafs(leafs);
         dispatchLeafID = new DispatchLeafID();
+        discardLeafIDs = new ArrayList<>();
+        leafIDMap = new HashMap<>();
+        Integer leafID;
+        leafID = dispatchLeafID.getLeafID();
+        ((GDataNode) root.child[0]).setLeafID(leafID);
+        leafIDMap.put(leafID, ((GDataNode) root.child[0]));
+        leafID = dispatchLeafID.getLeafID();
+        ((GDataNode) root.child[1]).setLeafID(leafID);
+        leafIDMap.put(leafID, ((GDataNode) root.child[1]));
+        leafID = dispatchLeafID.getLeafID();
+        ((GDataNode) root.child[2]).setLeafID(leafID);
+        leafIDMap.put(leafID, ((GDataNode) root.child[2]));
+        leafID = dispatchLeafID.getLeafID();
+        ((GDataNode) root.child[3]).setLeafID(leafID);
+        leafIDMap.put(leafID, ((GDataNode) root.child[3]));
     }
 
     /**
@@ -147,26 +153,6 @@ public class GTree {
             }
         }
         return res;
-    }
-
-
-    public void mainSubtaskInit(){
-        discardLeafIDs = new ArrayList<>();
-        newLeafs = new ArrayList<>();
-        leafIDMap = new HashMap<>();
-        Integer leafID;
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[0]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[0]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[1]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[1]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[2]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[2]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[3]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[3]));
     }
 
     /**
@@ -316,7 +302,9 @@ public class GTree {
         }
     }
 
-
+    /**
+     * 子树调整前后的节点是oldNode，newNode。为newNode中的叶节点重新分配ID
+     */
     private void dispatchLeafID(GNode oldNode, GNode newNode){
         if (oldNode instanceof GDirNode && newNode instanceof GDirNode){ //多分多
             GDirNode newDirNode = (GDirNode) newNode;
@@ -351,6 +339,7 @@ public class GTree {
                     if (!reassigningID.contains(i)){
                         Integer leafID = dispatchLeafID.getLeafID();
                         newLeafNodes.get(i).setLeafID(leafID);
+                        discardLeafIDs.remove(leafID);
                         this.leafIDMap.put(leafID, newLeafNodes.get(i));
                     }
                 }
@@ -367,7 +356,6 @@ public class GTree {
                     }
                 }
             }
-            newLeafs.addAll(newLeafNodes);
         }else if(oldNode instanceof GDataNode && newNode instanceof GDirNode){ //一分多
             GDirNode newDirNode = (GDirNode) newNode;
             List<GDataNode> newLeafNodes = new ArrayList<>(newDirNode.getLeafs());
@@ -377,10 +365,11 @@ public class GTree {
             this.leafIDMap.put(leafID, newLeafNodes.get(maxNumLeaf));
             newLeafNodes.remove(maxNumLeaf);
             for (GDataNode newLeafNode : newLeafNodes) {
-                newLeafNode.setLeafID(dispatchLeafID.getLeafID());
+                leafID = dispatchLeafID.getLeafID();
+                newLeafNode.setLeafID(leafID);
+                discardLeafIDs.remove(leafID);
                 this.leafIDMap.put(newLeafNode.leafID, newLeafNode);
             }
-            newLeafs.addAll(newLeafNodes);
         }else if(oldNode instanceof GDirNode && newNode instanceof GDataNode){ //多合一
             GDirNode oldDirNode = (GDirNode) oldNode;
             List<GDataNode> oldLeafNodes = new ArrayList<>(oldDirNode.getLeafs());
@@ -394,7 +383,6 @@ public class GTree {
                 discardLeafIDs.add(leafID);
                 dispatchLeafID.discardLeafID(leafID);
             }
-            newLeafs.add((GDataNode) newNode);
         }else {
             throw new IllegalArgumentException("GNode type error.");
         }
@@ -417,10 +405,12 @@ public class GTree {
         return maxIndex;
     }
 
+    /**
+     * 返回树中与rectangle相交的叶节点的ID集合
+     */
     public List<Integer> searchLeafNodes(Rectangle rectangle){
-        List<Integer> leafs = new ArrayList<>();
-        root.getIntersectLeafIDs(rectangle, leafs);
-        return leafs;
+        List<GDataNode> list = getIntersectLeafNodes(rectangle);
+        return (List<Integer>) Collections.changeCollectionElem(list, node -> node.leafID);
     }
 
     /**

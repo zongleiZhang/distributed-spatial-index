@@ -63,17 +63,6 @@ public class GDirNode extends GNode{
         return null;
     }
 
-    void getIntersectLeafIDs(Rectangle rectangle, List<Integer> leafIDs) {
-        for (GNode node : child) {
-            if (rectangle.isIntersection(node.region)) {
-                if (rectangle.isInternal(node.region))
-                    node.getAllLeafID(leafIDs);
-                else
-                    node.getIntersectLeafIDs(rectangle, leafIDs);
-            }
-        }
-    }
-
     public void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs) {
         for (GNode node : child) {
             if (rectangle.isIntersection(node.region)) {
@@ -85,19 +74,6 @@ public class GDirNode extends GNode{
         }
     }
 
-    public GNode getInternalNode(Rectangle rectangle){
-        for (GNode gNode : child) {
-            if (gNode.region.isInternal(rectangle))
-                return gNode.getInternalNode(rectangle);
-        }
-        return this;
-    }
-
-    public void getAllDirNode(List<GDirNode> dirNodes){
-        dirNodes.add(this);
-        for (GNode gNode : child)
-            gNode.getAllDirNode(dirNodes);
-    }
 
 
     void setAllElemNumZero() {

@@ -81,15 +81,6 @@ public abstract class GNode implements Serializable {
             parent.updateLeafElemNum(elemNum);
     }
 
-
-    /**
-     * 获取当前子树的所有叶节点ID添加到newLeafNodes中
-     */
-    void getAllLeafID(List<Integer> leafIDs){
-        for (GDataNode leaf : getLeafs())
-            leafIDs.add(leaf.leafID);
-    }
-
     /**
      * 返回当前子树的所有叶节点
      */
@@ -101,16 +92,9 @@ public abstract class GNode implements Serializable {
     public abstract GDataNode searchGPoint(GridPoint gPoint);
 
     /**
-     * 查找本子树与GridRectangle矩形gRectangle相交的叶节点，将leafID存储在leafs中
-     */
-    abstract void getIntersectLeafIDs(Rectangle rectangle, List<Integer> leafIDs);
-
-    /**
      * 查找本子树与rectangle相交的叶节点，将叶节点存储在leafs中
      */
     public abstract void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs);
-
-    public abstract GNode getInternalNode(Rectangle rectangle);
 
     /**
      * 填充中间节点的leafs成员
@@ -132,7 +116,4 @@ public abstract class GNode implements Serializable {
 
         }
     }
-
-
-    public abstract void getAllDirNode(List<GDirNode> dirNodes);
 }
