@@ -1,4 +1,6 @@
 package com.ada.model;
 
-public interface GlobalToLocalValue {
+import java.io.Serializable;
+
+public interface GlobalToLocalValue extends Serializable {
 }

@@ -26,39 +26,11 @@ public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoin
 
 	public TrackPoint(String value){
 		super();
-		String[] dev;
-		if ( value.contains("\t") ){
-			dev = value.split("\t");
-		}else {
-			dev = value.split(",");
-			if (dev.length > 3) {
-				String[] devDev = dev[1].split(" ");
-				List<String> list = new ArrayList<>();
-				list.add(dev[0]);
-				list.addAll(Arrays.asList(devDev));
-				list.addAll(Arrays.asList(dev).subList(2, dev.length));
-				dev = list.toArray(new String[0]);
-			}
-		}
-		if(dev.length == 5 && dev[1].length() == 10) {
-			try {
-				//System.out.println(value);
-				TID = parseInt(dev[0]);
-				Calendar timestamp = Calendar.getInstance();
-				timestamp.set(parseInt(dev[1].substring(0, 4)), parseInt(dev[1].substring(5, 7)) - 1,
-						parseInt(dev[1].substring(8, 10)), parseInt(dev[2].substring(0, 2)),
-						parseInt(dev[2].substring(3, 5)), parseInt(dev[2].substring(6, 8)));
-				this.timestamp = (timestamp.getTimeInMillis()/1000L)*1000L;
-				double lon = Double.parseDouble(dev[3]);
-				double lat = Double.parseDouble(dev[4]);
-				data = ClassMct.LBToXY(lat, lon);
-				if( data[0]<0 || data[0]>200000000 || data[1]<0 || data[1]>200000000 ) {
-					data[0] = 0;
-				}
-			}catch (Exception e) {
-				data[0] = 0;
-			}
-		}
+		String[] dev = value.split("\\t");
+		TID = Integer.parseInt(dev[0]);
+		timestamp = Long.parseLong(dev[1]);
+		data[0] = Double.parseDouble(dev[2]);
+		data[1] = Double.parseDouble(dev[3]);
 	}
 
 	public boolean isEmpty(){

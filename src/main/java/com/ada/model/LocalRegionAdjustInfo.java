@@ -5,11 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.apache.flink.api.java.tuple.Tuple2;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Getter
 @Setter
-public class LocalRegionAdjustInfo implements GlobalToLocalValue {
+public class LocalRegionAdjustInfo implements GlobalToLocalValue, Serializable {
 
     public List<Tuple2<Integer,Rectangle>> migrateOutST;
 

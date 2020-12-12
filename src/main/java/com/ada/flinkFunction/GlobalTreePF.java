@@ -12,7 +12,6 @@ import com.ada.model.LocalRegionAdjustInfo;
 import com.ada.model.Density;
 import com.ada.model.DensityToGlobalElem;
 import com.ada.model.GlobalToLocalElem;
-import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -25,7 +24,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
     private int subTask;
     private GTree globalTree;
     private Queue<int[][]> densityQueue;
-    private int[][] density;
     private int count;
 
     public  GlobalTreePF(){ }
@@ -35,10 +33,10 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                         Context context,
                         Iterable<DensityToGlobalElem> elements,
                         Collector<GlobalToLocalElem> out){
-        StringBuilder stringBuffer = new StringBuilder();
-        for (int i = 0; i < subTask; i++)
-            stringBuffer.append("---------------");
-        System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
+//        StringBuilder stringBuffer = new StringBuilder();
+//        for (int i = 0; i < subTask; i++)
+//            stringBuffer.append("---------------");
+//        System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
 
         //第一个窗口需要告知从节点需要负责的索引区域
         if (count == 1 && subTask == 0){
@@ -49,33 +47,36 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         }
 
         //根据Global Index给输入项分区
-        Iterator<DensityToGlobalElem> ite = elements.iterator();
-        DensityToGlobalElem element = ite.next();
         int queryCount = 0;
-        while (ite.hasNext()){
-            Segment segment = (Segment) element;
-            List<Integer> leafs = globalTree.searchLeafNodes(segment.rect);
-            for (Integer leaf : leafs){
-                out.collect(new GlobalToLocalElem(leaf, 1, segment));
-            }
-            queryCount++;
-            if (queryCount%Constants.ratio == 0){
-                Point point = segment.p1;
-                Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
-                leafs = globalTree.searchLeafNodes(queryRect);
-                for (Integer leafID : leafs) {
-                    out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
+        List<int[][]> densities = new ArrayList<>(Constants.globalPartition);
+        for (DensityToGlobalElem element : elements) {
+            if (element instanceof Segment){
+                Segment segment = (Segment) element;
+                List<Integer> leafs = globalTree.searchLeafNodes(segment.rect);
+                for (Integer leaf : leafs){
+                    out.collect(new GlobalToLocalElem(leaf, 1, segment));
                 }
+                queryCount++;
+                if (queryCount%Constants.ratio == 0){
+                    Point point = segment.p1;
+                    Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
+                    leafs = globalTree.searchLeafNodes(queryRect);
+                    for (Integer leafID : leafs) {
+                        out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
+                    }
+                }
+            }else {
+                densities.add(((Density) element).grids);
             }
-            element = ite.next();
         }
-        Constants.addArrsToArrs(density, ((Density) element).grids, true);
+        for (int i = 1; i < densities.size(); i++)
+            Constants.addArrsToArrs(densities.get(0), densities.get(i), false);
+
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
         if (count%Constants.balanceFre == 0){
-            densityQueue.add(density);
-            Constants.addArrsToArrs(globalTree.density, density, true);
-            density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+            densityQueue.add(densities.get(0));
+            Constants.addArrsToArrs(globalTree.density, densities.get(0), true);
             if (count > Constants.logicWindow)
                 Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
 
@@ -129,7 +130,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         try {
             subTask = getRuntimeContext().getIndexOfThisSubtask();
             densityQueue = new ArrayDeque<>();
-            density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
             count = 1;
             globalTree = new GTree();
         }catch (Exception e){

@@ -54,18 +54,7 @@ public class Constants implements Serializable {
      */
     public static int balanceFre;
 
-    public final static String QueryStateIP = "192.168.131.199";
-//    public final static String QueryStateIP = "localhost";
-
-    /**
-     * 存放JobID的文件位置
-     */
-//    private final static String jobIDFileName = "output.txt";
-//    private final static String jobIDFileName = "/opt/flink-1.9.1/log/flink-chenliang-standalonesession-0-131-199.log";
-    private final static String jobIDFileName = "F:\\softwares\\flink-1.9.1\\log\\flink-zonglei.zhang-jobmanager.log";
-
-//    private final static String confFileName = "/home/chenliang/data/zzlDIC/conf.txt";
-    private final static String confFileName = "conf.txt";
+    private final static String confFileName = "conf.properties";
 
     /**
      * 网格密度
@@ -78,10 +67,9 @@ public class Constants implements Serializable {
 
     public static double radius; //查询矩形的大小
 
-    public static int ratio; //查询和更新的比例
+    public static int ratio = 2; //查询和更新的比例
 
     public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
-
 
     static {
         try {
@@ -143,22 +131,6 @@ public class Constants implements Serializable {
                 elem.timestamp + " " +
                 df.format(elem.data[0]) + " " +
                 df.format(elem.data[1]);
-    }
-
-
-    public static String getJobIDStr() throws IOException {
-        File f = new File(Constants.jobIDFileName);
-        BufferedReader br = new BufferedReader(new FileReader(f));
-        String jobIDStr = null;
-        String str;
-        while ( (str = br.readLine()) != null){
-            int site = str.indexOf("Submitting job ");
-            if (site != -1){
-                str = str.substring(site);
-                jobIDStr = str.split(" ")[2];
-            }
-        }
-        return jobIDStr;
     }
 
     public static boolean isEqual(double a, double b){

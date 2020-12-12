@@ -11,12 +11,15 @@ import org.apache.flink.util.Collector;
 
 public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalElem, Integer, TimeWindow> {
 
+    private int count = 1;
+    private int[][] grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+
     @Override
     public void process(Integer integer,
                         Context context,
                         Iterable<Segment> elements,
                         Collector<DensityToGlobalElem> out){
-        int[][] grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+
         for (Segment segment : elements) {
             Point point = segment.getRect().getCenter();
             int row = (int) Math.floor(((point.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
@@ -24,7 +27,11 @@ public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalEle
             grids[row][col]++;
             out.collect(segment);
         }
-        for (int i = 0; i < Constants.globalPartition; i++)
-            out.collect(new Density(grids, i));
+        if (count%Constants.balanceFre == 0){
+            for (int i = 0; i < Constants.globalPartition; i++)
+                out.collect(new Density(grids, i));
+            grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+        }
+        count++;
     }
 }
