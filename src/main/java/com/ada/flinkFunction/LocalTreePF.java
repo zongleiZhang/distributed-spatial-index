@@ -11,10 +11,7 @@ import com.ada.geometry.Segment;
 import com.ada.model.GlobalToLocalElem;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.api.common.state.ListState;
-import org.apache.flink.api.common.state.ListStateDescriptor;
-import org.apache.flink.api.common.state.ValueState;
-import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.state.*;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -35,7 +32,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
     private boolean isClose;
     private int subTask;
     private RCtree<Segment> localIndex;
-    private Map<Long,List<Segment>> segmentss;
+    private Queue<List<Segment>> segmentsQueue;
     private long count;
     private long startWindow;
 
@@ -52,8 +49,6 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
     @Override
     public void process(Integer key, Context context, Iterable<GlobalToLocalElem> elements, Collector<String> out) throws Exception {
         startWindow = context.window().getStart();
-        if (isFirst)
-            openThisSubtask();
 
         StringBuilder stringBuffer = new StringBuilder();
         stringBuffer.append("                                             ");
@@ -61,13 +56,16 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
         for (int i = 0; i < subTask; i++)
             stringBuffer.append("---------------");
         int total = 0;
-        for (List<Segment> value : segmentss.values())
+        for (List<Segment> value : segmentsQueue)
             total += value.size();
-        System.out.println(stringBuffer + "Local--" + subTask + " "+ ((Tuple1) key).f0 + ": " + count/10L + "\t" + total);
+        System.out.println(stringBuffer + "Local--" + subTask + " "+ key + ": " + count/10L + "\t" + total);
 
         //将输入数据分类成索引项信息indexData、索引项迁入信息migrateFrom、
         // 索引项迁出信息migrateTo、Local Index重建信息newRootRectangle。
         classificationData(elements);
+
+        if (isFirst)
+            openThisSubtask();
 
         //初次使用sunTask创建Local Index和density
         if (isFirst)
@@ -75,7 +73,10 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
 
 //        segmentssCheck();
         //从索引中移除过时数据
-        removeOutDateData();
+        if (count/10 > Constants.logicWindow){
+            for (Segment segment : segmentsQueue.remove())
+                localIndex.delete(segment);
+        }
 
         //插入新的索引项，并执行查询操作
         if (indexData.size() > 0) {
@@ -114,17 +115,6 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
             migrateOutData.clear();
         }
 
-
-
-        //更新densityGrid的索引密度信息
-//        if ( (count/10L)%(Constants.densityFre/3) == 0 ){
-//            short[][] shortss = new short[density.data.length][];
-//            for (int i = 0; i < density.data.length; i++)
-//                shortss[i] = density.data[i].clone();
-//            densityGrid.update(new Tuple2<>(shortss, localIndex.root.elemNum));
-//            densityHeartbeat.update(count);
-//        }
-
         //弃用本subTask，清理成员变量
         if (isClose)
             closeThisSubtask();
@@ -139,15 +129,12 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                 total += aShort;
             }
         }
-        if (total != number)
-            return false;
-        else
-            return true;
+        return total == number;
     }
 
     boolean segmentssCheck(){
         boolean[] flags = new boolean[]{true};
-        segmentss.forEach((aLong, segments) -> {
+        segmentsQueue.forEach(segments -> {
             if (!flags[0])
                 return;
             for (Segment segment : segments) {
@@ -176,20 +163,17 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
      */
     private void rebuildLocalIndex() {
         createTreeAndGrid();
-        Rectangle rootRectangle = newRootRectangle[0].toRectangle().extendToInt();// density.root.getRegion().clone().extendToInt();
-        Map<Long, List<Segment>> newSegmentss = new HashMap<>();
-        segmentss.forEach((timestamp, segments) -> {
-            List<Segment> newSegments = new ArrayList<>();
-            for (Segment oldSegment : segments) {
-                if (oldSegment.rect.isIntersection(rootRectangle)) {
-                    newSegments.add(oldSegment);
-                    localIndex.insert(oldSegment);
-//                    density.alterElemNum(oldSegment,true);
+        Rectangle rootRectangle = newRootRectangle[0].toRectangle().extendToInt();
+        segmentsQueue.forEach(segments -> {
+            for (Iterator<Segment> ite = segments.iterator(); ite.hasNext();){
+                Segment segment = ite.next();
+                if (segment.rect.isIntersection(rootRectangle)){
+                    localIndex.insert(segment);
+                }else {
+                    ite.remove();
                 }
             }
-            newSegmentss.put(timestamp,newSegments);
         });
-        segmentss = newSegmentss;
     }
 
     /**
@@ -259,9 +243,8 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
      */
     private void openThisSubtask() throws IOException {
         isClose = false;
-        segmentss = new HashMap<>();
+        segmentsQueue = new ArrayDeque<>();
         localIndex = null;
-//        density = null;
         subTask = getRuntimeContext().getIndexOfThisSubtask();
         client = new QueryableStateClient(Constants.QueryStateIP, 9069);
         jobID = JobID.fromHexString(Constants.getJobIDStr());
@@ -270,47 +253,22 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
         migrateFrom = new ArrayList<>();
         migrateTo = new HashMap<>();
         newRootRectangle = new GridRectangle[1];
-//        densityHeartbeat.update(0L);
         divideHeartbeat.update(0L);
     }
 
     /**
      * 弃用本处理节点
      */
-    private void closeThisSubtask() throws IOException {
+    private void closeThisSubtask(){
         isFirst = true;
         isClose = false;
         subTask = -1;
         localIndex = null;
-//        density = null;
-        segmentss = null;
+        segmentsQueue = null;
         client = null;
         jobID = null;
-//        densityGrid.update(null);
     }
 
-    /**
-     * 清除过时数据
-     */
-    private void removeOutDateData(){
-        long logicStartTime = startWindow - Constants.logicWindow*Constants.windowSize;
-        List<Long> removeKey = new ArrayList<>();
-        int[] countt = new int[]{0};
-        segmentss.forEach((key, value) -> {
-            if (key < logicStartTime){
-                removeKey.add(key);
-                for (Segment segment : value) {
-                    localIndex.delete(segment);
-//                    density.alterElemNum(segment,false);
-                    countt[0]++;
-                }
-            }
-        });
-        for (Long aLong : removeKey) {
-            if ( segmentss.remove(aLong) == null)
-                throw new IllegalArgumentException("removeOutDateData map error.");
-        }
-    }
 
     /**
      * 等到远程节点获取本节点的迁移出的数据
@@ -428,11 +386,10 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
      * 创建空的Local Index
      */
     private void createTreeAndGrid() {
-//        density = new DensityGrid(gridRectangle);
         Rectangle rectangle = newRootRectangle[0].toRectangle().extendToInt();//density.root.getRegion();
         rectangle = new Rectangle(new Point(rectangle.low.data[0]-600.0, rectangle.low.data[1]-600.0),
                 new Point(rectangle.high.data[0]+600.0, rectangle.high.data[1]+600.0));
-//        localIndex = new RCtree<>(10,1,17, rectangle,0, false);
+        localIndex = new RCtree<>(4,1,11, rectangle,0);
     }
 
     @Override

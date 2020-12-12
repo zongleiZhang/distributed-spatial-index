@@ -1,7 +1,7 @@
 package com.ada.common;
 
-import com.ada.GlobalTree.GDataNode;
-import com.ada.GlobalTree.GTree;
+import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GTree;
 import com.ada.geometry.GridRectangle;
 import com.ada.Hungarian.Hungary;
 import com.ada.geometry.*;

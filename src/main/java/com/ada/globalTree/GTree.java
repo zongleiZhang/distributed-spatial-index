@@ -1,4 +1,4 @@
-package com.ada.GlobalTree;
+package com.ada.globalTree;
 
 import com.ada.common.collections.Collections;
 import com.ada.geometry.GridPoint;

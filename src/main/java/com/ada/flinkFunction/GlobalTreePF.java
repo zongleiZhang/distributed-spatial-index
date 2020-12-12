@@ -1,8 +1,8 @@
 package com.ada.flinkFunction;
 
-import com.ada.GlobalTree.GDataNode;
-import com.ada.GlobalTree.GNode;
-import com.ada.GlobalTree.GTree;
+import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GNode;
+import com.ada.globalTree.GTree;
 import com.ada.common.Constants;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.Point;
@@ -62,7 +62,7 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         Constants.addArrsToArrs(density, ((Density) element).grids, true);
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
-        if (count%Constants.balanceFre == 0 && subTask == 0){
+        if (count%Constants.balanceFre == 0){
             densityQueue.add(density);
             Constants.addArrsToArrs(globalTree.density, density, true);
             density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
