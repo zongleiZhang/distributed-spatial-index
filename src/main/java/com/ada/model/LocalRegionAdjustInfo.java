@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class AdjustLocalRegion implements GlobalToLocalValue {
+public class LocalRegionAdjustInfo implements GlobalToLocalValue {
 
     public List<Integer> migrateOutST;
 
@@ -16,12 +16,12 @@ public class AdjustLocalRegion implements GlobalToLocalValue {
 
     public Rectangle region;
 
-    public AdjustLocalRegion() {
+    public LocalRegionAdjustInfo() {
     }
 
-    public AdjustLocalRegion(List<Integer> migrateOutST,
-                             List<Integer> migrateFromST,
-                             Rectangle region) {
+    public LocalRegionAdjustInfo(List<Integer> migrateOutST,
+                                 List<Integer> migrateFromST,
+                                 Rectangle region) {
         this.migrateOutST = migrateOutST;
         this.migrateFromST = migrateFromST;
         this.region = region;

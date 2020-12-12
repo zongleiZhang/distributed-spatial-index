@@ -9,13 +9,13 @@ import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
 import com.ada.model.GlobalToLocalElem;
+import com.ada.model.LocalRegionAdjustInfo;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.state.*;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.queryablestate.client.QueryableStateClient;
@@ -60,16 +60,24 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
             total += value.size();
         System.out.println(stringBuffer + "Local--" + subTask + " "+ key + ": " + count/10L + "\t" + total);
 
+        if (isFirst) {
+            openThisSubtask();
+            createTreeAndGrid();
+        }
+
         //将输入数据分类成索引项信息indexData、索引项迁入信息migrateFrom、
         // 索引项迁出信息migrateTo、Local Index重建信息newRootRectangle。
-        classificationData(elements);
-
-        if (isFirst)
-            openThisSubtask();
-
-        //初次使用sunTask创建Local Index和density
-        if (isFirst)
-            createTreeAndGrid();
+        List<Rectangle> queries = new ArrayList<>();
+        LocalRegionAdjustInfo adjustInfo = null;
+        for (GlobalToLocalElem elem : elements) {
+            if (elem.elementType == 1) {
+                localIndex.insert((Segment) elem.value);
+            } else if (elem.elementType == 2) {
+                queries.add((Rectangle) elem.value);
+            } else {
+                adjustInfo = (LocalRegionAdjustInfo) elem.value;
+            }
+        }
 
 //        segmentssCheck();
         //从索引中移除过时数据
@@ -207,34 +215,6 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
             buffer.append(Constants.appendSegment(re));
         }
         out.collect(buffer.toString());
-    }
-
-    /**
-     * 将输入数据进行分类
-     * @param elements 输入数据
-     */
-    private void classificationData(Iterable<Tuple2<Integer, Segment>> elements) {
-        for (Tuple2<Integer, Segment> tuple2 : elements) {
-            Segment segment = tuple2.f1;
-            if (segment != null){
-                if (segment.p1.TID > 0){ //正常轨迹段
-                    indexData.add(segment);
-                }else if (segment.p1.TID == -2){ //索引项迁移信息
-                    int migrateOutID =  (int) -segment.p1.timestamp;
-                    if (migrateOutID == subTask) {
-                        migrateTo.put((int) -segment.p2.timestamp, segment);
-                    }else {
-                        migrateFrom.add(migrateOutID);
-                    }
-                }else { //Local Index重建信息
-                    count = segment.p1.timestamp;
-                    newRootRectangle[0] =  new GridRectangle(new GridPoint((int) segment.p1.data[0], (int)segment.p1.data[1]),
-                            new GridPoint((int) segment.p2.data[0], (int) segment.p2.data[1]));
-                }
-            }else { //弃用本处理节点
-                isClose = true;
-            }
-        }
     }
 
 

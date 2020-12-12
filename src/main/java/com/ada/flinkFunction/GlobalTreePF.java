@@ -8,7 +8,7 @@ import com.ada.common.collections.Collections;
 import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
-import com.ada.model.AdjustLocalRegion;
+import com.ada.model.LocalRegionAdjustInfo;
 import com.ada.model.Density;
 import com.ada.model.DensityToGlobalElem;
 import com.ada.model.GlobalToLocalElem;
@@ -50,7 +50,7 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             }
             queryCount++;
             if (queryCount%Constants.ratio == 0){
-                Point point = segment.rect.getCenter();
+                Point point = segment.p1;
                 Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
                 leafs = globalTree.searchLeafNodes(queryRect);
                 for (Integer leafID : leafs) {
@@ -83,35 +83,35 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
 
     private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap,
                                         Collector<GlobalToLocalElem> out){
-        Map<Integer, AdjustLocalRegion> migrateOutMap = new HashMap<>();
-        Map<Integer, AdjustLocalRegion> migrateFromMap = new HashMap<>();
+        Map<Integer, LocalRegionAdjustInfo> migrateOutMap = new HashMap<>();
+        Map<Integer, LocalRegionAdjustInfo> migrateFromMap = new HashMap<>();
         for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
             for (GDataNode oldLeaf : entry.getKey().getLeafs()) {
                 List<GDataNode> migrateOutLeafs = new ArrayList<>();
                 entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
                 List<Integer> migrateOutLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateOutLeafs, node -> node.leafID);
                 migrateOutLeafIDs.remove(new Integer(oldLeaf.leafID));
-                migrateOutMap.put(oldLeaf.leafID, new AdjustLocalRegion(migrateOutLeafIDs, null, null));
+                migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
             }
             for (GDataNode newLeaf : entry.getValue().getLeafs()) {
                 List<GDataNode> migrateFromLeafs = new ArrayList<>();
                 entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
                 List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
                 migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
-                migrateFromMap.put(newLeaf.leafID, new AdjustLocalRegion(null, migrateFromLeafIDs, newLeaf.region));
+                migrateFromMap.put(newLeaf.leafID, new LocalRegionAdjustInfo(null, migrateFromLeafIDs, newLeaf.region));
             }
         }
-        Iterator<Map.Entry<Integer, AdjustLocalRegion>> ite = migrateOutMap.entrySet().iterator();
+        Iterator<Map.Entry<Integer, LocalRegionAdjustInfo>> ite = migrateOutMap.entrySet().iterator();
         while (ite.hasNext()){
-            Map.Entry<Integer, AdjustLocalRegion> entry = ite.next();
-            AdjustLocalRegion elem = migrateFromMap.get(entry.getKey());
+            Map.Entry<Integer, LocalRegionAdjustInfo> entry = ite.next();
+            LocalRegionAdjustInfo elem = migrateFromMap.get(entry.getKey());
             if (elem != null){
                 elem.setMigrateOutST(entry.getValue().getMigrateOutST());
                 ite.remove();
             }
         }
         migrateFromMap.putAll(migrateOutMap);
-        for (Map.Entry<Integer, AdjustLocalRegion> entry : migrateFromMap.entrySet())
+        for (Map.Entry<Integer, LocalRegionAdjustInfo> entry : migrateFromMap.entrySet())
             out.collect(new GlobalToLocalElem(entry.getKey(), 3, entry.getValue()));
     }
 
