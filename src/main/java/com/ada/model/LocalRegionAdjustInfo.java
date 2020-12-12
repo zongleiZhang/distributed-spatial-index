@@ -3,6 +3,7 @@ package com.ada.model;
 import com.ada.geometry.Rectangle;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.List;
 
@@ -10,7 +11,7 @@ import java.util.List;
 @Setter
 public class LocalRegionAdjustInfo implements GlobalToLocalValue {
 
-    public List<Integer> migrateOutST;
+    public List<Tuple2<Integer,Rectangle>> migrateOutST;
 
     public List<Integer> migrateFromST;
 
@@ -19,7 +20,7 @@ public class LocalRegionAdjustInfo implements GlobalToLocalValue {
     public LocalRegionAdjustInfo() {
     }
 
-    public LocalRegionAdjustInfo(List<Integer> migrateOutST,
+    public LocalRegionAdjustInfo(List<Tuple2<Integer,Rectangle>> migrateOutST,
                                  List<Integer> migrateFromST,
                                  Rectangle region) {
         this.migrateOutST = migrateOutST;

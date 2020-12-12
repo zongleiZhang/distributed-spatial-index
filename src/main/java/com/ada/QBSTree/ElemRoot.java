@@ -5,7 +5,7 @@ import com.ada.geometry.Point;
 import java.io.Serializable;
 
 public class ElemRoot extends Point implements Cloneable ,Serializable {
-    public RCDataNode leaf;
+    transient public RCDataNode leaf;
 
     public ElemRoot() { }
 

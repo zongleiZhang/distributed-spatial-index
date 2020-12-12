@@ -12,6 +12,8 @@ import com.ada.model.LocalRegionAdjustInfo;
 import com.ada.model.Density;
 import com.ada.model.DensityToGlobalElem;
 import com.ada.model.GlobalToLocalElem;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -37,6 +39,14 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         for (int i = 0; i < subTask; i++)
             stringBuffer.append("---------------");
         System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
+
+        //第一个窗口需要告知从节点需要负责的索引区域
+        if (count == 1 && subTask == 0){
+            for (GNode gNode : globalTree.leafIDMap.values()) {
+                GDataNode leaf = (GDataNode) gNode;
+                out.collect(new GlobalToLocalElem(leaf.leafID, 3, new LocalRegionAdjustInfo(null, null, leaf.region)));
+            }
+        }
 
         //根据Global Index给输入项分区
         Iterator<DensityToGlobalElem> ite = elements.iterator();
@@ -89,8 +99,8 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             for (GDataNode oldLeaf : entry.getKey().getLeafs()) {
                 List<GDataNode> migrateOutLeafs = new ArrayList<>();
                 entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
-                List<Integer> migrateOutLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateOutLeafs, node -> node.leafID);
-                migrateOutLeafIDs.remove(new Integer(oldLeaf.leafID));
+                migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
+                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
                 migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
             }
             for (GDataNode newLeaf : entry.getValue().getLeafs()) {

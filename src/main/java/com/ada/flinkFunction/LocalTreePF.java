@@ -1,8 +1,7 @@
 package com.ada.flinkFunction;
 
-import com.ada.geometry.GridPoint;
+import com.ada.QBSTree.RCDataNode;
 import com.ada.geometry.GridRectangle;
-import com.ada.QBSTree.ElemRoot;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.geometry.Point;
@@ -22,33 +21,24 @@ import org.apache.flink.queryablestate.client.QueryableStateClient;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import redis.clients.jedis.Jedis;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String, Integer, TimeWindow> {
     private boolean isFirst = true;
-    private boolean isClose;
     private int subTask;
     private RCtree<Segment> localIndex;
-    private Queue<List<Segment>> segmentsQueue;
-    private long count;
-    private long startWindow;
+    private Map<Long,List<Segment>> segmentsMap;
+    private Jedis jedis = new Jedis("localhost");
 
-    private transient ValueState<Long> divideHeartbeat;   //心跳信息
-    private transient ListState<Segment> migrateOutData;
-    private QueryableStateClient client = null;
-    private JobID jobID = null;
-
-    private List<Segment> indexData;           //索引项信息
-    private List<Integer> migrateFrom;         //索引项迁入信息
-    private Map<Integer, Segment> migrateTo; //索引项迁出信息
-    private GridRectangle[] newRootRectangle;  //Local Index重建信息
 
     @Override
     public void process(Integer key, Context context, Iterable<GlobalToLocalElem> elements, Collector<String> out) throws Exception {
-        startWindow = context.window().getStart();
+        long startWindow = context.window().getStart();
 
         StringBuilder stringBuffer = new StringBuilder();
         stringBuffer.append("                                             ");
@@ -56,78 +46,137 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
         for (int i = 0; i < subTask; i++)
             stringBuffer.append("---------------");
         int total = 0;
-        for (List<Segment> value : segmentsQueue)
+        for (List<Segment> value : segmentsMap.values())
             total += value.size();
-        System.out.println(stringBuffer + "Local--" + subTask + " "+ key + ": " + count/10L + "\t" + total);
+        System.out.println(stringBuffer + "Local--" + subTask + " "+ key + ": " + startWindow + "\t" + total);
 
-        if (isFirst) {
-            openThisSubtask();
-            createTreeAndGrid();
-        }
-
-        //将输入数据分类成索引项信息indexData、索引项迁入信息migrateFrom、
-        // 索引项迁出信息migrateTo、Local Index重建信息newRootRectangle。
-        List<Rectangle> queries = new ArrayList<>();
+        //将输入数据分类
+        List<Rectangle> queryItems = new ArrayList<>();
+        List<Segment> indexItems = new ArrayList<>();
         LocalRegionAdjustInfo adjustInfo = null;
         for (GlobalToLocalElem elem : elements) {
             if (elem.elementType == 1) {
-                localIndex.insert((Segment) elem.value);
+                indexItems.add((Segment) elem.value);
             } else if (elem.elementType == 2) {
-                queries.add((Rectangle) elem.value);
+                queryItems.add((Rectangle) elem.value);
             } else {
                 adjustInfo = (LocalRegionAdjustInfo) elem.value;
             }
         }
+        if (isFirst) {
+            assert adjustInfo != null;
+            openThisSubtask(adjustInfo);
+            adjustInfo = null;
+            isFirst = false;
+        }
+        for (Segment item : indexItems) {
+            localIndex.insert(item);
+        }
+        segmentsMap.put(startWindow, indexItems);
+        for (Rectangle rectangle : queryItems)
+            queryResToString(out, rectangle);
 
 //        segmentssCheck();
         //从索引中移除过时数据
-        if (count/10 > Constants.logicWindow){
-            for (Segment segment : segmentsQueue.remove())
-                localIndex.delete(segment);
-        }
-
-        //插入新的索引项，并执行查询操作
-        if (indexData.size() > 0) {
-            processIndexData(out);
-        }
-
-        //将迁出的索引项添加到migrateOutData中
-        if (migrateTo.size() > 0){
-            for (Segment value : migrateTo.values()) {
-                List<Segment> list = new ArrayList<>();
-                for (Segment elem : localIndex.<Segment>rectQuery(value.rect, true)) {
-                    Segment segment2 = new Segment(elem.p1, elem.p2);
-                    segment2.leaf = null;
-                    list.add(segment2);
-                }
-                migrateOutData.addAll(list);
+        long logicStartTime = startWindow - Constants.logicWindow*Constants.windowSize;
+        Iterator<Map.Entry<Long, List<Segment>>> ite = segmentsMap.entrySet().iterator();
+        while (ite.hasNext()){
+            Map.Entry<Long, List<Segment>> entry = ite.next();
+            if (entry.getKey() < logicStartTime){
+                ite.remove();
+                for (Segment segment : entry.getValue())
+                    localIndex.delete(segment);
+                break;
             }
-            divideHeartbeat.update(count);
+
         }
 
-        //重建本subTask中的Local Index
-        if (!isFirst && newRootRectangle[0] != null)
-            rebuildLocalIndex();
-        else
-            isFirst = false;
 
-        //迁入远程索引项
-        if (migrateFrom.size() > 0){
-            getMigrateData(migrateFrom);
-            divideHeartbeat.update(count+1);
+        //需要数据迁移
+        if (adjustInfo != null){
+            //将需要迁出的数据添加到Redis中
+            if (adjustInfo.migrateOutST != null){
+                for (Tuple2<Integer, Rectangle> tuple2 : adjustInfo.migrateOutST) {
+                    List<Segment> segments = localIndex.rectQuery(tuple2.f1, false);
+                    for (Segment segment : segments) {
+                        Long time = startWindow - ((int) Math.ceil((startWindow - segment.p2.timestamp) / (double) Constants.windowSize)) * Constants.windowSize;
+                        segmentsMap.get(time).remove(segment);
+                    }
+                    String redisKey = startWindow + "|" + subTask + "|" + tuple2.f0;
+                    jedis.set(redisKey.getBytes(StandardCharsets.UTF_8), toByteArray(segments));
+                }
+            }
+
+            List<Segment> newIndexElems;
+            if (adjustInfo.region == null){
+                closeThisSubtask();
+                return;
+            }else {
+                newIndexElems = new ArrayList<>(localIndex.rectQuery(adjustInfo.region, false));
+            }
+
+            if (adjustInfo.migrateFromST != null){
+                for (Integer migrateFromST : adjustInfo.migrateFromST) {
+                    List<Segment> segments = null;
+                    do{
+                        String redisKey = startWindow + "|" + migrateFromST + "|" + subTask;
+                        segments = (List<Segment>) toObject(jedis.get(redisKey.getBytes(StandardCharsets.UTF_8)));
+                        if (segments == null){
+                            Thread.sleep(100L);
+                        }else {
+                            jedis.del(redisKey);
+                            newIndexElems.addAll(segments);
+                            for (Segment segment : segments) {
+                                Long time = startWindow - ((int) Math.ceil((startWindow - segment.p2.timestamp) / (double) Constants.windowSize)) * Constants.windowSize;
+                                segmentsMap.get(time).add(segment);
+                            }
+                            break;
+                        }
+                    } while (true);
+                }
+            }
+
+            localIndex = new RCtree<>(4,1,11, adjustInfo.region,0);
+            System.gc();
+            ((RCDataNode<Segment>)localIndex.root).elms = newIndexElems;
+            localIndex.rebuildRoot(adjustInfo.region);
         }
+    }
 
-        //等待migrateOutData中的数据迁移完成，将migrateOutData中数据清空
-        if (!migrateTo.isEmpty()){
-            waitMigrate(migrateTo.keySet());
-            migrateOutData.clear();
+    /**
+     * 对象转数组
+     */
+    private byte[] toByteArray (Object obj) {
+        byte[] bytes = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.flush();
+            bytes = bos.toByteArray ();
+            oos.close();
+            bos.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
+        return bytes;
+    }
 
-        //弃用本subTask，清理成员变量
-        if (isClose)
-            closeThisSubtask();
-
-        closeWindow();
+    /**
+     * 数组转对象
+     */
+    private Object toObject (byte[] bytes) {
+        Object obj = null;
+        try {
+            ByteArrayInputStream bis = new ByteArrayInputStream (bytes);
+            ObjectInputStream ois = new ObjectInputStream (bis);
+            obj = ois.readObject();
+            ois.close();
+            bis.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return obj;
     }
 
     private boolean check(short[][] shortsss, int number) {
@@ -142,7 +191,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
 
     boolean segmentssCheck(){
         boolean[] flags = new boolean[]{true};
-        segmentsQueue.forEach(segments -> {
+        segmentsMap.values().forEach(segments -> {
             if (!flags[0])
                 return;
             for (Segment segment : segments) {
@@ -155,62 +204,11 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
         return flags[0];
     }
 
-    /**
-     * 本次窗口计算结束，清空分类后的输入数据
-     */
-    private void closeWindow() {
-        indexData.clear();
-        migrateFrom.clear();
-        migrateTo.clear();
-        newRootRectangle[0] = null;
-        count = (count/10L + 1L)*10L;
-    }
-
-    /**
-     * 重新建立本节点局部索引
-     */
-    private void rebuildLocalIndex() {
-        createTreeAndGrid();
-        Rectangle rootRectangle = newRootRectangle[0].toRectangle().extendToInt();
-        segmentsQueue.forEach(segments -> {
-            for (Iterator<Segment> ite = segments.iterator(); ite.hasNext();){
-                Segment segment = ite.next();
-                if (segment.rect.isIntersection(rootRectangle)){
-                    localIndex.insert(segment);
-                }else {
-                    ite.remove();
-                }
-            }
-        });
-    }
-
-    /**
-     * 处理索引数据
-     * @param out 窗口的输出
-     */
-    private void processIndexData(Collector<String> out) {
-        List<Segment> indexElems = new ArrayList<>();
-        List<Segment> queryElems = new ArrayList<>();
-        for (Segment segment : indexData) {
-            if (segment.data == null){//查询矩形
-                queryElems.add(segment);
-            }else { //插入轨迹段
-                indexElems.add(segment);
-                localIndex.insert(segment);
-//                density.alterElemNum(segment,true);
-            }
-        }
-        segmentss.put(startWindow, indexElems);
-        for (Segment querySeg : queryElems)
-            queryResToString(out, querySeg, localIndex);
-    }
-
-    static <T extends ElemRoot> void queryResToString(Collector<String> out, Segment querySeg, RCtree<T> localIndex) {
-        List<Segment> indexData = localIndex.rectQuery(querySeg.rect, true);
+    private void queryResToString(Collector<String> out, Rectangle rect) {
+        List<Segment> result = localIndex.rectQuery(rect, true);
         StringBuilder buffer = new StringBuilder();
-        buffer.append(Constants.appendSegment(querySeg));
-        buffer.append(" ").append(querySeg.p1.timestamp);
-        for (Segment re : indexData) {
+        buffer.append(rect.toString());
+        for (Segment re : result) {
             buffer.append("\t");
             buffer.append(Constants.appendSegment(re));
         }
@@ -221,19 +219,10 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
     /**
      * 第一次使用本节点，对成员变量赋初值
      */
-    private void openThisSubtask() throws IOException {
-        isClose = false;
-        segmentsQueue = new ArrayDeque<>();
-        localIndex = null;
+    private void openThisSubtask(LocalRegionAdjustInfo adjustInfo) {
+        segmentsMap = new HashMap<>();
+        localIndex = new RCtree<>(4,1,11, adjustInfo.region,0);
         subTask = getRuntimeContext().getIndexOfThisSubtask();
-        client = new QueryableStateClient(Constants.QueryStateIP, 9069);
-        jobID = JobID.fromHexString(Constants.getJobIDStr());
-        count = 20;
-        indexData = new ArrayList<>();
-        migrateFrom = new ArrayList<>();
-        migrateTo = new HashMap<>();
-        newRootRectangle = new GridRectangle[1];
-        divideHeartbeat.update(0L);
     }
 
     /**
@@ -241,152 +230,8 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
      */
     private void closeThisSubtask(){
         isFirst = true;
-        isClose = false;
-        subTask = -1;
         localIndex = null;
-        segmentsQueue = null;
-        client = null;
-        jobID = null;
+        segmentsMap = null;
+        System.gc();
     }
-
-
-    /**
-     * 等到远程节点获取本节点的迁移出的数据
-     * @param migrateTo 远程节点集合
-     */
-    private void waitMigrate(Set<Integer> migrateTo) throws Exception{
-        ValueStateDescriptor<Long> divideHeartbeatDescriptor = new ValueStateDescriptor<>(
-                "divideHeartbeatDescriptor",
-                TypeInformation.of(new TypeHint<Long>() {
-                }).createSerializer(new ExecutionConfig()));
-        Map<Integer, Boolean> flags = new HashMap<>();
-        boolean flag = false;
-        while (!flag) {
-            for (Integer key : migrateTo) {
-                if (!flags.keySet().contains(key))
-                    flags.put(key, false);
-                if (!flags.get(key)) {
-                    try {
-                        CompletableFuture<ValueState<Long>> resultFuture =
-                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKeyMap.get(key),
-                                        BasicTypeInfo.INT_TYPE_INFO, divideHeartbeatDescriptor);
-                        Long remoteHeart = resultFuture.join().value();
-                        if (remoteHeart == count + 1)
-                            flags.replace(key, true);
-                    }catch (Exception e){
-                        System.out.println("fake waitMigrate error.");
-//                        e.printStackTrace();
-                    }
-                }
-            }
-            flag = true;
-            for (Boolean value : flags.values()) {
-                if (!value) {
-                    flag = false;
-                    break;
-                }
-            }
-            if (!flag)
-                Thread.sleep(10L );
-        }
-    }
-
-    /**
-     * 获取远程节点中的迁移信息
-     */
-    private void getMigrateData(List<Integer> migrateIns) throws Exception{
-        ValueStateDescriptor<Long> divideHeartbeatDescriptor = new ValueStateDescriptor<>(
-                "divideHeartbeatDescriptor",
-                TypeInformation.of(new TypeHint<Long>() {
-                }).createSerializer(new ExecutionConfig()));
-        Map<Integer, Boolean> flags = new HashMap<>();
-        boolean flag = false;
-        if (newRootRectangle[0] == null)
-            System.out.print("");
-        Rectangle region = newRootRectangle[0].toRectangle().extendToInt();//density.root.getRegion().extendToInt();
-        while (!flag) {
-            for (Integer key : migrateIns) {
-                if (!flags.keySet().contains(key))
-                    flags.put(key, false);
-                if (!flags.get(key)) {
-                    try {
-                        CompletableFuture<ValueState<Long>> resultFuture =
-                                client.getKvState(jobID, "divideHeartbeat", Constants.divideSubTaskKeyMap.get(key),
-                                        BasicTypeInfo.INT_TYPE_INFO, divideHeartbeatDescriptor);
-                        Long remoteHeart = resultFuture.join().value();
-                        if (remoteHeart >= count) {
-                            ListStateDescriptor<Segment> migrateOutDataDescriptor = new ListStateDescriptor<>(
-                                    "migrateOutDataDescriptor",
-                                    TypeInformation.of(new TypeHint<Segment>() {
-                                    }).createSerializer(new ExecutionConfig()));
-                            CompletableFuture<ListState<Segment>> resultFuture1 =
-                                    client.getKvState(jobID, "migrateOutData", Constants.divideSubTaskKeyMap.get(key),
-                                            BasicTypeInfo.INT_TYPE_INFO, migrateOutDataDescriptor);
-                            ListState<Segment> listState = resultFuture1.join();
-                            listState.get().forEach(segment -> {
-                                if (region.isIntersection(segment.rect)) {
-                                    long timeStamp = segment.p2.timestamp;
-                                    long time = startWindow - ((int) Math.ceil((startWindow - timeStamp) / (double) Constants.windowSize)) * Constants.windowSize;
-                                    List<Segment> segments = segmentss.get(time);
-                                    if (segments == null) {
-                                        segments = new ArrayList<>();
-                                        segments.add(segment);
-                                        segmentss.put(time, segments);
-                                    } else {
-                                        if (segments.contains(segment))
-                                            return;
-                                        else
-                                            segments.add(segment);
-                                    }
-                                    localIndex.insert(segment);
-//                                    density.alterElemNum(segment, true);
-                                }
-                            });
-                            flags.replace(key, true);
-                        }
-                    }catch (Exception e){
-                        System.out.println("getMigrateData error.");
-                        e.printStackTrace();
-                    }
-                }
-            }
-            flag = true;
-            for (Boolean value : flags.values()) {
-                if (!value) {
-                    flag = false;
-                    break;
-                }
-            }
-            if (!flag)
-                Thread.sleep(10L );
-        }
-    }
-
-    /**
-     * 创建空的Local Index
-     */
-    private void createTreeAndGrid() {
-        Rectangle rectangle = newRootRectangle[0].toRectangle().extendToInt();//density.root.getRegion();
-        rectangle = new Rectangle(new Point(rectangle.low.data[0]-600.0, rectangle.low.data[1]-600.0),
-                new Point(rectangle.high.data[0]+600.0, rectangle.high.data[1]+600.0));
-        localIndex = new RCtree<>(4,1,11, rectangle,0);
-    }
-
-    @Override
-    public void open(Configuration parameters) {
-        ValueStateDescriptor<Long> divideHeartbeatDescriptor =
-                new ValueStateDescriptor<>(
-                        "divideHeartbeatDescriptor", // the state name
-                        TypeInformation.of(new TypeHint<Long>() {})); // default value of the state, if nothing was set
-        divideHeartbeatDescriptor.setQueryable("divideHeartbeat");
-        divideHeartbeat = getRuntimeContext().getState(divideHeartbeatDescriptor);
-        ListStateDescriptor<Segment> migrateOutDataDescriptor =
-                new ListStateDescriptor<>(
-                        "migrateOutDataDescriptor",
-                        TypeInformation.of(new TypeHint<Segment>() {})
-                ); // default value of the state, if nothing was set
-        migrateOutDataDescriptor.setQueryable("migrateOutData");
-        migrateOutData = getRuntimeContext().getListState(migrateOutDataDescriptor);
-    }
-
 }

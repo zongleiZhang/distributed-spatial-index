@@ -30,7 +30,7 @@ public class GTree {
     /**
      * 叶节点ID与叶节点的map映射
      */
-    transient private Map<Integer, GDataNode> leafIDMap;
+    transient public Map<Integer, GDataNode> leafIDMap;
 
     /**
      * 弃用的叶节点ID，待废弃
