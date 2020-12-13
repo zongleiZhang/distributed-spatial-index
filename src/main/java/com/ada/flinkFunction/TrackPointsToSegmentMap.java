@@ -18,7 +18,7 @@ public class TrackPointsToSegmentMap extends RichFlatMapFunction<TrackPoint, Seg
         if (p0 != null){
             //过滤停止不动的轨迹段和距离跨度过大的轨迹段
             if ( !(Constants.isEqual(value.data[0], p0.data[0]) && Constants.isEqual(value.data[1], p0.data[1]) ||
-                    Math.abs(p0.data[0] - value.data[0]) > 400 || Math.abs(p0.data[1] - value.data[1]) > 400) ) {
+                    Math.abs(p0.data[0] - value.data[0]) > Constants.maxSegment || Math.abs(p0.data[1] - value.data[1]) > Constants.maxSegment) ) {
                 Segment segment = new Segment(p0, value);
                 out.collect(segment);
             }

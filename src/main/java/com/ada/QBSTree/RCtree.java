@@ -97,6 +97,8 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 
 	public RCDataNode<T> insert(T elem) {
+		if (!root.centerRegion.isInternal(elem))
+			System.out.println();
 		if (cacheSize == 0) {
 			RCDataNode<T> leafNode = root.chooseLeafNode(elem);
 			leafNode.insert();

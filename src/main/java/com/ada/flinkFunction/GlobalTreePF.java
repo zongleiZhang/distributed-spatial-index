@@ -24,7 +24,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
     private int subTask;
     private GTree globalTree;
     private Queue<int[][]> densityQueue;
-    private int count;
 
     public  GlobalTreePF(){ }
 
@@ -33,20 +32,27 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                         Context context,
                         Iterable<DensityToGlobalElem> elements,
                         Collector<GlobalToLocalElem> out){
-//        StringBuilder stringBuffer = new StringBuilder();
-//        for (int i = 0; i < subTask; i++)
-//            stringBuffer.append("---------------");
-//        System.out.println(stringBuffer + "Global--" + subTask + ": " + count / 10L);
-
-        //第一个窗口需要告知从节点需要负责的索引区域
-        if (count == 1 && subTask == 0){
-            for (GNode gNode : globalTree.leafIDMap.values()) {
-                GDataNode leaf = (GDataNode) gNode;
-                out.collect(new GlobalToLocalElem(leaf.leafID, 3, new LocalRegionAdjustInfo(null, null, leaf.region)));
-            }
-        }
-
         //根据Global Index给输入项分区
+        int[][] density = processElemAndDensity(elements, out);
+
+
+        // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
+        if (density != null){
+            densityQueue.add(density);
+            Constants.addArrsToArrs(globalTree.density, density, true);
+            if (densityQueue.size() > Constants.logicWindow / Constants.balanceFre)
+                Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
+
+            //调整Global Index
+            Map<GNode, GNode> nodeMap = globalTree.updateTree();
+
+            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
+            if (!nodeMap.isEmpty() && subTask == 0)
+                adjustLocalTasksRegion(nodeMap, out);
+        }
+    }
+
+    private int[][] processElemAndDensity(Iterable<DensityToGlobalElem> elements, Collector<GlobalToLocalElem> out) {
         int queryCount = 0;
         List<int[][]> densities = new ArrayList<>(Constants.globalPartition);
         for (DensityToGlobalElem element : elements) {
@@ -70,26 +76,8 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             }
         }
         for (int i = 1; i < densities.size(); i++)
-            Constants.addArrsToArrs(densities.get(0), densities.get(i), false);
-
-
-        // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
-        if (count%Constants.balanceFre == 0){
-            densityQueue.add(densities.get(0));
-            Constants.addArrsToArrs(globalTree.density, densities.get(0), true);
-            if (count > Constants.logicWindow)
-                Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
-
-            //调整Global Index
-            Map<GNode, GNode> nodeMap = globalTree.updateTree();
-
-            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
-            if (!nodeMap.isEmpty() && subTask == 0)
-                adjustLocalTasksRegion(nodeMap, out);
-
-            globalTree.discardLeafIDs.clear();
-        }
-        count++;
+            Constants.addArrsToArrs(densities.get(0), densities.get(i), true);
+        return densities.isEmpty()?null:densities.get(0);
     }
 
     private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap,
@@ -130,7 +118,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         try {
             subTask = getRuntimeContext().getIndexOfThisSubtask();
             densityQueue = new ArrayDeque<>();
-            count = 1;
             globalTree = new GTree();
         }catch (Exception e){
             e.printStackTrace();

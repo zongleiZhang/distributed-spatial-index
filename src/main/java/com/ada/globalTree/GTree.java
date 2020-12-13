@@ -1,11 +1,13 @@
 package com.ada.globalTree;
 
+import com.ada.Hungarian.Hungary;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
 import com.ada.common.Constants;
 import com.ada.common.Path;
 import com.ada.geometry.*;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -31,11 +33,6 @@ public class GTree {
      * 叶节点ID与叶节点的map映射
      */
     transient public Map<Integer, GDataNode> leafIDMap;
-
-    /**
-     * 弃用的叶节点ID，待废弃
-     */
-    transient public List<Integer> discardLeafIDs;
 
     private DispatchLeafID dispatchLeafID;
 
@@ -96,7 +93,6 @@ public class GTree {
             leafs.add((GDataNode) leaf);
         root.setLeafs(leafs);
         dispatchLeafID = new DispatchLeafID();
-        discardLeafIDs = new ArrayList<>();
         leafIDMap = new HashMap<>();
         Integer leafID;
         leafID = dispatchLeafID.getLeafID();
@@ -325,7 +321,7 @@ public class GTree {
                     }
                 }
             }
-            int[][] leafIDMap = Constants.redisPatchLeafID(matrix, 100*globalLowBound);
+            int[][] leafIDMap = redisPatchLeafID(matrix, 100*globalLowBound);
             for (int[] map : leafIDMap) {
                 int leafId = oldLeafNodes.get(map[1]).leafID;
                 newLeafNodes.get(map[0]).setLeafID(leafId);
@@ -339,7 +335,6 @@ public class GTree {
                     if (!reassigningID.contains(i)){
                         Integer leafID = dispatchLeafID.getLeafID();
                         newLeafNodes.get(i).setLeafID(leafID);
-                        discardLeafIDs.remove(leafID);
                         this.leafIDMap.put(leafID, newLeafNodes.get(i));
                     }
                 }
@@ -351,7 +346,6 @@ public class GTree {
                 for (int i = 0; i < oldLeafNodes.size(); i++) {
                     if (!reassignedID.contains(i)){
                         Integer leafID = oldLeafNodes.get(i).leafID;
-                        discardLeafIDs.add(leafID);
                         dispatchLeafID.discardLeafID(leafID);
                     }
                 }
@@ -367,25 +361,72 @@ public class GTree {
             for (GDataNode newLeafNode : newLeafNodes) {
                 leafID = dispatchLeafID.getLeafID();
                 newLeafNode.setLeafID(leafID);
-                discardLeafIDs.remove(leafID);
                 this.leafIDMap.put(newLeafNode.leafID, newLeafNode);
             }
         }else if(oldNode instanceof GDirNode && newNode instanceof GDataNode){ //多合一
             GDirNode oldDirNode = (GDirNode) oldNode;
             List<GDataNode> oldLeafNodes = new ArrayList<>(oldDirNode.getLeafs());
             int maxNumLeaf = getMaxElemNumIndex(oldLeafNodes);
-            Integer leafID = oldLeafNodes.get(maxNumLeaf).leafID;
+            int leafID = oldLeafNodes.get(maxNumLeaf).leafID;
             ((GDataNode)newNode).setLeafID(leafID);
             this.leafIDMap.put(leafID, (GDataNode)newNode);
             oldLeafNodes.remove(maxNumLeaf);
             for (GDataNode oldLeafNode : oldLeafNodes) {
                 leafID = oldLeafNode.leafID;
-                discardLeafIDs.add(leafID);
                 dispatchLeafID.discardLeafID(leafID);
             }
         }else {
             throw new IllegalArgumentException("GNode type error.");
         }
+    }
+
+
+    /**
+     * 使用Hungarian Algorithm重新分配leafID.
+     * @param matrix 分裂前后元素映射数量关系
+     * @return 分配结果
+     */
+    private int[][] redisPatchLeafID(int[][] matrix, int upBound){
+        int rowNum = matrix.length;
+        int colNum = matrix[0].length;
+        int[][] newMatrix;
+        if (rowNum > colNum){
+            newMatrix = new int[rowNum][rowNum];
+            for (int i = 0; i < newMatrix.length; i++) {
+                for (int j = 0; j < newMatrix[0].length; j++) {
+                    if (j >= matrix[0].length)
+                        newMatrix[i][j] = upBound;
+                    else
+                        newMatrix[i][j] = upBound - matrix[i][j];
+                }
+            }
+        }else {
+            newMatrix = new int[colNum][];
+            for (int i = 0; i < newMatrix.length; i++) {
+                if (i < matrix.length) {
+                    newMatrix[i] = new int[colNum];
+                    for (int j = 0; j < colNum; j++)
+                        newMatrix[i][j] = upBound - matrix[i][j];
+                }else {
+                    newMatrix[i] = new int[colNum];
+                    Arrays.fill(newMatrix[i],upBound);
+                }
+            }
+        }
+        int[][] res = Hungary.calculate(newMatrix);
+        List<Tuple2<Integer,Integer>> list = new ArrayList<>();
+        for (int[] re : res)
+            list.add(new Tuple2<>(re[0],re[1]));
+        if (rowNum > colNum)
+            list.removeIf(ints -> ints.f1 >= colNum);
+        else
+            list.removeIf(ints -> ints.f0 >= rowNum);
+        res = new int[list.size()][2];
+        for (int i = 0; i < res.length; i++) {
+            res[i][0] = list.get(i).f0;
+            res[i][1] = list.get(i).f1;
+        }
+        return res;
     }
 
 

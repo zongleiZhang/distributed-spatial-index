@@ -60,7 +60,7 @@ public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoin
 				df.format(data[0]) + " " +
 				df.format(data[1]) + " " +
 				this.timestamp + " " +
-				myFormat.format(date) + "-";
+				myFormat.format(date);
 	}
 
 	@Override

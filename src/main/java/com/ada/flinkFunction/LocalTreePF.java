@@ -1,23 +1,16 @@
 package com.ada.flinkFunction;
 
 import com.ada.QBSTree.RCDataNode;
-import com.ada.geometry.GridRectangle;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
-import com.ada.geometry.Point;
+import com.ada.geometry.GridPoint;
+import com.ada.geometry.GridRectangle;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
 import com.ada.model.GlobalToLocalElem;
 import com.ada.model.LocalRegionAdjustInfo;
-import org.apache.flink.api.common.ExecutionConfig;
-import org.apache.flink.api.common.JobID;
-import org.apache.flink.api.common.state.*;
-import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.queryablestate.client.QueryableStateClient;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -26,29 +19,18 @@ import redis.clients.jedis.Jedis;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String, Integer, TimeWindow> {
-    private boolean isFirst = true;
+    private boolean isFirst;
     private int subTask;
     private RCtree<Segment> localIndex;
     private Map<Long,List<Segment>> segmentsMap;
-    private Jedis jedis = new Jedis("localhost");
+    private Jedis jedis;
 
 
     @Override
     public void process(Integer key, Context context, Iterable<GlobalToLocalElem> elements, Collector<String> out) throws Exception {
         long startWindow = context.window().getStart();
-
-        StringBuilder stringBuffer = new StringBuilder();
-        stringBuffer.append("                                             ");
-        stringBuffer.append("------------------------------");
-        for (int i = 0; i < subTask; i++)
-            stringBuffer.append("---------------");
-        int total = 0;
-        for (List<Segment> value : segmentsMap.values())
-            total += value.size();
-        System.out.println(stringBuffer + "Local--" + subTask + " "+ key + ": " + startWindow + "\t" + total);
 
         //将输入数据分类
         List<Rectangle> queryItems = new ArrayList<>();
@@ -63,12 +45,13 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                 adjustInfo = (LocalRegionAdjustInfo) elem.value;
             }
         }
+
         if (isFirst) {
             assert adjustInfo != null;
-            openThisSubtask(adjustInfo);
-            adjustInfo = null;
+            openThisSubTask(adjustInfo);
             isFirst = false;
         }
+
         for (Segment item : indexItems) {
             localIndex.insert(item);
         }
@@ -100,6 +83,8 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                     List<Segment> segments = localIndex.rectQuery(tuple2.f1, false);
                     for (Segment segment : segments) {
                         Long time = startWindow - ((int) Math.ceil((startWindow - segment.p2.timestamp) / (double) Constants.windowSize)) * Constants.windowSize;
+                        if (segmentsMap.get(time) == null)
+                            System.out.println();
                         segmentsMap.get(time).remove(segment);
                     }
                     String redisKey = startWindow + "|" + subTask + "|" + tuple2.f0;
@@ -109,7 +94,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
 
             List<Segment> newIndexElems;
             if (adjustInfo.region == null){
-                closeThisSubtask();
+                closeThisSubTask();
                 return;
             }else {
                 newIndexElems = new ArrayList<>(localIndex.rectQuery(adjustInfo.region, false));
@@ -120,15 +105,16 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                     List<Segment> segments = null;
                     do{
                         String redisKey = startWindow + "|" + migrateFromST + "|" + subTask;
-                        segments = (List<Segment>) toObject(jedis.get(redisKey.getBytes(StandardCharsets.UTF_8)));
-                        if (segments == null){
+                        byte[] redisData = jedis.get(redisKey.getBytes(StandardCharsets.UTF_8));
+                        if (redisData == null){
                             Thread.sleep(100L);
                         }else {
+                            segments = (List<Segment>) toObject(redisData);
                             jedis.del(redisKey);
                             newIndexElems.addAll(segments);
                             for (Segment segment : segments) {
                                 Long time = startWindow - ((int) Math.ceil((startWindow - segment.p2.timestamp) / (double) Constants.windowSize)) * Constants.windowSize;
-                                segmentsMap.get(time).add(segment);
+                                segmentsMap.computeIfAbsent(time, aLong -> new ArrayList<>()).add(segment);
                             }
                             break;
                         }
@@ -219,19 +205,47 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
     /**
      * 第一次使用本节点，对成员变量赋初值
      */
-    private void openThisSubtask(LocalRegionAdjustInfo adjustInfo) {
+    private void openThisSubTask(LocalRegionAdjustInfo adjustInfo) {
         segmentsMap = new HashMap<>();
-        localIndex = new RCtree<>(4,1,11, adjustInfo.region,0);
-        subTask = getRuntimeContext().getIndexOfThisSubtask();
+        localIndex = new RCtree<>(4,1,11, adjustInfo.region.extendLength(Constants.maxSegment),0);
     }
 
     /**
      * 弃用本处理节点
      */
-    private void closeThisSubtask(){
+    private void closeThisSubTask(){
         isFirst = true;
         localIndex = null;
         segmentsMap = null;
         System.gc();
+    }
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        super.open(parameters);
+        jedis = new Jedis("localhost");
+        subTask = getRuntimeContext().getIndexOfThisSubtask();
+        isFirst = true;
+        Rectangle rect = null;
+        switch (subTask){
+            case 0:
+                rect = new GridRectangle(new GridPoint(0,0), new GridPoint(200, 200)).toRectangle();
+                break;
+            case 1:
+                rect = new GridRectangle(new GridPoint(0,201), new GridPoint(200, 511)).toRectangle();
+                break;
+            case 2:
+                rect = new GridRectangle(new GridPoint(201,0), new GridPoint(511, 200)).toRectangle();
+                break;
+            case 3:
+                rect = new GridRectangle(new GridPoint(201,201), new GridPoint(511, 511)).toRectangle();
+                break;
+            default:
+                break;
+        }
+        if (rect != null) {
+            isFirst = false;
+            openThisSubTask(new LocalRegionAdjustInfo(null, null, rect));
+        }
     }
 }

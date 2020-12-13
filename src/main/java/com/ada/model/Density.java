@@ -10,12 +10,14 @@ import java.io.Serializable;
 public class Density implements DensityToGlobalElem, Serializable {
     public int[][] grids;
     public int key;
+    public long timeStamp;
 
     public Density() {}
 
-    public Density(int[][] grids, int key) {
+    public Density(int[][] grids, int key, long timeStamp) {
         this.grids = grids;
         this.key = key;
+        this.timeStamp = timeStamp;
     }
 
     @Override

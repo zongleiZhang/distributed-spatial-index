@@ -13,7 +13,7 @@ public class TrackPointTimeAndWater implements AssignerWithPeriodicWatermarks<Tr
 
 	@Override
 	public Watermark getCurrentWatermark() {
-		return new Watermark(currentMaxTimestamp - 10);
+		return new Watermark(currentMaxTimestamp - 1);
 	}
 
 	@Override

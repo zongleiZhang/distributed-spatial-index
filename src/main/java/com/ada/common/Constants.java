@@ -23,6 +23,11 @@ public class Constants implements Serializable {
     public final static DecimalFormat df = new DecimalFormat("#.00000");
 
     /**
+     * 本系统要求轨迹段断电在坐标轴上的映射的最大离
+     */
+    public final static double maxSegment = 400.0;
+
+    /**
      * 全局索引的并行度
      */
     public static int globalPartition;
@@ -155,54 +160,6 @@ public class Constants implements Serializable {
             return false;
         else
             return curRectangle.equals(orgRectangle);
-    }
-
-    /**
-     * 使用Hungarian Algorithm重新分配leafID.
-     * @param matrix 分裂前后元素映射数量关系
-     * @return 分配结果
-     */
-    public static int[][] redisPatchLeafID(int[][] matrix, int upBound){
-        int rowNum = matrix.length;
-        int colNum = matrix[0].length;
-        int[][] newMatrix;
-        if (rowNum > colNum){
-            newMatrix = new int[rowNum][rowNum];
-            for (int i = 0; i < newMatrix.length; i++) {
-                for (int j = 0; j < newMatrix[0].length; j++) {
-                    if (j >= matrix[0].length)
-                        newMatrix[i][j] = upBound;
-                    else
-                        newMatrix[i][j] = upBound - matrix[i][j];
-                }
-            }
-        }else {
-            newMatrix = new int[colNum][];
-            for (int i = 0; i < newMatrix.length; i++) {
-                if (i < matrix.length) {
-                    newMatrix[i] = new int[colNum];
-                    for (int j = 0; j < colNum; j++)
-                        newMatrix[i][j] = upBound - matrix[i][j];
-                }else {
-                    newMatrix[i] = new int[colNum];
-                    Arrays.fill(newMatrix[i],upBound);
-                }
-            }
-        }
-        int[][] res = Hungary.calculate(newMatrix);
-        List<Tuple2<Integer,Integer>> list = new ArrayList<>();
-        for (int[] re : res)
-            list.add(new Tuple2<>(re[0],re[1]));
-        if (rowNum > colNum)
-            list.removeIf(ints -> ints.f1 >= colNum);
-        else
-            list.removeIf(ints -> ints.f0 >= rowNum);
-        res = new int[list.size()][2];
-        for (int i = 0; i < res.length; i++) {
-            res[i][0] = list.get(i).f0;
-            res[i][1] = list.get(i).f1;
-        }
-        return res;
     }
 
 
