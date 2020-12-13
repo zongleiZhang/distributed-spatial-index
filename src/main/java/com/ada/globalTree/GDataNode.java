@@ -24,8 +24,8 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
     }
 
 
-    public List<GDataNode> getLeafs() {
-        return Collections.singletonList(this);
+    public void getLeafs(List<GDataNode> leafs) {
+        leafs.add(this);
     }
 
 
@@ -173,12 +173,12 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
         if (parent != null){
             parent.child[position] = node;
         }
-//        node.check();
         return node;
     }
 
-    void setAllElemNumZero() {
-        elemNum = 0;
+    int updateElemNum(){
+        elemNum = tree.getRangeEleNum(this.gridRegion);
+        return elemNum;
     }
 
     /**
@@ -199,6 +199,8 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
         int newX = 0;
         while (tmp < bound){
             newX++;
+            if (newX == elemNums.length)
+                System.out.println();
             tmp += elemNums[newX];
         }
         return newX;

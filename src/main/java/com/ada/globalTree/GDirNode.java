@@ -3,14 +3,16 @@ package com.ada.globalTree;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
 import com.ada.geometry.Rectangle;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
+@Getter
+@Setter
 public class GDirNode extends GNode{
 
     public GNode[] child;
-
-    public List<GDataNode> leafs;
 
     public GDirNode(){}
 
@@ -19,12 +21,9 @@ public class GDirNode extends GNode{
         this.child = child;
     }
 
-    public List<GDataNode> getLeafs() {
-        return leafs;
-    }
-
-    public void setLeafs(List<GDataNode> leafs) {
-        this.leafs = leafs;
+    public void getLeafs(List<GDataNode> leafs) {
+        for (GNode gNode : child)
+            gNode.getLeafs(leafs);
     }
 
     boolean checkGDirNode() {
@@ -47,14 +46,6 @@ public class GDirNode extends GNode{
         return true;
     }
 
-    public GNode[] getChild() {
-        return child;
-    }
-
-    public void setChild(GNode[] child) {
-        this.child = child;
-    }
-
     public GDataNode searchGPoint(GridPoint gPoint) {
         for (GNode gNode : child) {
             if (gNode.gridRegion.isInternal(gPoint))
@@ -67,7 +58,7 @@ public class GDirNode extends GNode{
         for (GNode node : child) {
             if (rectangle.isIntersection(node.region)) {
                 if (rectangle.isInternal(node.region))
-                    leafs.addAll(node.getLeafs());
+                    node.getLeafs(leafs);
                 else
                     node.getIntersectLeafNodes(rectangle, leafs);
             }
@@ -75,22 +66,11 @@ public class GDirNode extends GNode{
     }
 
 
-
-    void setAllElemNumZero() {
+    int updateElemNum(){
         elemNum = 0;
-        for (GNode gNode : child)
-            gNode.setAllElemNumZero();
-    }
-
-    /**
-     * 更新本节点及祖先节点的leafs成员
-     * @param oldLeafs 被顶替的leafs
-     * @param newLeafs 顶替的leafs
-     */
-    void alterLeafs(List<GDataNode> oldLeafs, List<GDataNode> newLeafs) {
-        leafs.removeAll(oldLeafs);
-        leafs.addAll(newLeafs);
-        if (parent != null)
-            parent.alterLeafs(oldLeafs, newLeafs);
+        for (GNode gNode : child) {
+            elemNum += gNode.updateElemNum();
+        }
+        return elemNum;
     }
 }

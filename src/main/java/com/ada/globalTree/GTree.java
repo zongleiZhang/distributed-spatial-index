@@ -34,6 +34,9 @@ public class GTree {
      */
     transient public Map<Integer, GDataNode> leafIDMap;
 
+    /**
+     * 分配叶节点ID的功能成员
+     */
     private DispatchLeafID dispatchLeafID;
 
     static class DispatchLeafID{
@@ -65,7 +68,8 @@ public class GTree {
     }
 
     public boolean check(){
-        List<GDataNode> leafs = new ArrayList<>(root.getLeafs());
+        List<GDataNode> leafs = new ArrayList<>();
+        root.getLeafs(leafs);
         if (!Constants.collectionsEqual(leafs, leafIDMap.values()))
             throw new IllegalArgumentException("leafs are not equal.");
 //        List<GDataNode> res = Constants.collectDis(leafs);
@@ -88,10 +92,6 @@ public class GTree {
         gridRectangle = new GridRectangle(new GridPoint(201,201), new GridPoint(511, 511));
         root.child[3] = new GDataNode(root,3, gridRectangle,0,  this,3);
         density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-        List<GDataNode> leafs = new ArrayList<>();
-        for (GNode leaf : root.child)
-            leafs.add((GDataNode) leaf);
-        root.setLeafs(leafs);
         dispatchLeafID = new DispatchLeafID();
         leafIDMap = new HashMap<>();
         Integer leafID;
@@ -112,7 +112,7 @@ public class GTree {
     /**
      * 获取一个矩形内的元素数量
      */
-    private int getRangeEleNum(GridRectangle range) {
+    int getRangeEleNum(GridRectangle range) {
         int res = 0;
         for (int i = range.low.x; i <= range.high.x; i++) {
             for (int j = range.low.y; j <= range.high.y; j++) {
@@ -155,11 +155,8 @@ public class GTree {
      * 根据新的网格密度数据更新树结构
      */
     public Map<GNode, GNode> updateTree(){
-        //将GlobalTree中的所有节点的elemNum清零
-        root.setAllElemNumZero();
-
         //更新全局索引的每个节点上的elemNum信息
-        updateTreeInfo();
+        root.updateElemNum();
 
         //获取需要调整结构的子树集合
         Map<GNode, GNode> map = new HashMap<>();
@@ -168,16 +165,6 @@ public class GTree {
         //更新dirNodes中的每个子树
         adjustNodes(map);
         return map;
-    }
-
-    /**
-     * 更新全局索引的每个节点上的elemNum信息和网格密度信息
-     */
-    private void updateTreeInfo() {
-        for (GDataNode leaf : leafIDMap.values()) {
-            int eleNum = getRangeEleNum(leaf.gridRegion);
-            leaf.updateLeafElemNum(eleNum);
-        }
     }
 
     /**
@@ -286,12 +273,10 @@ public class GTree {
             GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
                     node.elemNum, node.tree,-1);
             GNode newNode = dataNode.adjustNode();
-            newNode.countLeafs();
             if (node.isRoot()) {
                 root = (GDirNode) newNode;
             }else {
                 node.parent.child[node.position] = newNode;
-                node.parent.alterLeafs(node.getLeafs(), newNode.getLeafs());
             }
             dispatchLeafID(node, newNode);
             nodes.replace(node, newNode);
@@ -305,8 +290,10 @@ public class GTree {
         if (oldNode instanceof GDirNode && newNode instanceof GDirNode){ //多分多
             GDirNode newDirNode = (GDirNode) newNode;
             GDirNode oldDirNode = (GDirNode) oldNode;
-            List<GDataNode> newLeafNodes = new ArrayList<>(newDirNode.getLeafs());
-            List<GDataNode> oldLeafNodes = new ArrayList<>(oldDirNode.getLeafs());
+            List<GDataNode> newLeafNodes = new ArrayList<>();
+            newDirNode.getLeafs(newLeafNodes);
+            List<GDataNode> oldLeafNodes = new ArrayList<>();
+            oldDirNode.getLeafs(oldLeafNodes);
             int[][] matrix = new int[newLeafNodes.size()][oldLeafNodes.size()];
             for (int i = 0; i < matrix.length; i++) {
                 GDataNode dataNode = newLeafNodes.get(i);
@@ -347,12 +334,14 @@ public class GTree {
                     if (!reassignedID.contains(i)){
                         Integer leafID = oldLeafNodes.get(i).leafID;
                         dispatchLeafID.discardLeafID(leafID);
+                        this.leafIDMap.remove(leafID);
                     }
                 }
             }
         }else if(oldNode instanceof GDataNode && newNode instanceof GDirNode){ //一分多
             GDirNode newDirNode = (GDirNode) newNode;
-            List<GDataNode> newLeafNodes = new ArrayList<>(newDirNode.getLeafs());
+            List<GDataNode> newLeafNodes = new ArrayList<>();
+            newDirNode.getLeafs(newLeafNodes);
             int maxNumLeaf = getMaxElemNumIndex(newLeafNodes);
             Integer leafID = ((GDataNode)oldNode).leafID;
             newLeafNodes.get(maxNumLeaf).setLeafID(leafID);
@@ -365,15 +354,17 @@ public class GTree {
             }
         }else if(oldNode instanceof GDirNode && newNode instanceof GDataNode){ //多合一
             GDirNode oldDirNode = (GDirNode) oldNode;
-            List<GDataNode> oldLeafNodes = new ArrayList<>(oldDirNode.getLeafs());
+            List<GDataNode> oldLeafNodes = new ArrayList<>();
+            oldDirNode.getLeafs(oldLeafNodes);
             int maxNumLeaf = getMaxElemNumIndex(oldLeafNodes);
-            int leafID = oldLeafNodes.get(maxNumLeaf).leafID;
+            Integer leafID = oldLeafNodes.get(maxNumLeaf).leafID;
             ((GDataNode)newNode).setLeafID(leafID);
             this.leafIDMap.put(leafID, (GDataNode)newNode);
             oldLeafNodes.remove(maxNumLeaf);
             for (GDataNode oldLeafNode : oldLeafNodes) {
                 leafID = oldLeafNode.leafID;
                 dispatchLeafID.discardLeafID(leafID);
+                this.leafIDMap.remove(leafID);
             }
         }else {
             throw new IllegalArgumentException("GNode type error.");
@@ -413,7 +404,7 @@ public class GTree {
                 }
             }
         }
-        int[][] res = Hungary.calculate(newMatrix);
+        int[][] res = new Hungary().calculate(newMatrix);
         List<Tuple2<Integer,Integer>> list = new ArrayList<>();
         for (int[] re : res)
             list.add(new Tuple2<>(re[0],re[1]));

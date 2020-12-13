@@ -107,8 +107,8 @@ public class Constants implements Serializable {
         }
         usedSubtask.clear();
 
-        maxParallelism = 128;
-//        maxParallelism = 256;
+//        maxParallelism = 128;
+        maxParallelism = 256;
         for (int i = 0; i < 1000000; i++) {
             Integer subTask = assignKeyToParallelOperator(i, maxParallelism, dividePartition);
             if (!usedSubtask.contains(subTask)) {

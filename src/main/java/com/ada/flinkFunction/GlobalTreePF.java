@@ -35,7 +35,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         //根据Global Index给输入项分区
         int[][] density = processElemAndDensity(elements, out);
 
-
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
         if (density != null){
             densityQueue.add(density);
@@ -43,8 +42,12 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             if (densityQueue.size() > Constants.logicWindow / Constants.balanceFre)
                 Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
 
+            if (subTask == 1)
+                System.out.println(context.window().getStart() + " " + globalTree.leafIDMap.size());
+
             //调整Global Index
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
+            globalTree.check();
 
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
             if (!nodeMap.isEmpty() && subTask == 0)
@@ -58,20 +61,20 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         for (DensityToGlobalElem element : elements) {
             if (element instanceof Segment){
                 Segment segment = (Segment) element;
-                List<Integer> leafs = globalTree.searchLeafNodes(segment.rect);
-                for (Integer leaf : leafs){
-                    out.collect(new GlobalToLocalElem(leaf, 1, segment));
-                }
-                queryCount++;
-                if (queryCount%Constants.ratio == 0){
-                    Point point = segment.p1;
-                    Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
-                    leafs = globalTree.searchLeafNodes(queryRect);
-                    for (Integer leafID : leafs) {
-                        out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
-                    }
-                }
-            }else {
+//                List<Integer> leafs = globalTree.searchLeafNodes(segment.rect);
+//                for (Integer leaf : leafs){
+//                    out.collect(new GlobalToLocalElem(leaf, 1, segment));
+//                }
+//                queryCount++;
+//                if (queryCount%Constants.ratio == 0){
+//                    Point point = segment.p1;
+//                    Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
+//                    leafs = globalTree.searchLeafNodes(queryRect);
+//                    for (Integer leafID : leafs) {
+//                        out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
+//                    }
+//                }
+            } else {
                 densities.add(((Density) element).grids);
             }
         }
@@ -85,14 +88,18 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
         Map<Integer, LocalRegionAdjustInfo> migrateOutMap = new HashMap<>();
         Map<Integer, LocalRegionAdjustInfo> migrateFromMap = new HashMap<>();
         for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
-            for (GDataNode oldLeaf : entry.getKey().getLeafs()) {
+            List<GDataNode> leafs = new ArrayList<>();
+            entry.getKey().getLeafs(leafs);
+            for (GDataNode oldLeaf : leafs) {
                 List<GDataNode> migrateOutLeafs = new ArrayList<>();
                 entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
                 migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
                 List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
                 migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
             }
-            for (GDataNode newLeaf : entry.getValue().getLeafs()) {
+            leafs.clear();
+            entry.getValue().getLeafs(leafs);
+            for (GDataNode newLeaf : leafs) {
                 List<GDataNode> migrateFromLeafs = new ArrayList<>();
                 entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
                 List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);

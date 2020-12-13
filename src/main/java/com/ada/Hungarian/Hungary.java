@@ -7,17 +7,17 @@ import java.util.Stack;
 
 public class Hungary {
 
-    private static int n;                    //维数
-    private static int[][] s;        //原始矩阵
-    private static int[][] p;        //归约矩阵
-    private static int[][] q;        //0:未被画线 1:画了1次 2: 画了2次(交点)
+    private int n;                    //维数
+    private int[][] s;        //原始矩阵
+    private int[][] p;        //归约矩阵
+    private int[][] q;        //0:未被画线 1:画了1次 2: 画了2次(交点)
 
-    public static int[] x;
-    public static int[] y;       //画线时是否被打勾，1是0不是
-    private static boolean need_stack;//当为true时，需要进栈
-    private static Stack<Main_Node> stack1;
+    private int[] x;
+    private int[] y;       //画线时是否被打勾，1是0不是
+    private boolean need_stack;//当为true时，需要进栈
+    private Stack<Main_Node> stack1;
 
-    private static void init(int[][] valus){
+    private void init(int[][] valus){
         n = valus.length;
         s = valus;
         p = new int[n][n];
@@ -28,7 +28,7 @@ public class Hungary {
         stack1 = new Stack<>();
     }
 
-    private static void close(){
+    private void close(){
         s = null;
         p = null;
         q = null;
@@ -37,7 +37,7 @@ public class Hungary {
         stack1 = null;
     }
 
-    public static int[][] calculate(int[][] valus) {
+    public int[][] calculate(int[][] valus) {
         init(valus);
         for(int i=0;i<valus.length;i++) {
             for (int j = 0; j < valus[i].length; j++) {
@@ -134,7 +134,7 @@ public class Hungary {
 
 
     //记录每行每列0的个数
-    public static void countZero(int []row,int[]col) {
+    public void countZero(int []row,int[]col) {
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < n; ++j)
                 if (p[i][j] == 0) {
@@ -146,7 +146,7 @@ public class Hungary {
     }
 
     //画最少的线覆盖所有0元素
-    public static int  drawLine() {
+    public int  drawLine() {
         for (int i = 0; i < n; i++)
             for (int j = 0; j < n; j++)
                 q[i][j] = 0;
@@ -214,7 +214,7 @@ public class Hungary {
     }
 
     //更新行列的0且进栈
-    public static void refresh1(int index,int index2,int[]row,int[]col) {
+    public void refresh1(int index,int index2,int[]row,int[]col) {
         for (int j = 0; j < n; ++j)
             if (p[index][j] == 0){ // 若该行还有0且没被划掉才更新
                 row[index]--;
@@ -233,7 +233,7 @@ public class Hungary {
     }
 
     //更新行列的0不进栈
-    public static void refresh2(int index,int index2,int[]row,int[]col) {
+    public void refresh2(int index,int index2,int[]row,int[]col) {
         for (int j = 0; j < n; ++j) {
             if (p[index][j] == 0) {//若该行还有0且没被划掉才更新
 
@@ -257,7 +257,7 @@ public class Hungary {
 	  3.直到所有0被划线退出
 	  4.need为false说明只做了前两步，need为true说明做了第四步（第四步是猜的，所以要进栈，如果第三步发现猜错了，出栈）
 	 */
-    public static int find() {
+    public int find() {
         int zero = 0;     //独立0元素的个数
         int[] row = new int[n];
         int[] col = new int[n];//行列0元素个数
@@ -291,8 +291,6 @@ public class Hungary {
                 int count = (int) (Math.random() * row[index]);//随机选哪一个0
                 int k = 0;
                 for (int i = 0; i < n; ++i) {
-                    if (p == null || p[index] == null)
-                        System.out.println();
                     if (p[index][i] == 0) {
                         if (k == count) {
                             index2 = i;
