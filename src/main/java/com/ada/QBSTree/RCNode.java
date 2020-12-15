@@ -202,7 +202,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 		Rectangle nRegion = region;
 		if (this instanceof  RCDirNode){
 			region = calculateRegion();
-			if( !Constants.rectangleEqual(nRegion, region) && parent != null)
+			if( !Rectangle.rectangleEqual(nRegion, region) && parent != null)
 				parent.updateRegion(nRegion, operatorType );
 		}else {
 			RCDataNode<T> cur = (RCDataNode<T>) this;
@@ -225,7 +225,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 					}
 					break;
 			}
-			if(!Constants.rectangleEqual(nRegion, region) && parent != null )
+			if(!Rectangle.rectangleEqual(nRegion, region) && parent != null )
 				parent.updateRegion(nRegion, operatorType );
 		}
 	}
@@ -349,7 +349,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 				cur.child[1].centerRegion.getTopBound() != cur.child[3].centerRegion.getLowBound() )
 			throw new IllegalArgumentException("Bound error");
 		Rectangle rectangle = cur.calculateRegion();
-		if (!Constants.rectangleEqual(rectangle, cur.region))
+		if (!Rectangle.rectangleEqual(rectangle, cur.region))
 			throw new IllegalArgumentException("!Constants.rectangleEqual(rectangle, cur.region)");
 		if(cur.depth != (cur.calculateDepth(false, -1)).get(0))
 			throw new IllegalArgumentException("cur.depth != (cur.calculateDepth(false, -1)).get(0)");
@@ -383,7 +383,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 				throw new IllegalArgumentException("elem.leaf != cur");
 		}
 		Rectangle checkRectangle = dataNode.calculateRegion();
-		if (!Constants.rectangleEqual(checkRectangle, region))
+		if (!Rectangle.rectangleEqual(checkRectangle, region))
 			throw new IllegalArgumentException("!Constants.rectangleEqual(checkRectangle, region)");
 		if (dataNode.depth != 0)
 			throw new IllegalArgumentException("cur.depth != 0");

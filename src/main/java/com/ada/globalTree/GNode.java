@@ -8,12 +8,13 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
 public abstract class GNode implements Serializable {
 
-    transient public int elemNum;
+    public int elemNum;
 
     transient public GDirNode parent;
 
@@ -81,4 +82,13 @@ public abstract class GNode implements Serializable {
      */
     public abstract void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs);
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GNode gNode = (GNode) o;
+        return elemNum == gNode.elemNum &&
+                Objects.equals(gridRegion, gNode.gridRegion) &&
+                Objects.equals(region, gNode.region);
+    }
 }

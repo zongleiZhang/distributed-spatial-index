@@ -4,6 +4,7 @@ import com.ada.common.ClassMct;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -12,7 +13,7 @@ import static java.lang.Integer.parseInt;
 
 @Getter
 @Setter
-public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoint> {
+public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoint>, Serializable {
 	public long timestamp;
 	public int TID;
 

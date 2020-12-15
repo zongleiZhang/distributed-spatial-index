@@ -6,6 +6,7 @@ import com.ada.common.ClassMct;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.*;
 
@@ -13,7 +14,7 @@ import static java.lang.Integer.parseInt;
 
 @Getter
 @Setter
-public class TrackPointElem extends ElemRoot implements Comparable<TrackPoint>{
+public class TrackPointElem extends ElemRoot implements Comparable<TrackPoint>, Serializable {
     public long timestamp;
     public int TID;
 

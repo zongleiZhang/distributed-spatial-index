@@ -10,9 +10,10 @@ import com.ada.geometry.*;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class GTree {
+public class GTree implements Serializable {
 
     /**
      * 根节点
@@ -27,55 +28,17 @@ public class GTree {
     /**
      * 密度网格
      */
-    transient public int[][] density;
+    public int[][] density;
 
     /**
      * 叶节点ID与叶节点的map映射
      */
-    transient public Map<Integer, GDataNode> leafIDMap;
+    public Map<Integer, GDataNode> leafIDMap;
 
     /**
      * 分配叶节点ID的功能成员
      */
-    private DispatchLeafID dispatchLeafID;
-
-    static class DispatchLeafID{
-        List<Integer> usedLeafID;
-
-        List<Integer> canUseLeafID;
-
-        DispatchLeafID(){
-            usedLeafID = new ArrayList<>();
-            canUseLeafID = new ArrayList<>();
-            for (int i = Constants.dividePartition-1; i >= 0; i--)
-                canUseLeafID.add(i);
-        }
-
-        Integer getLeafID(){
-            if (canUseLeafID.isEmpty()){
-                throw new IllegalArgumentException("LeafID is FPed");
-            }else {
-                Integer leafID = canUseLeafID.remove(canUseLeafID.size() - 1);
-                usedLeafID.add(leafID);
-                return leafID;
-            }
-        }
-
-        void discardLeafID(Integer leafID){
-            canUseLeafID.add(leafID);
-            usedLeafID.remove(leafID);
-        }
-    }
-
-    public boolean check(){
-        List<GDataNode> leafs = new ArrayList<>();
-        root.getLeafs(leafs);
-        if (!Constants.collectionsEqual(leafs, leafIDMap.values()))
-            throw new IllegalArgumentException("leafs are not equal.");
-//        List<GDataNode> res = Constants.collectDis(leafs);
-//        System.out.println("\t" + res.get(0).elemNum + "\t"+ res.get(1).elemNum + "\t"+ res.get(2).elemNum + "\t"+ res.get(3).elemNum + "\t"+ res.get(4).elemNum + "\t");
-        return root.check();
-    }
+    DispatchLeafID dispatchLeafID;
 
 
     public GTree() {
@@ -108,6 +71,65 @@ public class GTree {
         ((GDataNode) root.child[3]).setLeafID(leafID);
         leafIDMap.put(leafID, ((GDataNode) root.child[3]));
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GTree gTree = (GTree) o;
+        return Objects.equals(root, gTree.root) &&
+                Constants.arrsEqual(density, gTree.density) &&
+                Collections.mapEqual(leafIDMap, gTree.leafIDMap) &&
+                Objects.equals(dispatchLeafID, gTree.dispatchLeafID);
+    }
+
+    static class DispatchLeafID implements Serializable{
+        List<Integer> usedLeafID;
+
+        List<Integer> canUseLeafID;
+
+        DispatchLeafID(){
+            usedLeafID = new ArrayList<>();
+            canUseLeafID = new ArrayList<>();
+            for (int i = Constants.dividePartition-1; i >= 0; i--)
+                canUseLeafID.add(i);
+        }
+
+        Integer getLeafID(){
+            if (canUseLeafID.isEmpty()){
+                throw new IllegalArgumentException("LeafID is FPed");
+            }else {
+                Integer leafID = canUseLeafID.remove(canUseLeafID.size() - 1);
+                usedLeafID.add(leafID);
+                return leafID;
+            }
+        }
+
+        void discardLeafID(Integer leafID){
+            canUseLeafID.add(leafID);
+            usedLeafID.remove(leafID);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            DispatchLeafID that = (DispatchLeafID) o;
+            return Collections.collectionsEqual(usedLeafID, that.usedLeafID) &&
+                    Collections.collectionsEqual(canUseLeafID, that.canUseLeafID);
+        }
+    }
+
+    public boolean check(){
+        List<GDataNode> leafs = new ArrayList<>();
+        root.getLeafs(leafs);
+        if (!Collections.collectionsEqual(leafs, leafIDMap.values()))
+            throw new IllegalArgumentException("leafs are not equal.");
+//        List<GDataNode> res = Constants.collectDis(leafs);
+//        System.out.println("\t" + res.get(0).elemNum + "\t"+ res.get(1).elemNum + "\t"+ res.get(2).elemNum + "\t"+ res.get(3).elemNum + "\t"+ res.get(4).elemNum + "\t");
+        return root.check();
+    }
+
 
     /**
      * 获取一个矩形内的元素数量

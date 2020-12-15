@@ -7,12 +7,14 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
-public class GDataNode extends GNode implements Comparable<GDataNode>{
+public class GDataNode extends GNode implements Comparable<GDataNode>, Serializable {
     public int leafID;
 
     public GDataNode(){}
@@ -218,4 +220,36 @@ public class GDataNode extends GNode implements Comparable<GDataNode>{
     public int compareTo(@NotNull GDataNode o) {
         return Integer.compare(elemNum,o.elemNum);
     }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        GDataNode dataNode = (GDataNode) o;
+        return leafID == dataNode.leafID;
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

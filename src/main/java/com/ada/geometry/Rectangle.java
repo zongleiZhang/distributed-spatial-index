@@ -63,6 +63,16 @@ public class Rectangle implements Cloneable, Serializable, GlobalToLocalValue {
 		return Objects.hash(low, high);
 	}
 
+	public static boolean rectangleEqual(Rectangle curRectangle, Rectangle orgRectangle) {
+		if (curRectangle == null && orgRectangle == null)
+			return true;
+		else if (curRectangle == null || orgRectangle == null)
+			return false;
+		else
+			return curRectangle.low.equals(orgRectangle.low) &&
+					curRectangle.high.equals(orgRectangle.high);
+	}
+
 	/**
 	 * @return 返回左下点
 	 */

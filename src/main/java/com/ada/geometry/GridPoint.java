@@ -2,12 +2,13 @@ package com.ada.geometry;
 
 import com.ada.common.Constants;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * 网格点，一个点表示一个网格
  */
-public class GridPoint {
+public class GridPoint implements Serializable {
     public int x;
     public int y;
 

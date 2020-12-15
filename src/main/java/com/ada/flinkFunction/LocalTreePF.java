@@ -88,7 +88,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                         segmentsMap.get(time).remove(segment);
                     }
                     String redisKey = startWindow + "|" + subTask + "|" + tuple2.f0;
-                    jedis.set(redisKey.getBytes(StandardCharsets.UTF_8), toByteArray(segments));
+                    jedis.set(redisKey.getBytes(StandardCharsets.UTF_8), Constants.toByteArray(segments));
                 }
             }
 
@@ -109,7 +109,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                         if (redisData == null){
                             Thread.sleep(100L);
                         }else {
-                            segments = (List<Segment>) toObject(redisData);
+                            segments = (List<Segment>) Constants.toObject(redisData);
                             jedis.del(redisKey);
                             newIndexElems.addAll(segments);
                             for (Segment segment : segments) {
@@ -127,42 +127,6 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
             ((RCDataNode<Segment>)localIndex.root).elms = newIndexElems;
             localIndex.rebuildRoot(adjustInfo.region);
         }
-    }
-
-    /**
-     * 对象转数组
-     */
-    private byte[] toByteArray (Object obj) {
-        byte[] bytes = null;
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try {
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(obj);
-            oos.flush();
-            bytes = bos.toByteArray ();
-            oos.close();
-            bos.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        return bytes;
-    }
-
-    /**
-     * 数组转对象
-     */
-    private Object toObject (byte[] bytes) {
-        Object obj = null;
-        try {
-            ByteArrayInputStream bis = new ByteArrayInputStream (bytes);
-            ObjectInputStream ois = new ObjectInputStream (bis);
-            obj = ois.readObject();
-            ois.close();
-            bis.close();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return obj;
     }
 
     private boolean check(short[][] shortsss, int number) {

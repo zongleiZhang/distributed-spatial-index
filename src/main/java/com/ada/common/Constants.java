@@ -1,11 +1,7 @@
 package com.ada.common;
 
-import com.ada.globalTree.GDataNode;
-import com.ada.globalTree.GTree;
-import com.ada.geometry.GridRectangle;
-import com.ada.Hungarian.Hungary;
 import com.ada.geometry.*;
-import org.apache.flink.api.java.tuple.Tuple2;
+import com.ada.globalTree.GTree;
 
 import java.io.*;
 import java.text.DecimalFormat;
@@ -143,25 +139,6 @@ public class Constants implements Serializable {
     }
 
 
-    public static boolean rectangleEqual(Rectangle curRectangle, Rectangle orgRectangle) {
-        if (curRectangle == null && orgRectangle == null)
-            return true;
-        else if (curRectangle == null || orgRectangle == null)
-            return false;
-        else
-            return curRectangle.low.equals(orgRectangle.low) &&
-                    curRectangle.high.equals(orgRectangle.high);
-    }
-
-    public static boolean gridRectangleEquals(GridRectangle curRectangle, GridRectangle orgRectangle) {
-        if (curRectangle == null && orgRectangle == null)
-            return true;
-        else if (curRectangle == null || orgRectangle == null)
-            return false;
-        else
-            return curRectangle.equals(orgRectangle);
-    }
-
 
     /**
      * 两个同型矩阵a,b。将b中的每个元素加到（isAdd是true）或者去减（isAdd是false）a中的对应元素上。
@@ -181,17 +158,54 @@ public class Constants implements Serializable {
 
     }
 
-
-    public static boolean collectionsEqual(Collection<GDataNode> collection1, Collection<GDataNode> collection2) {
-        Set<GDataNode> set1 = new HashSet<>(collection1);
-        Set<GDataNode> set2 = new HashSet<>(collection2);
-        set1.removeAll(collection2);
-        set2.removeAll(collection1);
-        if (!set1.isEmpty())
-            return false;
-        if (!set2.isEmpty())
-            return false;
+    public static boolean arrsEqual (int[][] a, int[][] b){
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a.length != b.length) return false;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i].length != b[i].length) return false;
+            for (int j = 0; j < a[i].length; j++) {
+                if (a[i][j] != b[i][j]) return false;
+            }
+        }
         return true;
     }
+
+    /**
+     * 对象转数组
+     */
+    public static byte[] toByteArray (Object obj) {
+        byte[] bytes = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.flush();
+            bytes = bos.toByteArray ();
+            oos.close();
+            bos.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        return bytes;
+    }
+
+    /**
+     * 数组转对象
+     */
+    public static Object toObject (byte[] bytes) {
+        Object obj = null;
+        try {
+            ByteArrayInputStream bis = new ByteArrayInputStream (bytes);
+            ObjectInputStream ois = new ObjectInputStream (bis);
+            obj = ois.readObject();
+            ois.close();
+            bis.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return obj;
+    }
+
 
 }

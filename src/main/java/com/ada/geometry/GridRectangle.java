@@ -91,4 +91,14 @@ public class GridRectangle implements Serializable {
     public int hashCode() {
         return Objects.hash(low, high);
     }
+
+
+    public static boolean gridRectangleEquals(GridRectangle curRectangle, GridRectangle orgRectangle) {
+        if (curRectangle == null && orgRectangle == null)
+            return true;
+        else if (curRectangle == null || orgRectangle == null)
+            return false;
+        else
+            return curRectangle.equals(orgRectangle);
+    }
 }

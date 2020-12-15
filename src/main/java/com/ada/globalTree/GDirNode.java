@@ -6,11 +6,13 @@ import com.ada.geometry.Rectangle;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
 
 @Getter
 @Setter
-public class GDirNode extends GNode{
+public class GDirNode extends GNode implements Serializable {
 
     public GNode[] child;
 
@@ -73,4 +75,15 @@ public class GDirNode extends GNode{
         }
         return elemNum;
     }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        GDirNode dirNode = (GDirNode) o;
+        return Arrays.equals(child, dirNode.child);
+    }
+
 }

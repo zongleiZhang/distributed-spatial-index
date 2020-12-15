@@ -11,7 +11,8 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
 public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalElem, Integer, TimeWindow> {
-    private int[][] grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+    private int[][] grids;
+    private int subTask;
 
     @Override
     public void process(Integer integer,
@@ -27,8 +28,15 @@ public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalEle
         }
         if (context.window().getStart()%(Constants.balanceFre*Constants.windowSize) == 0){
           for (int i = 0; i < Constants.globalPartition; i++)
-                out.collect(new Density(grids, i, context.window().getStart()+1));
+                out.collect(new Density(grids.clone(), i, subTask));
             grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         }
+    }
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        super.open(parameters);
+        grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+        subTask = getRuntimeContext().getIndexOfThisSubtask();
     }
 }
