@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -83,7 +84,20 @@ public class GDirNode extends GNode implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         GDirNode dirNode = (GDirNode) o;
-        return Arrays.equals(child, dirNode.child);
+        if (child==dirNode.child)
+            return true;
+        if (child==null || dirNode.child==null)
+            return false;
+        int length = child.length;
+        if (dirNode.child.length != length)
+            return false;
+        for (int i=0; i<length; i++) {
+            GNode o1 = child[i];
+            GNode o2 = dirNode.child[i];
+            if (!(Objects.equals(o1, o2)))
+                return false;
+        }
+        return true;
     }
 
 }

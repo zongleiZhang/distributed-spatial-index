@@ -1,14 +1,13 @@
 package com.ada.globalTree;
 
 import com.ada.Hungarian.Hungary;
+import com.ada.common.Constants;
+import com.ada.common.Path;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
-import com.ada.common.Constants;
-import com.ada.common.Path;
-import com.ada.geometry.*;
+import com.ada.geometry.Rectangle;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.util.*;
@@ -18,7 +17,7 @@ public class GTree implements Serializable {
     /**
      * 根节点
      */
-    public GDirNode root;
+    private GDirNode root;
 
     /**
      * 全局索引叶节点索引项数量的下届
@@ -31,45 +30,37 @@ public class GTree implements Serializable {
     public int[][] density;
 
     /**
-     * 叶节点ID与叶节点的map映射
-     */
-    public Map<Integer, GDataNode> leafIDMap;
-
-    /**
      * 分配叶节点ID的功能成员
      */
     DispatchLeafID dispatchLeafID;
 
+    /**
+     * 用于给树中的每个节点分配ID
+     */
+    int generateNodeID = 0;
+
+    /**
+     * for debug
+     */
+    public int subTask;
+
 
     public GTree() {
+        dispatchLeafID = new DispatchLeafID();
+        int gridDensity = Constants.gridDensity;
         root = new GDirNode(null,-1,
-                new GridRectangle(new GridPoint(0,0), new GridPoint(Constants.gridDensity,Constants.gridDensity)),
+                new GridRectangle(new GridPoint(0,0), new GridPoint(gridDensity, gridDensity)),
                 0,this, new GNode[4]);
         GridRectangle gridRectangle;
-        gridRectangle = new GridRectangle(new GridPoint(0,0), new GridPoint(200, 200));
-        root.child[0] = new GDataNode(root,0, gridRectangle,0, this,0);
-        gridRectangle =  new GridRectangle(new GridPoint(0,201), new GridPoint(200, 511));
-        root.child[1] = new GDataNode(root,1, gridRectangle,0, this,1);
-        gridRectangle = new GridRectangle(new GridPoint(201,0), new GridPoint(511, 200));
-        root.child[2] = new GDataNode(root,2, gridRectangle,0, this,2);
-        gridRectangle = new GridRectangle(new GridPoint(201,201), new GridPoint(511, 511));
-        root.child[3] = new GDataNode(root,3, gridRectangle,0,  this,3);
-        density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-        dispatchLeafID = new DispatchLeafID();
-        leafIDMap = new HashMap<>();
-        Integer leafID;
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[0]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[0]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[1]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[1]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[2]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[2]));
-        leafID = dispatchLeafID.getLeafID();
-        ((GDataNode) root.child[3]).setLeafID(leafID);
-        leafIDMap.put(leafID, ((GDataNode) root.child[3]));
+        gridRectangle = new GridRectangle(new GridPoint(0,0), new GridPoint(gridDensity/2, gridDensity/2));
+        root.child[0] = new GDataNode(root,0, gridRectangle,0, this,dispatchLeafID.getLeafID());
+        gridRectangle =  new GridRectangle(new GridPoint(0,(gridDensity/2)+1), new GridPoint(gridDensity/2, gridDensity));
+        root.child[1] = new GDataNode(root,1, gridRectangle,0, this,dispatchLeafID.getLeafID());
+        gridRectangle = new GridRectangle(new GridPoint((gridDensity/2)+1,0), new GridPoint(gridDensity, (gridDensity/2)));
+        root.child[2] = new GDataNode(root,2, gridRectangle,0, this,dispatchLeafID.getLeafID());
+        gridRectangle = new GridRectangle(new GridPoint((gridDensity/2)+1,(gridDensity/2)+1), new GridPoint(gridDensity, gridDensity));
+        root.child[3] = new GDataNode(root,3, gridRectangle,0,  this,dispatchLeafID.getLeafID());
+        density = new int[gridDensity+1][gridDensity+1];
     }
 
     @Override
@@ -77,10 +68,13 @@ public class GTree implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GTree gTree = (GTree) o;
-        return Objects.equals(root, gTree.root) &&
-                Constants.arrsEqual(density, gTree.density) &&
-                Collections.mapEqual(leafIDMap, gTree.leafIDMap) &&
-                Objects.equals(dispatchLeafID, gTree.dispatchLeafID);
+        if (!Objects.equals(root, gTree.root))
+            return false;
+        if (!com.ada.common.Arrays.arrsEqual(density, gTree.density))
+            return false;
+        if (!Objects.equals(dispatchLeafID, gTree.dispatchLeafID))
+            return false;
+        return true;
     }
 
     static class DispatchLeafID implements Serializable{
@@ -115,16 +109,17 @@ public class GTree implements Serializable {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             DispatchLeafID that = (DispatchLeafID) o;
-            return Collections.collectionsEqual(usedLeafID, that.usedLeafID) &&
-                    Collections.collectionsEqual(canUseLeafID, that.canUseLeafID);
+            if (!Collections.collectionsEqual(usedLeafID, that.usedLeafID))
+                return false;
+            if (!Collections.collectionsEqual(canUseLeafID, that.canUseLeafID))
+                return false;
+            return true;
         }
     }
 
     public boolean check(){
         List<GDataNode> leafs = new ArrayList<>();
         root.getLeafs(leafs);
-        if (!Collections.collectionsEqual(leafs, leafIDMap.values()))
-            throw new IllegalArgumentException("leafs are not equal.");
 //        List<GDataNode> res = Constants.collectDis(leafs);
 //        System.out.println("\t" + res.get(0).elemNum + "\t"+ res.get(1).elemNum + "\t"+ res.get(2).elemNum + "\t"+ res.get(3).elemNum + "\t"+ res.get(4).elemNum + "\t");
         return root.check();
@@ -181,20 +176,19 @@ public class GTree implements Serializable {
         root.updateElemNum();
 
         //获取需要调整结构的子树集合
-        Map<GNode, GNode> map = new HashMap<>();
-        getAdjustNode(map);
+        List<GNode> list = new ArrayList<>();
+        getAdjustNode(list);
 
         //更新dirNodes中的每个子树
-        adjustNodes(map);
-        return map;
+        return adjustNodes(list);
     }
 
     /**
      * 获取需要调整结构的子树集合(GQ)
      * @param nodes 记录需要调整结构的子树
      */
-    private void getAdjustNode(Map<GNode, GNode> nodes) {
-        leafIDMap.values().forEach(leafNode -> {
+    private void getAdjustNode(List<GNode> nodes) {
+        for (GDataNode leafNode : getAllLeafs()) {
             if ( leafNode.elemNum > 2*globalLowBound ||
                     (leafNode.elemNum < globalLowBound && !leafNode.isRootLeaf()) ) {
                 GNode addNode;
@@ -216,82 +210,29 @@ public class GTree implements Serializable {
                 }else { //叶节点可以分裂
                     addNode = leafNode;
                 }
-                List<GNode> descendants = new ArrayList<>();
                 boolean hasAncestor = false;
                 Path path0 = new Path(addNode);
-                for (GNode node : nodes.keySet()) {
+                for (Iterator<GNode> ite = nodes.iterator(); ite.hasNext(); ){
+                    GNode node = ite.next();
                     Path path1 = new Path(node);
                     int tmp = Path.isSameWay(path0, path1);
-                    if (tmp == 1)
-                        descendants.add(node);
+                    if (tmp == 1) ite.remove();
                     if (tmp == -1){
                         hasAncestor = true;
                         break;
                     }
                 }
-                if (!hasAncestor){
-                    for (GNode descendant : descendants)
-                        nodes.remove(descendant);
-                    nodes.put(addNode, null);
-                }
+                if (!hasAncestor) nodes.add(addNode);
             }
-        });
+        }
     }
-
-//    /**
-//     * 获取需要调整结构的子树集合(QBS)
-//     * @param nodes 记录需要调整结构的子树
-//     */
-//    private void getAdjustNode(Set<GNode> nodes) {
-//        leafIDMap.values().forEach(leafNode -> {
-//            if ( leafNode.elemNum > 5* Constants.globalLowBound ||
-//                    (leafNode.elemNum < Constants.globalLowBound && !leafNode.isRootLeaf()) ) {
-//                GNode addNode;
-//                if (leafNode.elemNum < 5 * Constants.globalLowBound){ //叶节点不可以分裂
-//                    addNode = leafNode.parent;
-//                    while (true) {
-//                        if (addNode.isRoot()){
-//                            break;
-//                        }else if (addNode.elemNum < Constants.globalLowBound) {
-//                            addNode = addNode.parent;
-//                        }else if (addNode.elemNum <= 2* Constants.globalLowBound ){
-//                            break;
-//                        }else if ( addNode.elemNum < 5 * Constants.globalLowBound ) {
-//                            addNode = addNode.parent;
-//                        }else {
-//                            break;
-//                        }
-//                    }
-//                }else { //叶节点可以分裂
-//                    addNode = leafNode;
-//                }
-//                List<GNode> descendants = new ArrayList<>();
-//                boolean hasAncestor = false;
-//                Path path0 = new Path(addNode);
-//                for (GNode node : nodes) {
-//                    Path path1 = new Path(node);
-//                    int tmp = Path.isSameWay(path0, path1);
-//                    if (tmp == 1){
-//                        descendants.add(node);
-//                    }
-//                    if (tmp == -1){
-//                        hasAncestor = true;
-//                        break;
-//                    }
-//                }
-//                if (!hasAncestor){
-//                    nodes.removeAll(descendants);
-//                    nodes.add(addNode);
-//                }
-//            }
-//        });
-//    }
 
     /**
      * 更新dirNodes中的每个子树
      */
-    private void adjustNodes(@NotNull Map<GNode, GNode> nodes) {
-        for (GNode node : nodes.keySet()) {
+    private Map<GNode, GNode> adjustNodes(List<GNode> nodes) {
+        Map<GNode, GNode> map = new HashMap<>();
+        for (GNode node : nodes) {
             GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
                     node.elemNum, node.tree,-1);
             GNode newNode = dataNode.adjustNode();
@@ -301,8 +242,9 @@ public class GTree implements Serializable {
                 node.parent.child[node.position] = newNode;
             }
             dispatchLeafID(node, newNode);
-            nodes.replace(node, newNode);
+            map.put(node, newNode);
         }
+        return map;
     }
 
     /**
@@ -334,7 +276,6 @@ public class GTree implements Serializable {
             for (int[] map : leafIDMap) {
                 int leafId = oldLeafNodes.get(map[1]).leafID;
                 newLeafNodes.get(map[0]).setLeafID(leafId);
-                this.leafIDMap.put(leafId, newLeafNodes.get(map[0]));
             }
             if (newLeafNodes.size() > oldLeafNodes.size()){ //少分多
                 Set<Integer> reassigningID = new HashSet<>();
@@ -344,7 +285,6 @@ public class GTree implements Serializable {
                     if (!reassigningID.contains(i)){
                         Integer leafID = dispatchLeafID.getLeafID();
                         newLeafNodes.get(i).setLeafID(leafID);
-                        this.leafIDMap.put(leafID, newLeafNodes.get(i));
                     }
                 }
             }
@@ -356,7 +296,6 @@ public class GTree implements Serializable {
                     if (!reassignedID.contains(i)){
                         Integer leafID = oldLeafNodes.get(i).leafID;
                         dispatchLeafID.discardLeafID(leafID);
-                        this.leafIDMap.remove(leafID);
                     }
                 }
             }
@@ -367,12 +306,10 @@ public class GTree implements Serializable {
             int maxNumLeaf = getMaxElemNumIndex(newLeafNodes);
             Integer leafID = ((GDataNode)oldNode).leafID;
             newLeafNodes.get(maxNumLeaf).setLeafID(leafID);
-            this.leafIDMap.put(leafID, newLeafNodes.get(maxNumLeaf));
             newLeafNodes.remove(maxNumLeaf);
             for (GDataNode newLeafNode : newLeafNodes) {
                 leafID = dispatchLeafID.getLeafID();
                 newLeafNode.setLeafID(leafID);
-                this.leafIDMap.put(newLeafNode.leafID, newLeafNode);
             }
         }else if(oldNode instanceof GDirNode && newNode instanceof GDataNode){ //多合一
             GDirNode oldDirNode = (GDirNode) oldNode;
@@ -381,12 +318,10 @@ public class GTree implements Serializable {
             int maxNumLeaf = getMaxElemNumIndex(oldLeafNodes);
             Integer leafID = oldLeafNodes.get(maxNumLeaf).leafID;
             ((GDataNode)newNode).setLeafID(leafID);
-            this.leafIDMap.put(leafID, (GDataNode)newNode);
             oldLeafNodes.remove(maxNumLeaf);
             for (GDataNode oldLeafNode : oldLeafNodes) {
                 leafID = oldLeafNode.leafID;
                 dispatchLeafID.discardLeafID(leafID);
-                this.leafIDMap.remove(leafID);
             }
         }else {
             throw new IllegalArgumentException("GNode type error.");
@@ -476,6 +411,11 @@ public class GTree implements Serializable {
         return list;
     }
 
+    public List<GDataNode> getAllLeafs(){
+        List<GDataNode> list = new ArrayList<>();
+        root.getLeafs(list);
+        return list;
+    }
 }
 
 

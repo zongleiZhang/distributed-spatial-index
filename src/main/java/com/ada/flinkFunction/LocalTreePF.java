@@ -2,6 +2,7 @@ package com.ada.flinkFunction;
 
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RCtree;
+import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
@@ -88,7 +89,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                         segmentsMap.get(time).remove(segment);
                     }
                     String redisKey = startWindow + "|" + subTask + "|" + tuple2.f0;
-                    jedis.set(redisKey.getBytes(StandardCharsets.UTF_8), Constants.toByteArray(segments));
+                    jedis.set(redisKey.getBytes(StandardCharsets.UTF_8), Arrays.toByteArray(segments));
                 }
             }
 
@@ -109,7 +110,7 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
                         if (redisData == null){
                             Thread.sleep(100L);
                         }else {
-                            segments = (List<Segment>) Constants.toObject(redisData);
+                            segments = (List<Segment>) Arrays.toObject(redisData);
                             jedis.del(redisKey);
                             newIndexElems.addAll(segments);
                             for (Segment segment : segments) {
@@ -190,19 +191,20 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, String
         jedis = new Jedis("localhost");
         subTask = getRuntimeContext().getIndexOfThisSubtask();
         isFirst = true;
+        int gridDensity = Constants.gridDensity;
         Rectangle rect = null;
         switch (subTask){
             case 0:
-                rect = new GridRectangle(new GridPoint(0,0), new GridPoint(200, 200)).toRectangle();
+                rect = new GridRectangle(new GridPoint(0,0), new GridPoint(gridDensity/2, gridDensity/2)).toRectangle();
                 break;
             case 1:
-                rect = new GridRectangle(new GridPoint(0,201), new GridPoint(200, 511)).toRectangle();
+                rect = new GridRectangle(new GridPoint(0,(gridDensity/2)+1), new GridPoint(gridDensity/2, gridDensity)).toRectangle();
                 break;
             case 2:
-                rect = new GridRectangle(new GridPoint(201,0), new GridPoint(511, 200)).toRectangle();
+                rect = new GridRectangle(new GridPoint((gridDensity/2)+1,0), new GridPoint(gridDensity, gridDensity/2)).toRectangle();
                 break;
             case 3:
-                rect = new GridRectangle(new GridPoint(201,201), new GridPoint(511, 511)).toRectangle();
+                rect = new GridRectangle(new GridPoint((gridDensity/2)+1,(gridDensity/2)+1), new GridPoint(gridDensity, gridDensity)).toRectangle();
                 break;
             default:
                 break;

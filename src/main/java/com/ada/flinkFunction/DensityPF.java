@@ -1,5 +1,6 @@
 package com.ada.flinkFunction;
 
+import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.geometry.Point;
 import com.ada.geometry.Segment;
@@ -28,7 +29,7 @@ public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalEle
         }
         if (context.window().getStart()%(Constants.balanceFre*Constants.windowSize) == 0){
           for (int i = 0; i < Constants.globalPartition; i++)
-                out.collect(new Density(grids.clone(), i, subTask));
+                out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
             grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         }
     }

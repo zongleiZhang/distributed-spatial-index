@@ -1,17 +1,17 @@
 package com.ada.flinkFunction;
 
+import com.ada.common.Arrays;
+import com.ada.common.Constants;
+import com.ada.common.collections.Collections;
+import com.ada.geometry.Rectangle;
+import com.ada.geometry.Segment;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.globalTree.GTree;
-import com.ada.common.Constants;
-import com.ada.common.collections.Collections;
-import com.ada.geometry.Point;
-import com.ada.geometry.Rectangle;
-import com.ada.geometry.Segment;
-import com.ada.model.LocalRegionAdjustInfo;
 import com.ada.model.Density;
 import com.ada.model.DensityToGlobalElem;
 import com.ada.model.GlobalToLocalElem;
+import com.ada.model.LocalRegionAdjustInfo;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -19,13 +19,12 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 import redis.clients.jedis.Jedis;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, GlobalToLocalElem, Integer, TimeWindow> {
     private int subTask;
+    private long winStart;
     private GTree globalTree;
     private Queue<int[][]> densityQueue;
     private Jedis jedis;
@@ -37,18 +36,24 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                         Context context,
                         Iterable<DensityToGlobalElem> elements,
                         Collector<GlobalToLocalElem> out) throws Exception {
+        winStart = context.window().getStart();
+        globalTree.subTask = subTask;
         //根据Global Index给输入项分区
-        int[][] density = processElemAndDensity(elements, out, context);
+        int[][] density = processElemAndDensity(elements, out);
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
         if (density != null){
+            if (subTask == 0 && winStart == 1477933920000L)
+                System.out.println();
             densityQueue.add(density);
-            Constants.addArrsToArrs(globalTree.density, density, true);
-            if (densityQueue.size() > Constants.logicWindow / Constants.balanceFre)
-                Constants.addArrsToArrs(globalTree.density, densityQueue.remove(), false);
+            Arrays.addArrsToArrs(globalTree.density, density, true);
+            if (densityQueue.size() > Constants.logicWindow / Constants.balanceFre) {
+                int[][] removed = densityQueue.remove();
+                Arrays.addArrsToArrs(globalTree.density, removed, false);
+            }
 
             if (subTask == 1)
-                System.out.println(context.window().getStart() + " " + globalTree.leafIDMap.size());
+                System.out.println(context.window().getStart() + " " + globalTree.getAllLeafs().size());
 
             //调整Global Index
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
@@ -64,41 +69,46 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
 
     private <T> void testEqualByRedis(byte[] redisKey, T t) {
         long size = jedis.llen(redisKey);
-        if (size != 3) {
-            jedis.rpush(redisKey, Constants.toByteArray(t));
-        }else {
+        if (size < 3) {
+            jedis.rpush(redisKey, Arrays.toByteArray(t));
+        }else if (size == 3){
+            if (winStart == 1477963200000L)
+                System.out.println();
             List<byte[]> list = jedis.lrange(redisKey,0, -1);
-            jedis.del(redisKey);
-            T t0 = (T) Constants.toObject(list.get(0));
-            T t1 = (T) Constants.toObject(list.get(1));
-            T t2 = (T) Constants.toObject(list.get(2));
+            jedis.ltrim(redisKey, 1,0);
+            T t0 = (T) Arrays.toObject(list.get(0));
+            T t1 = (T) Arrays.toObject(list.get(1));
+            T t2 = (T) Arrays.toObject(list.get(2));
             if (!t.equals(t0) ||
                     !t.equals(t1) ||
                     !t.equals(t2))
                 System.out.println();
+        }else {
+            throw new IllegalArgumentException("redisKey too large");
         }
     }
 
     private <T> void testCollectionEqualByRedis(byte[] redisKey, Collection<T> t) {
         long size = jedis.llen(redisKey);
         if (size < 3) {
-            jedis.rpush(redisKey, Constants.toByteArray(t));
-        }else {
+            jedis.rpush(redisKey, Arrays.toByteArray(t));
+        }else if (size == 3){
             List<byte[]> list = jedis.lrange(redisKey,0, -1);
-            jedis.del(redisKey);
-            Collection<T> t0 = (Collection<T>) Constants.toObject(list.get(0));
-            Collection<T> t1 = (Collection<T>) Constants.toObject(list.get(1));
-            Collection<T> t2 = (Collection<T>) Constants.toObject(list.get(2));
+            jedis.ltrim(redisKey, 1,0);
+            Collection<T> t0 = (Collection<T>) Arrays.toObject(list.get(0));
+            Collection<T> t1 = (Collection<T>) Arrays.toObject(list.get(1));
+            Collection<T> t2 = (Collection<T>) Arrays.toObject(list.get(2));
             if (!Collections.collectionsEqual(t, t0) ||
                     !Collections.collectionsEqual(t, t1) ||
                     !Collections.collectionsEqual(t, t2))
                 System.out.println();
+        }else {
+            throw new IllegalArgumentException("redisKey too large");
         }
     }
 
     private int[][] processElemAndDensity(Iterable<DensityToGlobalElem> elements,
-                                          Collector<GlobalToLocalElem> out,
-                                          Context context) throws UnsupportedEncodingException {
+                                          Collector<GlobalToLocalElem> out) throws Exception {
         int queryCount = 0;
         List<Density> densities = new ArrayList<>(Constants.globalPartition);
         for (DensityToGlobalElem element : elements) {
@@ -122,12 +132,17 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             }
         }
         if (densities.size() != 0){
-            byte[] redisKey = (context.window().getStart() + "|" + "density").getBytes(StandardCharsets.UTF_8);
+            byte[] redisKey = (winStart + "|" + "density").getBytes(StandardCharsets.UTF_8);
             testCollectionEqualByRedis(redisKey, densities);
         }
-        int[][] result = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-        for (Density density : densities) Constants.addArrsToArrs(result, density.grids, true);
-        return densities.isEmpty()?null:densities.get(0).grids;
+        int[][] result;
+        if (densities.isEmpty()){
+            result = null;
+        }else {
+            result = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+            for (Density density : densities) Arrays.addArrsToArrs(result, density.grids, true);
+        }
+        return result;
     }
 
     private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap,

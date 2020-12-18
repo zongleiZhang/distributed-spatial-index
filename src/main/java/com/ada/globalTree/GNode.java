@@ -24,6 +24,8 @@ public abstract class GNode implements Serializable {
 
     public Rectangle region;
 
+    int nodeID;
+
     transient public GTree tree;
 
     public GNode(){}
@@ -35,6 +37,7 @@ public abstract class GNode implements Serializable {
         this.region = gridRegion.toRectangle();
         this.elemNum = elemNum;
         this.tree = tree;
+        this.nodeID = tree.generateNodeID++;
     }
 
     public boolean check() {
@@ -87,8 +90,14 @@ public abstract class GNode implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GNode gNode = (GNode) o;
-        return elemNum == gNode.elemNum &&
-                Objects.equals(gridRegion, gNode.gridRegion) &&
-                Objects.equals(region, gNode.region);
+        if (elemNum != gNode.elemNum)
+            return false;
+        if (!Objects.equals(gridRegion, gNode.gridRegion))
+            return false;
+        if (!Objects.equals(region, gNode.region))
+            return false;
+        return true;
     }
+
+
 }

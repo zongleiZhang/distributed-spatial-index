@@ -25,6 +25,7 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.util.Collector;
 import org.jetbrains.annotations.NotNull;
+import redis.clients.jedis.Jedis;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -39,8 +40,14 @@ public class StreamingJob {
 	}
 
 	private static void DisIndexProcess() throws Exception {
+        Jedis jedis = new Jedis("localhost");
+		jedis.flushDB();
+        jedis.flushAll();
+        jedis.close();
+
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+		env.setParallelism(1);
 
 //		Properties properties = new Properties();
 //		properties.setProperty("bootstrap.servers", bootstrap);

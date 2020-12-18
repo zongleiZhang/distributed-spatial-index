@@ -34,7 +34,7 @@ public class Density implements DensityToGlobalElem, Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         Density density = (Density) o;
         return fromKey == density.fromKey &&
-                Constants.arrsEqual(grids, density.grids);
+                com.ada.common.Arrays.arrsEqual(grids, density.grids);
     }
 
     @Override

@@ -61,55 +61,23 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
                 dirNode = fourSplit((int)(0.8*elemNum/4), (int)(0.85*elemNum/4), (int)(0.9*elemNum/4));
             else
                 dirNode = fourSplit((int)(0.85*elemNum/4), (int)(0.9*elemNum/4), (int)(0.9*elemNum/4));
-//            for (int i = 0; i < 4; i++){
-//                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
-//                    elemNum += 0;
-//                if (dirNode.child[i].elemNum > 2.2*Constants.globalLowBound)
-//                    elemNum += 0;
-//            }
         }else if (elemNum >= 5*M && elemNum < 7*M){
             int m = GTree.globalLowBound;
             dirNode = fourSplit( (int) (0.95*m), (int) (1.0*m), (int) (0.85*m));
-//            for (int i = 0; i < 3; i++){
-//                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
-//                    elemNum += 0;
-//                if (dirNode.child[i].elemNum > 2.2*Constants.globalLowBound)
-//                    elemNum += 0;
-//            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 7*M && elemNum < 8*M){
             dirNode = fourSplit( (int) (0.85*M),  (int) (0.75*M),  (int) (0.9*M));
-//            for (int i = 0; i < 3; i++){
-//                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
-//                        elemNum += 0;
-//                if (dirNode.child[i].elemNum > 2.2*Constants.globalLowBound)
-//                    elemNum += 0;
-//            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8*M && elemNum < 8.5*M){
             dirNode = fourSplit( (int)(1.2*M), (int)(1.0*M), (int)(1.1*M));
-//            for (int i = 0; i < 3; i++){
-//                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
-//                    elemNum += 0;
-//                if (dirNode.child[i].elemNum > 2.2*Constants.globalLowBound)
-//                    elemNum += 0;
-//            }
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8.5*M && elemNum < 11*M){
             int tmp = (int) (GTree.globalLowBound*1.2);
             dirNode = fourSplit( tmp, tmp, (elemNum - tmp*2)/2);
-//            for (int i = 0; i < 2; i++){
-//                if (dirNode.child[i].elemNum < 0.8*Constants.globalLowBound)
-//                    elemNum += 0;
-//                if (dirNode.child[i].elemNum > 2.2*Constants.globalLowBound)
-//                    elemNum += 0;
-//            }
             dirNode.child[2] = ((GDataNode) dirNode.child[2]).adjustNode();
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 11 * M){
             dirNode = fourSplit( (int) (0.9*M), (int)(0.9*((elemNum-M)/3)), (int)(0.9*((elemNum-M)/3)));
-//            if (dirNode.child[0].elemNum > 2.2*Constants.globalLowBound)
-//                elemNum += 0;
             for (int i = 1; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
         }else {
@@ -122,27 +90,6 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
         }
         return dirNode;
     }
-
-//    //QBS
-//    GNode adjustNode() {
-//        int m = Constants.globalLowBound;
-//        GDirNode dirNode;
-//        if ( elemNum >= 5*m ){
-//            dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4, elemNum/4);
-//            for (int i = 0; i < 4; i++) {
-//                if (dirNode.child[i].elemNum > 5*m)
-//                    dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
-//            }
-//        }else{
-//            if (isRoot()) {
-//                dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4, elemNum / 4);
-//                return dirNode;
-//            }else {
-//                return this;
-//            }
-//        }
-//        return dirNode;
-//    }
 
 
     private GDirNode fourSplit(int num0, int num1, int num2){
@@ -228,7 +175,9 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         GDataNode dataNode = (GDataNode) o;
-        return leafID == dataNode.leafID;
+        if (leafID != dataNode.leafID)
+            return false;
+        return true;
     }
 }
 
