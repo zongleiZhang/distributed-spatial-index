@@ -1,20 +1,16 @@
 package com.ada;
 
-import com.ada.common.Arrays;
-import com.ada.common.Constants;
-import redis.clients.jedis.Jedis;
+import com.ada.globalTree.GTree;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class Test {
     public static void main(String[] args) throws Exception {
         testRedis();
-
-//        readInputFile();
     }
 
-    private static void readInputFile() throws IOException {
+    private static void readInputFile() throws Exception {
         File f = new File("D:\\研究生资料\\论文\\track_data\\成都滴滴\\Sorted_2D\\XY_20161101");
         BufferedReader br = new BufferedReader(new FileReader(f));
 //        for (int i = 0; i < 1000; i++) {
@@ -29,27 +25,24 @@ public class Test {
         br.close();
     }
 
-    private static void testRedis() {
-        Jedis jedis = new Jedis("localhost");
-        jedis.flushDB();
-        jedis.flushAll();
-        int[][] intArrys1 = new int[512][512];
-        setArrayValue(intArrys1);
-        int[][] intArrys2 = Arrays.cloneIntMatrix(intArrys1);
-        setArrayValue(intArrys2);
-        jedis.set("testSegments".getBytes(StandardCharsets.UTF_8), Arrays.toByteArray(intArrys1));
-        int[][] myTestR = (int[][]) Arrays.toObject(jedis.get("testSegments".getBytes(StandardCharsets.UTF_8)));
-        System.out.println(myTestR);
-        jedis.del("testSegments".getBytes(StandardCharsets.UTF_8));
-        jedis.close();
-    }
-
-    private static void setArrayValue(int[][] intArrays){
-        int inc = 0;
-        for (int i = 0; i < intArrays.length; i++) {
-            for (int j = 0; j < intArrays[i].length; j++) {
-                intArrays[i][j] = inc++;
-            }
+    private static void testRedis() throws Exception {
+        File f = new File("D:\\研究生资料\\论文\\my paper\\MyPaper\\Trajectory\\midData");
+        FileInputStream fin = new FileInputStream(f);
+        ObjectInputStream ois = new ObjectInputStream(fin);
+        int[][] o = (int[][]) ois.readObject();
+        ois.close();
+        fin.close();
+        List<int[][]> list = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            list.add(GTree.redisPatchLeafID(o, 1000 * 12000));
+        }
+        for (int i = 1; i < list.size(); i++) {
+            System.out.println(Arrays.deepEquals(list.get(0), list.get(i)));
+        }
+        for (int[][] ints : list) {
+            int total = 0;
+            for (int[] anInt : ints) total += o[anInt[0]][anInt[1]];
+            System.out.println(total);
         }
     }
 }

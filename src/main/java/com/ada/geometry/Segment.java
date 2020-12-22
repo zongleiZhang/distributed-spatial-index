@@ -13,6 +13,7 @@ import java.util.Objects;
 public class Segment extends RectElem implements Serializable, DensityToGlobalElem, GlobalToLocalValue {
     public TrackPoint p1;
     public TrackPoint p2;
+    public int hashCode;
 
     public Segment(){}
 
@@ -25,6 +26,7 @@ public class Segment extends RectElem implements Serializable, DensityToGlobalEl
             this.p1 = p1;
             this.p2 = p2;
         }
+        hashCode = Objects.hash(p1, p2);
     }
 
     public int getTID(){
@@ -47,7 +49,7 @@ public class Segment extends RectElem implements Serializable, DensityToGlobalEl
 
     @Override
     public int hashCode() {
-        return Objects.hash(p1, p2);
+        return hashCode;
     }
 
     @Override

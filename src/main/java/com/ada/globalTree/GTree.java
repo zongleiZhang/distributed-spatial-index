@@ -27,22 +27,23 @@ public class GTree implements Serializable {
     /**
      * 密度网格
      */
-    public int[][] density;
+    public transient int[][] density;
 
     /**
      * 分配叶节点ID的功能成员
      */
     DispatchLeafID dispatchLeafID;
 
-    /**
-     * 用于给树中的每个节点分配ID
-     */
-    int generateNodeID = 0;
 
     /**
      * for debug
      */
     public int subTask;
+
+    /**
+     * for debug
+     */
+    public int isDebug = 0;
 
 
     public GTree() {
@@ -70,8 +71,8 @@ public class GTree implements Serializable {
         GTree gTree = (GTree) o;
         if (!Objects.equals(root, gTree.root))
             return false;
-        if (!com.ada.common.Arrays.arrsEqual(density, gTree.density))
-            return false;
+//        if (!com.ada.common.Arrays.arrsEqual(density, gTree.density))
+//            return false;
         if (!Objects.equals(dispatchLeafID, gTree.dispatchLeafID))
             return false;
         return true;
@@ -316,13 +317,10 @@ public class GTree implements Serializable {
             List<GDataNode> oldLeafNodes = new ArrayList<>();
             oldDirNode.getLeafs(oldLeafNodes);
             int maxNumLeaf = getMaxElemNumIndex(oldLeafNodes);
-            Integer leafID = oldLeafNodes.get(maxNumLeaf).leafID;
+            int leafID = oldLeafNodes.get(maxNumLeaf).leafID;
             ((GDataNode)newNode).setLeafID(leafID);
             oldLeafNodes.remove(maxNumLeaf);
-            for (GDataNode oldLeafNode : oldLeafNodes) {
-                leafID = oldLeafNode.leafID;
-                dispatchLeafID.discardLeafID(leafID);
-            }
+            for (GDataNode oldLeafNode : oldLeafNodes) dispatchLeafID.discardLeafID(oldLeafNode.leafID);
         }else {
             throw new IllegalArgumentException("GNode type error.");
         }
@@ -334,7 +332,7 @@ public class GTree implements Serializable {
      * @param matrix 分裂前后元素映射数量关系
      * @return 分配结果
      */
-    private int[][] redisPatchLeafID(int[][] matrix, int upBound){
+    public static int[][] redisPatchLeafID(int[][] matrix, int upBound){
         int rowNum = matrix.length;
         int colNum = matrix[0].length;
         int[][] newMatrix;

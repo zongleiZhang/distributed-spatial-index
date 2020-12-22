@@ -1,16 +1,19 @@
 package com.ada.QBSTree;
 
-import com.ada.common.Constants;
 import com.ada.geometry.Rectangle;
-import com.ada.geometry.Segment;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-
+@Getter
+@Setter
 public abstract class RCNode<T extends ElemRoot> implements Serializable {
 
-	public int depth ;
+	public int depth;
 
 	public RCDirNode<T> parent;
 
@@ -41,25 +44,6 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 		this.tree = tree;
 	}
 
-	public void setDepth(int depth) {
-		this.depth = depth;
-	}
-
-	public RCDirNode getParent() {
-		return parent;
-	}
-
-	public void setParent(RCDirNode parent) {
-		this.parent = parent;
-	}
-
-	public Rectangle getRegion() {
-		return region;
-	}
-
-	public void setRegion(Rectangle region) {
-		this.region = region;
-	}
 
 	abstract RCDataNode<T> chooseLeafNode(T elem);
 
@@ -314,87 +298,13 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 
 
 	boolean check() {
-		if (this instanceof RCDataNode) {
-			if (!checkRCDataNode())
-				return false;
-		}else {
-			if (!checkRCDirNode())
-				return false;
-		}
 		if(this.parent != null) {
 			if (parent.child[position] != this)
-				throw new IllegalArgumentException("parent child error");
-		}
-		if(this instanceof RCDirNode){
-			for(int chNum = 0; chNum<4; chNum++)
-				((RCDirNode<T>) this).child[chNum].check();
+				System.out.print("");
 		}
 		return true;
 	}
 
-	private boolean checkRCDirNode() {
-		RCDirNode<T> cur = (RCDirNode<T>) this;
-		if(cur.centerRegion.getLeftBound() != cur.child[0].centerRegion.getLeftBound() ||
-				cur.centerRegion.getLeftBound() != cur.child[2].centerRegion.getLeftBound() ||
-				cur.centerRegion.getRightBound() != cur.child[1].centerRegion.getRightBound() ||
-				cur.centerRegion.getRightBound() != cur.child[3].centerRegion.getRightBound() ||
-				cur.centerRegion.getLowBound() != cur.child[0].centerRegion.getLowBound() ||
-				cur.centerRegion.getLowBound() != cur.child[1].centerRegion.getLowBound() ||
-				cur.centerRegion.getTopBound() != cur.child[2].centerRegion.getTopBound() ||
-				cur.centerRegion.getTopBound() != cur.child[3].centerRegion.getTopBound() ||
-				cur.child[0].centerRegion.getRightBound() != cur.child[1].centerRegion.getLeftBound() ||
-				cur.child[0].centerRegion.getRightBound() != cur.child[3].centerRegion.getLeftBound() ||
-				cur.child[0].centerRegion.getRightBound() != cur.child[2].centerRegion.getRightBound() ||
-				cur.child[0].centerRegion.getTopBound() != cur.child[2].centerRegion.getLowBound() ||
-				cur.child[1].centerRegion.getTopBound() != cur.child[3].centerRegion.getLowBound() )
-			throw new IllegalArgumentException("Bound error");
-		Rectangle rectangle = cur.calculateRegion();
-		if (!Rectangle.rectangleEqual(rectangle, cur.region))
-			throw new IllegalArgumentException("!Constants.rectangleEqual(rectangle, cur.region)");
-		if(cur.depth != (cur.calculateDepth(false, -1)).get(0))
-			throw new IllegalArgumentException("cur.depth != (cur.calculateDepth(false, -1)).get(0)");
-		if(cur.elemNum != cur.child[0].elemNum + cur.child[1].elemNum +cur.child[2].elemNum +cur.child[3].elemNum)
-			throw new IllegalArgumentException("elemNum error");
-		if (!cur.isBalance(0, false, 0) || !cur.isBalance(1, false, 0) || !cur.isBalance(2, false, 0) ||
-				!cur.isBalance(3, false, 0))
-			throw new IllegalArgumentException("Balance error");
-		return true;
-	}
-
-	/**
-	 * 检查叶子结点是否合法
-	 */
-	private boolean checkRCDataNode() {
-		RCDataNode<T> dataNode = (RCDataNode<T>) this;
-		if (!dataNode.elms.isEmpty() && dataNode.elms.get(0) instanceof RectElem){
-			for (T elem : dataNode.elms){
-				RectElem rectElem = (RectElem) elem;
-				if (!dataNode.region.isInternal(rectElem.rect))
-					throw new IllegalArgumentException("RectElem rect error " + elem);
-				if (!rectElem.rect.getCenter().equals(rectElem))
-					throw new IllegalArgumentException("RectElem Center error " + elem);
-			}
-		}
-
-		for (T elem : dataNode.elms) {
-			if (!dataNode.centerRegion.isInternal(elem))
-				throw new IllegalArgumentException("!cur.centerRegion.isInternal(elem)");
-			if (elem.leaf != dataNode)
-				throw new IllegalArgumentException("elem.leaf != cur");
-		}
-		Rectangle checkRectangle = dataNode.calculateRegion();
-		if (!Rectangle.rectangleEqual(checkRectangle, region))
-			throw new IllegalArgumentException("!Constants.rectangleEqual(checkRectangle, region)");
-		if (dataNode.depth != 0)
-			throw new IllegalArgumentException("cur.depth != 0");
-		if (tree.cacheSize <= 0 && dataNode.elms.size() > tree.upBound)
-			throw new IllegalArgumentException("tree.cacheSize <= 0 && cur.elms.size() > tree.upBound");
-		if (tree.cacheSize <= 0 && !dataNode.isRoot() && dataNode.elms.size() < tree.lowBound)
-			throw new IllegalArgumentException("tree.cacheSize <= 0 && !cur.isRoot() && cur.elms.size() < tree.lowBound");
-		if (dataNode.elemNum != dataNode.elms.size())
-			throw new IllegalArgumentException("cur.depth != 0");
-		return true;
-	}
 
 	/**
 	 * 查找指定矩形rectangle包含的叶节点集合

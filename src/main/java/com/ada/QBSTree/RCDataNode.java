@@ -2,10 +2,13 @@ package com.ada.QBSTree;
 
 import com.ada.common.Constants;
 import com.ada.geometry.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.*;
 
-
+@Getter
+@Setter
 public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 
 	public List<T> elms;
@@ -15,14 +18,6 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 	public RCDataNode(int depth, RCDirNode<T> parent, int position, Rectangle centerRegion, Rectangle region,
                       List<Integer> preDepths, int elemNum, RCtree<T> tree, List<T> elms) {
 		super(depth, parent, position, centerRegion,region, preDepths, elemNum, tree);
-		this.elms = elms;
-	}
-
-	public List<T> getElms() {
-		return elms;
-	}
-
-	public void setElms(List<T> elms) {
 		this.elms = elms;
 	}
 
@@ -84,16 +79,15 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 		if(this.elemNum <= this.tree.upBound) { //没有上溢
 			return true;
 		}else {//上溢
-			RCNode<T> UBNode;
+			RCDirNode<T> UBNode;
 			depth = 1;
 			convertUpperLayerPD();
 			UBNode = getMinReassignNode(false,position);
 			RCNode<T> newNode;
 			if(UBNode == null) { //没有失衡
 				newNode = split();
-				UBNode = this;
 			}else {  //失衡
-				newNode = ((RCDirNode<T>)UBNode).redistribution();
+				newNode = UBNode.redistribution();
 			}
 			if(newNode.isRoot()) {
 				tree.setRoot(newNode);
@@ -310,5 +304,38 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 	private void updateElemLeaf(){
 		for (T elem: elms)
 			elem.leaf = this;
+	}
+
+	@Override
+	boolean check(){
+		super.check();
+		if (!elms.isEmpty() && elms.get(0) instanceof RectElem){
+			for (T elem : elms){
+				RectElem rectElem = (RectElem) elem;
+				if (!region.isInternal(rectElem.rect))
+					System.out.print("");
+				if (!rectElem.rect.getCenter().equals(rectElem))
+					System.out.print("");
+			}
+		}
+
+		for (T elem : elms) {
+			if (!centerRegion.isInternal(elem))
+				System.out.print("");
+			if (elem.leaf != this)
+				System.out.print("");
+		}
+		Rectangle checkRectangle = calculateRegion();
+		if (!Rectangle.rectangleEqual(checkRectangle, region))
+			System.out.print("");
+		if (depth != 0)
+			System.out.print("");
+		if (tree.cacheSize <= 0 && elms.size() > tree.upBound)
+			System.out.print("");
+		if (tree.cacheSize <= 0 && !isRoot() && elms.size() < tree.lowBound)
+			System.out.print("");
+		if (elemNum != elms.size())
+			System.out.print("");
+		return true;
 	}
 }

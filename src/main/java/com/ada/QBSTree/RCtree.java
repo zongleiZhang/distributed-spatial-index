@@ -1,6 +1,7 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Path;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,6 +42,33 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		cache = new ArrayList<>();
 		this.cacheSize = cacheSize;
 		root = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), 0, this, new ArrayList<>());
+	}
+
+	public RCtree(int lowBound, int balanceFactor, int precision, Rectangle centerRegion, int cacheSize, List<T> elms) {
+		this.lowBound = lowBound;
+		this.balanceFactor = balanceFactor;
+		this.upBound = 5*lowBound;
+		this.precision = precision;
+		cache = new ArrayList<>();
+		this.cacheSize = cacheSize;
+		RCDataNode<T> dataNode = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), elms.size(), this, elms);
+		if (elms.isEmpty()){
+			root = dataNode;
+		}else{
+			if (elms.get(0) instanceof RectElem){
+				List<RectElem> list = (List<RectElem>) elms;
+				List<Rectangle> rectangles = (List<Rectangle>) Collections.changeCollectionElem(list, from -> from.rect);
+				Rectangle rect = Rectangle.getUnionRectangle(rectangles.toArray(new Rectangle[0]));
+				dataNode.setRegion(rect);
+			}else {
+				dataNode.setRegion(centerRegion.clone());
+			}
+			if (dataNode.elemNum > upBound){
+				root = dataNode.recursionSplit();
+			}else {
+				root = dataNode;
+			}
+		}
 	}
 
 	private void addToCache(CacheElem elem) {
@@ -169,7 +197,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	}
 
 	public <M extends RectElem> List<M> rectQuery(Rectangle rectangle, boolean isInternal) {
-		List<M> res = new ArrayList();
+		List<M> res = new ArrayList<>();
 		List<RCDataNode<T>> leaves = new ArrayList<>();
 		root.queryLeaf(rectangle, leaves);
 		if (isInternal) {
@@ -212,23 +240,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	}
 
 
-	/**
-	 * 返回指定的叶节点列表中，元素数最多的叶子节点的index。
-	 * @param leaves 指定的叶节点集合
-	 * @return 返回元素数最多的叶子节点的index。
-	 */
-	private int getMaxElemIndex(List<RCDataNode<T>> leaves) {
-		int res = 0;
-		int number = -1;
-		for (int i = 0; i < leaves.size(); i++) {
-			if (leaves.get(i).elms.size() > number) {
-				number = leaves.get(i).elms.size();
-				res = i;
-			}
-		}
-		return res;
-	}
-
 	public boolean check() {
 		return root.check();
 	}
@@ -264,4 +275,9 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		}
 	}
 
+	public List<T> getAllElems() {
+		List<T> elms = new ArrayList<>(root.elemNum);
+		root.getAllElement(elms);
+		return elms;
+	}
 }

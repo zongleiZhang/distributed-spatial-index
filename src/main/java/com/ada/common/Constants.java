@@ -60,7 +60,7 @@ public class Constants implements Serializable {
     /**
      * 网格密度
      */
-    public final static int gridDensity = 127;
+    public final static int gridDensity = 511;
 
     public static long windowSize;
 
@@ -103,8 +103,11 @@ public class Constants implements Serializable {
         }
         usedSubtask.clear();
 
-//        maxParallelism = 128;
-        maxParallelism = 256;
+        /*
+         * 86-- 128是 256
+         */
+        maxParallelism = 128;
+//        maxParallelism = 256;
         for (int i = 0; i < 1000000; i++) {
             Integer subTask = assignKeyToParallelOperator(i, maxParallelism, dividePartition);
             if (!usedSubtask.contains(subTask)) {

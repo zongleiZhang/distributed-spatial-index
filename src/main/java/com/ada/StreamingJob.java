@@ -81,25 +81,25 @@ public class StreamingJob {
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new GlobalTreePF())
 				.setParallelism(Constants.globalPartition)
-				.flatMap(new FlatMapFunction<GlobalToLocalElem, String>() {
-					@Override
-					public void flatMap(GlobalToLocalElem value, Collector<String> out) throws Exception {
-						if (value.elementType == 10)
-							out.collect("123");
-					}
-				})
-
-//				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key%Constants.dividePartition))
-//				.timeWindow(Time.milliseconds(Constants.windowSize))
-//				.process(new LocalTreePF())
-//				.setParallelism(Constants.dividePartition)
-//				.flatMap(new FlatMapFunction<String, String>() {
+//				.flatMap(new FlatMapFunction<GlobalToLocalElem, String>() {
 //					@Override
-//					public void flatMap(String value, Collector<String> out) throws Exception {
-//						if (value.length() == 1)
+//					public void flatMap(GlobalToLocalElem value, Collector<String> out) throws Exception {
+//						if (value.elementType == 10)
 //							out.collect("123");
 //					}
 //				})
+
+				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key%Constants.dividePartition))
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new LocalTreePF())
+				.setParallelism(Constants.dividePartition)
+				.flatMap(new FlatMapFunction<String, String>() {
+					@Override
+					public void flatMap(String value, Collector<String> out) throws Exception {
+						if (value.length() == 1)
+							out.collect("123");
+					}
+				})
 
 
 				.print()
