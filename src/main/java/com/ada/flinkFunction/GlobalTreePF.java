@@ -3,16 +3,16 @@ package com.ada.flinkFunction;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.common.collections.Collections;
-import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.globalTree.GTree;
-import com.ada.model.Density;
-import com.ada.model.DensityToGlobalElem;
-import com.ada.model.GlobalToLocalElem;
-import com.ada.model.LocalRegionAdjustInfo;
+import com.ada.model.densityToGlobal.Density;
+import com.ada.model.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.globalToLocal.GlobalToLocalElem;
+import com.ada.model.globalToLocal.LocalRegionAdjustInfo;
+import com.ada.model.inputItem.QueryItem;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -35,7 +35,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                         Context context,
                         Iterable<DensityToGlobalElem> elements,
                         Collector<GlobalToLocalElem> out) throws Exception {
-        globalTree.subTask = subTask;
         //根据Global Index给输入项分区
         int[][] density = processElemAndDensity(elements, out);
 
@@ -50,9 +49,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
 
             //调整Global Index
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
-
-            if(subTask == 0)
-                System.out.println(context.window().getStart() + " " + globalTree.getAllLeafs().size());
 
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
             if (!nodeMap.isEmpty() && subTask == 0)
@@ -96,7 +92,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
 
     private int[][] processElemAndDensity(Iterable<DensityToGlobalElem> elements,
                                           Collector<GlobalToLocalElem> out) throws Exception {
-        int queryCount = 0;
         List<Density> densities = new ArrayList<>(Constants.globalPartition);
         for (DensityToGlobalElem element : elements) {
             if (element instanceof Segment){
@@ -105,16 +100,13 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                 for (Integer leaf : leafs){
                     out.collect(new GlobalToLocalElem(leaf, 1, segment));
                 }
-                queryCount++;
-                if (queryCount%Constants.ratio == 0){
-                    Point point = segment.p1;
-                    Rectangle queryRect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
-                    leafs = globalTree.searchLeafNodes(queryRect);
-                    for (Integer leafID : leafs) {
-                        out.collect(new GlobalToLocalElem(leafID, 2, queryRect));
-                    }
+            }else if (element instanceof QueryItem){
+                QueryItem queryItem = (QueryItem) element;
+                List<Integer> leafs = globalTree.searchLeafNodes(queryItem.rect);
+                for (Integer leafID : leafs) {
+                    out.collect(new GlobalToLocalElem(leafID, 2, queryItem));
                 }
-            } else {
+            }else {
                 densities.add((Density) element);
             }
         }

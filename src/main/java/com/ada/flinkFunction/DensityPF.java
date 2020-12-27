@@ -4,33 +4,36 @@ import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.geometry.Point;
 import com.ada.geometry.Segment;
-import com.ada.model.Density;
-import com.ada.model.DensityToGlobalElem;
+import com.ada.model.densityToGlobal.Density;
+import com.ada.model.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.inputItem.InputItem;
+import com.ada.model.inputItem.QueryItem;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-public class DensityPF extends ProcessWindowFunction<Segment, DensityToGlobalElem, Integer, TimeWindow> {
+public class DensityPF extends ProcessWindowFunction<InputItem, DensityToGlobalElem, Integer, TimeWindow> {
     private int[][] grids;
     private int subTask;
 
     @Override
-    public void process(Integer integer,
+    public void process(Integer key,
                         Context context,
-                        Iterable<Segment> elements,
+                        Iterable<InputItem> elements,
                         Collector<DensityToGlobalElem> out){
-        for (Segment segment : elements) {
-            Point point = segment.getRect().getCenter();
-            int row = (int) Math.floor(((point.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
-            int col = (int) Math.floor(((point.data[1] - Constants.globalRegion.low.data[1])/(Constants.globalRegion.high.data[1] - Constants.globalRegion.low.data[1]))*(Constants.gridDensity+1.0));
-            grids[row][col]++;
-            out.collect(segment);
+        for (InputItem element : elements) {
+            if (!(element instanceof QueryItem)){
+                Point point = ((Segment) element).getRect().getCenter();
+                int row = (int) Math.floor(((point.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
+                int col = (int) Math.floor(((point.data[1] - Constants.globalRegion.low.data[1])/(Constants.globalRegion.high.data[1] - Constants.globalRegion.low.data[1]))*(Constants.gridDensity+1.0));
+                grids[row][col]++;
+            }
+            out.collect(element);
         }
         if (context.window().getStart()%(Constants.balanceFre*Constants.windowSize) == 0){
-          for (int i = 0; i < Constants.globalPartition; i++)
-                out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
-            grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+          for (int i = 0; i < Constants.globalPartition; i++) out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
+          grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         }
     }
 

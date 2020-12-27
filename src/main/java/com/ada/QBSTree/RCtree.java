@@ -125,8 +125,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 
 	public RCDataNode<T> insert(T elem) {
-		if (!root.centerRegion.isInternal(elem))
-			System.out.println();
 		if (cacheSize == 0) {
 			RCDataNode<T> leafNode = root.chooseLeafNode(elem);
 			leafNode.insert();
@@ -198,25 +196,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 	public <M extends RectElem> List<M> rectQuery(Rectangle rectangle, boolean isInternal) {
 		List<M> res = new ArrayList<>();
-		List<RCDataNode<T>> leaves = new ArrayList<>();
-		root.queryLeaf(rectangle, leaves);
-		if (isInternal) {
-			for (RCDataNode<T> lef : leaves) {
-				RCDataNode<M> leaf = (RCDataNode<M>) lef;
-				for (M elm : leaf.elms) {
-					if (rectangle.isInternal(elm.rect))
-						res.add(elm);
-				}
-			}
-		}else {
-			for (RCDataNode<T> lef : leaves) {
-				RCDataNode<M> leaf = (RCDataNode<M>) lef;
-				for (M elm : leaf.elms) {
-					if (rectangle.isIntersection(elm.rect))
-						res.add(elm);
-				}
-			}
-		}
+		root.rectQuery(rectangle, res, isInternal);
 		return res;
 	}
 

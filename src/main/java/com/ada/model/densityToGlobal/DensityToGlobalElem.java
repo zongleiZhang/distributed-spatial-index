@@ -1,7 +1,7 @@
-package com.ada.model;
+package com.ada.model.densityToGlobal;
 
 import java.io.Serializable;
 
 public interface DensityToGlobalElem extends Serializable {
-    Integer getDensityToGlobalKey();
+    Integer getD2GKey();
 }

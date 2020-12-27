@@ -212,7 +212,7 @@
     </dependency>
   </dependencies>
   <properties>
-    <flink.version>1.6.1</flink.version>
+    <flink.version>1.9.0</flink.version>
     <java.version>1.8</java.version>
     <grpc.version>1.6.1</grpc.version>
     <maven.compiler.target>${java.version}</maven.compiler.target>

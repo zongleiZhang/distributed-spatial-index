@@ -47,14 +47,14 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
             dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4);
             for (int i = 0; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
-        }else if (elemNum >= GTree.globalLowBound && elemNum < 2*GTree.globalLowBound){
+        }else if (elemNum < 2.2*GTree.globalLowBound){
             if (isRoot()) {
                 dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4);
                 return dirNode;
             }else {
                 return this;
             }
-        }else if (elemNum >= 2.5*M && elemNum < 5*M){
+        }else if (elemNum >= 2.2*GTree.globalLowBound && elemNum < 5*M){
             if ( elemNum > 4*M )
                 dirNode = fourSplit((int)(0.95*elemNum/4), (int)(0.90*elemNum/4), (int)(0.98*elemNum/4));
             else if ( elemNum > 3*M )
@@ -81,12 +81,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
             for (int i = 1; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
         }else {
-            if (parent == null) {
-                dirNode = fourSplit(elemNum / 4, elemNum / 4, elemNum / 4);
-                return dirNode;
-            }else {
-                throw new IllegalArgumentException("Elem number error.");
-            }
+            throw new IllegalArgumentException("Elem number error.");
         }
         return dirNode;
     }
@@ -148,8 +143,6 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
         int newX = 0;
         while (tmp < bound){
             newX++;
-            if (newX == elemNums.length)
-                System.out.println();
             tmp += elemNums[newX];
         }
         return newX;

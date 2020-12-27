@@ -73,6 +73,21 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 			leaves.add(this);
 	}
 
+	@Override
+	<M extends RectElem> void rectQuery(Rectangle rectangle, List<M> res, boolean isInternal){
+		List<M> list = (List<M>) elms;
+		if (isInternal){
+			for (M m : list) {
+				if (rectangle.isInternal(m.rect)) res.add(m);
+			}
+		}else {
+			for (M m : list) {
+				if (rectangle.isIntersection(m.rect)) res.add(m);
+
+			}
+		}
+	}
+
 
 
 	boolean insert() {
@@ -313,29 +328,29 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 			for (T elem : elms){
 				RectElem rectElem = (RectElem) elem;
 				if (!region.isInternal(rectElem.rect))
-					System.out.print("");
+					return false;
 				if (!rectElem.rect.getCenter().equals(rectElem))
-					System.out.print("");
+					return false;
 			}
 		}
 
 		for (T elem : elms) {
 			if (!centerRegion.isInternal(elem))
-				System.out.print("");
+				return false;
 			if (elem.leaf != this)
-				System.out.print("");
+				return false;
 		}
 		Rectangle checkRectangle = calculateRegion();
 		if (!Rectangle.rectangleEqual(checkRectangle, region))
-			System.out.print("");
+			return false;
 		if (depth != 0)
-			System.out.print("");
+			return false;
 		if (tree.cacheSize <= 0 && elms.size() > tree.upBound)
-			System.out.print("");
+			return false;
 		if (tree.cacheSize <= 0 && !isRoot() && elms.size() < tree.lowBound)
-			System.out.print("");
+			return false;
 		if (elemNum != elms.size())
-			System.out.print("");
+			return false;
 		return true;
 	}
 }

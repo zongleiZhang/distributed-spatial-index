@@ -300,7 +300,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 	boolean check() {
 		if(this.parent != null) {
 			if (parent.child[position] != this)
-				System.out.print("");
+				return false;
 		}
 		return true;
 	}
@@ -367,10 +367,14 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 
 	abstract Rectangle calculateRegion();
 
+	/**
+	 * 获取子树中所有元素，存储在elms中。
+	 */
 	abstract void getAllElement(List<T> elms);
 
 
 	public boolean isRoot(){return parent==null;}
 
 
+	abstract <M extends RectElem> void rectQuery(Rectangle rectangle, List<M> res, boolean isInternal);
 }

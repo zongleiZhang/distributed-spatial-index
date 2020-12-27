@@ -122,6 +122,21 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 		}
 	}
 
+	@Override
+	<M extends RectElem> void rectQuery(Rectangle rectangle, List<M> res, boolean isInternal){
+		for (RCNode<T> node : child) {
+			Rectangle rect = node.region;
+			if( rect != null && rectangle.isIntersection(rect)){
+				if (rectangle.isInternal(rect)){
+					node.getAllElement((List<T>) res);
+				}else {
+					node.rectQuery(rectangle, res, isInternal);
+				}
+
+			}
+		}
+	}
+
 
 	/**
 	 * 本节点的某个子节点的predepth改变时，更新本节点以及上层节点的preDepth信息。
@@ -264,17 +279,17 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 				child[0].centerRegion.getRightBound() != child[2].centerRegion.getRightBound() ||
 				child[0].centerRegion.getTopBound() != child[2].centerRegion.getLowBound() ||
 				child[1].centerRegion.getTopBound() != child[3].centerRegion.getLowBound() )
-			System.out.print("");
+			return false;
 		Rectangle rectangle = calculateRegion();
 		if (!Rectangle.rectangleEqual(rectangle, region))
-			System.out.print("");
+			return false;
 		if(depth != (calculateDepth(false, -1)).get(0))
-			System.out.print("");
+			return false;
 		if(elemNum != child[0].elemNum + child[1].elemNum + child[2].elemNum + child[3].elemNum)
-			System.out.print("");
+			return false;
 		if (!isBalance(0, false, 0) || !isBalance(1, false, 0) || !isBalance(2, false, 0) ||
 				!isBalance(3, false, 0))
-			System.out.print("");
+			return false;
 		for(int chNum = 0; chNum<4; chNum++)
 			child[chNum].check();
 		return true;

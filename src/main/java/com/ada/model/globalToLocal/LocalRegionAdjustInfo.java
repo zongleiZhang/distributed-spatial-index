@@ -1,6 +1,7 @@
-package com.ada.model;
+package com.ada.model.globalToLocal;
 
 import com.ada.geometry.Rectangle;
+import com.ada.model.globalToLocal.GlobalToLocalValue;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.flink.api.java.tuple.Tuple2;

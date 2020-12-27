@@ -36,7 +36,7 @@ public class Constants implements Serializable {
     /**
      * kafka的topic的并行度
      */
-    public static int topicPartition;
+    public static int inputPartition;
 
     /**
      * subTask: globalSubTask
@@ -60,15 +60,17 @@ public class Constants implements Serializable {
     /**
      * 网格密度
      */
-    public final static int gridDensity = 511;
+    public static int gridDensity;
 
     public static long windowSize;
 
     public static int logicWindow;
 
-    public static double radius; //查询矩形的大小
+    //查询矩形的大小
+    public static double radius;
 
-    public static int ratio = 2; //查询和更新的比例
+    //查询和更新的比例
+    public static int ratio;
 
     public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
 
@@ -78,16 +80,19 @@ public class Constants implements Serializable {
             FileInputStream in = new FileInputStream(confFileName);
             pro.load(in);
             in.close();
-            topicPartition = Integer.parseInt(pro.getProperty("topicPartition"));
+            inputPartition = Integer.parseInt(pro.getProperty("inputPartition"));
             globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
             dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
             GTree.globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
             windowSize = Integer.parseInt(pro.getProperty("windowSize"));
             logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
+            gridDensity = Integer.parseInt(pro.getProperty("gridDensity"));
+            radius = Double.parseDouble(pro.getProperty("radius"));
+            ratio = Integer.parseInt(pro.getProperty("ratio"));
         }catch (Exception e){
             e.printStackTrace();
         }
-        balanceFre = logicWindow/5;
+        balanceFre = logicWindow/4;
 
         int maxParallelism = 128;
 //        int maxParallelism = 256;
@@ -119,23 +124,6 @@ public class Constants implements Serializable {
         }
     }
 
-    public static String appendSegment(Segment queryElem) {
-        DecimalFormat df = new DecimalFormat("#.0000");
-        return queryElem.getTID() + " " +
-                queryElem.p2.timestamp + " " +
-                df.format(queryElem.rect.low.data[0]) + " " +
-                df.format(queryElem.rect.low.data[1]) + " " +
-                df.format(queryElem.rect.high.data[0]) + " " +
-                df.format(queryElem.rect.high.data[1]);
-    }
-
-    public static String appendTrackPoint(TrackPointElem elem) {
-        DecimalFormat df = new DecimalFormat("#.0000");
-        return elem.getTID() + " " +
-                elem.timestamp + " " +
-                df.format(elem.data[0]) + " " +
-                df.format(elem.data[1]);
-    }
 
     public static boolean isEqual(double a, double b){
         return Math.abs(a - b) < zero;

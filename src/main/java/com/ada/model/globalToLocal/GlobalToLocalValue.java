@@ -1,4 +1,4 @@
-package com.ada.model;
+package com.ada.model.globalToLocal;
 
 import java.io.Serializable;
 

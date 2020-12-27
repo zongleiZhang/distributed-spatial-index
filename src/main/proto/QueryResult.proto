@@ -4,11 +4,23 @@ package com.ada.proto; // 包名，其他 proto 在引用此 proto 的时候，�
 // 注意：和下面的 java_package 是两种易混淆概念，同时定义的时候，java_package 具有较高的优先级
 
 option java_package = "com.ada.proto"; // 生成类的包名，注意：会在指定路径下按照该包名的定义来生成文件夹
-option java_outer_classname="MyPoint"; // 生成类的类名，注意：下划线的命名会在编译的时候被自动改为驼峰命名
+option java_outer_classname="MyResult"; // 生成类的类名，注意：下划线的命名会在编译的时候被自动改为驼峰命名
 
-message Point {
-  int32 TID = 1;
+message QueryResult {
+  int64 queryID = 1;
   int64 timeStamp = 2;
-  double lon = 3;
-  double lat = 4;
+
+  message TrackPoint{
+    double x = 1;
+    double y = 2;
+    int64 timeStamp = 3;
+    int32 TID = 4;
+  }
+
+  message Segment{
+    TrackPoint p1 = 1;
+    TrackPoint p2 = 2;
+  }
+
+  repeated Segment list = 3;
 }

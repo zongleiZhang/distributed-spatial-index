@@ -1,16 +1,19 @@
 package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
-import com.ada.model.DensityToGlobalElem;
-import com.ada.model.GlobalToLocalValue;
+import com.ada.common.Constants;
+import com.ada.model.globalToLocal.GlobalToLocalValue;
+import com.ada.model.inputItem.InputItem;
+import com.ada.proto.MyResult;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.Random;
 
 /**
  * 点无序
  */
-public class Segment extends RectElem implements Serializable, DensityToGlobalElem, GlobalToLocalValue {
+public class Segment extends RectElem implements Serializable, InputItem {
     public TrackPoint p1;
     public TrackPoint p2;
     public int hashCode;
@@ -29,12 +32,22 @@ public class Segment extends RectElem implements Serializable, DensityToGlobalEl
         hashCode = Objects.hash(p1, p2);
     }
 
-    public int getTID(){
+    public static Segment proSegment2Segment(MyResult.QueryResult.Segment segment) {
+        return new Segment(TrackPoint.proTrackPoint2TP(segment.getP1()), TrackPoint.proTrackPoint2TP(segment.getP2()));
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return p2.timestamp;
+    }
+
+    @Override
+    public Integer getD2GKey() {
         return p1.TID;
     }
 
     @Override
-    public Integer getDensityToGlobalKey() {
+    public int getInputKey() {
         return p1.TID;
     }
 

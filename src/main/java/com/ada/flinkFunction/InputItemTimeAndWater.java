@@ -1,15 +1,15 @@
 package com.ada.flinkFunction;
 
 
-import com.ada.geometry.TrackPoint;
+import com.ada.model.inputItem.InputItem;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
-public class TrackPointTimeAndWater implements AssignerWithPeriodicWatermarks<TrackPoint>{
+public class InputItemTimeAndWater implements AssignerWithPeriodicWatermarks<InputItem>{
 
 	private long currentMaxTimestamp = 0;
 
-	public TrackPointTimeAndWater(){}
+	public InputItemTimeAndWater(){}
 
 	@Override
 	public Watermark getCurrentWatermark() {
@@ -17,9 +17,8 @@ public class TrackPointTimeAndWater implements AssignerWithPeriodicWatermarks<Tr
 	}
 
 	@Override
-	public long extractTimestamp(TrackPoint point, long previousElementTimestamp) {
-		long timestamp;
-		timestamp = point.timestamp;
+	public long extractTimestamp(InputItem element, long previousElementTimestamp) {
+		long timestamp = element.getTimeStamp();
 		currentMaxTimestamp = Math.max(timestamp, currentMaxTimestamp);
 		return timestamp;
 	}

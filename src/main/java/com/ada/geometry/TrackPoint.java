@@ -1,6 +1,7 @@
 package com.ada.geometry;
 
 import com.ada.common.ClassMct;
+import com.ada.proto.MyResult;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,7 +35,11 @@ public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoin
 		data[1] = Double.parseDouble(dev[3]);
 	}
 
-	public boolean isEmpty(){
+    public static TrackPoint proTrackPoint2TP(MyResult.QueryResult.TrackPoint p) {
+		return new TrackPoint(new double[]{p.getX(), p.getY()}, p.getTimeStamp(), p.getTID());
+    }
+
+    public boolean isEmpty(){
 		return data == null;
 	}
 

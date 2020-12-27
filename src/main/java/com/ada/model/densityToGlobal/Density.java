@@ -1,6 +1,5 @@
-package com.ada.model;
+package com.ada.model.densityToGlobal;
 
-import com.ada.common.Constants;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +23,7 @@ public class Density implements DensityToGlobalElem, Serializable {
     }
 
     @Override
-    public Integer getDensityToGlobalKey() {
+    public Integer getD2GKey() {
         return key;
     }
 
