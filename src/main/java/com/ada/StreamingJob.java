@@ -90,25 +90,11 @@ public class StreamingJob {
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new GlobalTreePF())
 				.setParallelism(Constants.globalPartition)
-//				.flatMap(new FlatMapFunction<GlobalToLocalElem, String>() {
-//					@Override
-//					public void flatMap(GlobalToLocalElem value, Collector<String> out) throws Exception {
-//						if (value.elementType == 10)
-//							out.collect("123");
-//					}
-//				})
 
 				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key%Constants.dividePartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new LocalTreePF())
 				.setParallelism(Constants.dividePartition)
-//				.flatMap(new FlatMapFunction<QueryResult, String>() {
-//					@Override
-//					public void flatMap(QueryResult value, Collector<String> out) throws Exception {
-//						if (value.timeStamp == -1L)
-//							out.collect("123");
-//					}
-//				})
 
                 .keyBy(value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
