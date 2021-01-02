@@ -26,7 +26,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
     private int subTask;
     private GTree globalTree;
     private Queue<int[][]> densityQueue;
-    private Jedis jedis;
 
     public  GlobalTreePF(){ }
 
@@ -53,40 +52,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
             if (!nodeMap.isEmpty() && subTask == 0)
                 adjustLocalTasksRegion(nodeMap, out);
-        }
-    }
-
-    private <T> void testEqualByRedis(byte[] redisKey, T t) {
-        long size = jedis.llen(redisKey);
-        if (size < Constants.globalPartition-1) {
-            jedis.rpush(redisKey, Arrays.toByteArray(t));
-        }else if (size == Constants.globalPartition-1){
-            List<byte[]> list = jedis.lrange(redisKey,0, -1);
-            jedis.ltrim(redisKey, 1,0);
-            for (int i = 0; i < Constants.globalPartition-1; i++) {
-                T ti = (T) Arrays.toObject(list.get(i));
-                if (!t.equals(ti))
-                    System.out.println();
-            }
-        }else {
-            throw new IllegalArgumentException("redisKey too large");
-        }
-    }
-
-    private <T> void testCollectionEqualByRedis(byte[] redisKey, Collection<T> t) {
-        long size = jedis.llen(redisKey);
-        if (size < Constants.globalPartition-1) {
-            jedis.rpush(redisKey, Arrays.toByteArray(t));
-        }else if (size == Constants.globalPartition-1){
-            List<byte[]> list = jedis.lrange(redisKey,0, -1);
-            jedis.ltrim(redisKey, 1,0);
-            for (int i = 0; i < Constants.globalPartition-1; i++) {
-                Collection<T> ti = (Collection<T>) Arrays.toObject(list.get(i));
-                if (!Collections.collectionsEqual(t, ti))
-                    System.out.println();
-            }
-        }else {
-            throw new IllegalArgumentException("redisKey too large");
         }
     }
 
@@ -169,7 +134,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
 
     @Override
     public void open(Configuration parameters) {
-//        jedis = new Jedis("localhost");
         openWindow();
     }
 
