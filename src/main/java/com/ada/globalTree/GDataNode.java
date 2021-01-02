@@ -153,9 +153,19 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
         return this;
     }
 
+    void getIntersectLeafIDs(Rectangle rectangle, List<Integer> leafIDs) {
+            leafIDs.add(leafID);
+    }
+
     public void getIntersectLeafNodes(Rectangle rectangle, List<GDataNode> leafs) {
         leafs.add(this);
     }
+
+    public GNode getInternalNode(Rectangle rectangle){
+        return this;
+    }
+
+    public void getAllDirNode(List<GDirNode> dirNodes){ }
 
     @Override
     public int compareTo(@NotNull GDataNode o) {

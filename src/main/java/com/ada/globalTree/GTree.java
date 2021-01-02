@@ -107,8 +107,8 @@ public class GTree {
         }
     }
 
-    public boolean check(){
-        return root.check();
+    public boolean check(Map<Integer, TrackKeyTID> trackMap){
+        return root.check(trackMap);
     }
 
 
@@ -438,7 +438,8 @@ public class GTree {
         else
             pruneArea = track.rect.createIntersection(root.region);
         GNode node = root.getInternalNode(pruneArea);
-        List<GDataNode> nodeLeafs = new ArrayList<>(node.getLeafs());
+        List<GDataNode> nodeLeafs = new ArrayList<>();
+        node.getLeafs(nodeLeafs);
         nodeLeafs.removeAll(removeLeafs);
         track.enlargeTuple.f0 = node;
         Rectangle newRect = node.region.extendToEnoughBig();
