@@ -22,6 +22,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, DensityToGlobal
             int row = (int) Math.floor(((element.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
             int col = (int) Math.floor(((element.data[1] - Constants.globalRegion.low.data[1])/(Constants.globalRegion.high.data[1] - Constants.globalRegion.low.data[1]))*(Constants.gridDensity+1.0));
             grids[row][col]++;
+            out.collect(element);
         }
         if (context.window().getStart()%(Constants.balanceFre* Constants.windowSize) == 0){
             for (int i = 0; i < Constants.globalPartition; i++) {
