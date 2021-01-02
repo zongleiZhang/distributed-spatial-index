@@ -1,6 +1,6 @@
 package com.ada.QBSTree;
 
-import com.ada.trackSimilar.Point;
+import com.ada.geometry.Point;
 
 import java.io.Serializable;
 

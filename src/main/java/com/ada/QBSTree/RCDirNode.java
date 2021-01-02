@@ -1,7 +1,7 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Constants;
-import com.ada.trackSimilar.Rectangle;
+import com.ada.geometry.Rectangle;
 
 import java.util.ArrayList;
 import java.util.HashSet;

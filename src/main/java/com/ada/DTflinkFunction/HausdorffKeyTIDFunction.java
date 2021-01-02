@@ -1,14 +1,15 @@
 package com.ada.DTflinkFunction;
 
-import com.ada.GlobalTree.GDataNode;
-import com.ada.GlobalTree.GDirNode;
-import com.ada.GlobalTree.GNode;
-import com.ada.GlobalTree.GTree;
+import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GDirNode;
+import com.ada.globalTree.GNode;
+import com.ada.globalTree.GTree;
 import com.ada.QBSTree.RCtree;
+import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.common.SortList;
-import com.ada.dispatchElem.*;
-import com.ada.trackSimilar.*;
+import com.ada.model.*;
+import com.ada.geometry.*;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.configuration.Configuration;
@@ -47,7 +48,7 @@ public class HausdorffKeyTIDFunction extends RichFlatMapFunction<OneTwoData, Two
             Long water = ((OneTwoWater) value).water;
             Integer wNum = waterMap.computeIfAbsent(water, aLong -> 0);
             wNum++;
-            if (wNum == Constants.topicPartition){
+            if (wNum == Constants.inputPartition){
                 waterMap.remove(water);
                 curWater = water;
                 List<TrackPoint> points = removePointQueue(curWater);
@@ -71,7 +72,7 @@ public class HausdorffKeyTIDFunction extends RichFlatMapFunction<OneTwoData, Two
                 aDensity = oneTwoDensity.density;
                 densityMap.put(curStartWin, aDensity);
             }else
-                Constants.addArrsToArrs(aDensity, oneTwoDensity.density, true);
+                Arrays.addArrsToArrs(aDensity, oneTwoDensity.density, true);
             if(curWater >= curStartWin){
                 densityMap.remove(curStartWin);
                 densities.add(new Tuple3<>(curStartWin,aDensity,TIDs));

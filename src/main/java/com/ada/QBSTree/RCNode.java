@@ -1,9 +1,9 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Constants;
-import com.ada.trackSimilar.Rectangle;
-import com.ada.trackSimilar.Segment;
-import com.ada.trackSimilar.TrackKeyTID;
+import com.ada.geometry.Rectangle;
+import com.ada.geometry.Segment;
+import com.ada.geometry.TrackKeyTID;
 
 import java.io.Serializable;
 import java.util.*;

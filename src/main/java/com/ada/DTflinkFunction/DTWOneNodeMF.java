@@ -1,10 +1,7 @@
 package com.ada.DTflinkFunction;
 
 import com.ada.QBSTree.RCtree;
-import com.ada.trackSimilar.Segment;
-import com.ada.trackSimilar.TrackPoint;
-import com.ada.trackSimilar.TrackPointElem;
-import com.ada.trackSimilar.Trajectory;
+import com.ada.geometry.*;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;

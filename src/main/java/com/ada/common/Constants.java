@@ -1,14 +1,15 @@
 package com.ada.common;
 
-import com.ada.GlobalTree.GDataNode;
-import com.ada.Grid.GridRectangle;
+import com.ada.globalTree.GDataNode;
+import com.ada.geometry.GridRectangle;
 import com.ada.Hungarian.Hungary;
-import com.ada.trackSimilar.*;
+import com.ada.geometry.*;
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.Arrays;
 
 import static org.apache.flink.runtime.state.KeyGroupRangeAssignment.assignKeyToParallelOperator;
 
@@ -21,7 +22,9 @@ public class Constants implements Serializable {
 
     public final static DecimalFormat df = new DecimalFormat("#.00000");
 
-    public final static Random random = new Random(System.currentTimeMillis());
+    public static int inputPartition;
+
+    public static int densityPartition;
 
     /**
      * 全局索引的并行度
@@ -33,7 +36,6 @@ public class Constants implements Serializable {
      */
     public static int dividePartition;
 
-    public static int topicPartition;
 
     public static int keyTIDPartition;
 
@@ -64,18 +66,12 @@ public class Constants implements Serializable {
      */
     public static int balanceFre;
 
-    public final static String QueryStateIP = "192.168.131.199";
-//    public final static String QueryStateIP = "localhost";
 
     /**
      * 存放JobID的文件位置
      */
-//    private final static String jobIDFileName = "output.txt";
     private final static String jobIDFileName = "/opt/flink-1.9.1/log/flink-chenliang-standalonesession-0-131-199.log";
-//    private final static String jobIDFileName = "F:\\softwares\\flink-1.9.1\\log\\flink-zonglei.zhang-jobmanager.log";
 
-//    private final static String confFileName = "/home/chenliang/data/zzlDIC/conf.txt";
-    private final static String confFileName = "conf.txt";
 
 
     /**
@@ -100,34 +96,29 @@ public class Constants implements Serializable {
 
     public static int logicWindow;
 
-    public static String similar;
-
     public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
 
 
     static {
         try {
-            File f = new File(confFileName);
-            BufferedReader br = new BufferedReader(new FileReader(f));
-            Map<String,String> confMap = new HashMap<>();
-            String line;
-            while ((line = br.readLine())!=null){
-                String[] split = line.split(":");
-                confMap.put(split[0],split[1]);
-            }
-            topicPartition = Integer.parseInt(confMap.get("topicPartition"));
-            globalPartition = Integer.parseInt(confMap.get("globalPartition"));
-            dividePartition = Integer.parseInt(confMap.get("dividePartition"));
-            keyTIDPartition = Integer.parseInt(confMap.get("keyTIDPartition"));
-            densityFre = Integer.parseInt(confMap.get("densityFre"));
-            globalLowBound = Integer.parseInt(confMap.get("globalLowBound"));
-            windowSize = Integer.parseInt(confMap.get("windowSize"));
-            logicWindow = Integer.parseInt(confMap.get("logicWindow"));
-            topK = Integer.parseInt(confMap.get("topK"));
-            KNum = Integer.parseInt(confMap.get("KNum"));
-            similar = confMap.get("similar");
-            extend = Double.parseDouble(confMap.get("extend"));
-            t = Integer.parseInt(confMap.get("t"));
+            Properties pro = new Properties();
+            FileInputStream in = new FileInputStream("conf.properties");
+            pro.load(in);
+            in.close();
+
+            inputPartition = Integer.parseInt(pro.getProperty("inputPartition"));
+            densityPartition = Integer.parseInt(pro.getProperty("densityPartition"));
+            globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
+            dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
+            keyTIDPartition = Integer.parseInt(pro.getProperty("keyTIDPartition"));
+            densityFre = Integer.parseInt(pro.getProperty("densityFre"));
+            globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
+            windowSize = Integer.parseInt(pro.getProperty("windowSize"));
+            logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
+            topK = Integer.parseInt(pro.getProperty("topK"));
+            KNum = Integer.parseInt(pro.getProperty("KNum"));
+            extend = Double.parseDouble(pro.getProperty("extend"));
+            t = Integer.parseInt(pro.getProperty("t"));
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -731,24 +722,6 @@ public class Constants implements Serializable {
         return res;
     }
 
-
-    /**
-     * 两个同型矩阵a,b。将b中的每个元素加到（isAdd是true）或者去减（isAdd是false）a中的对应元素上。
-     */
-    public static void addArrsToArrs (int[][] a, int[][] b, boolean isAdd){
-        if (isAdd){
-            for (int i = 0; i < a.length; i++) {
-                for (int j = 0; j < a[i].length; j++)
-                    a[i][j] += b[i][j];
-            }
-        }else {
-            for (int i = 0; i < a.length; i++) {
-                for (int j = 0; j < a[i].length; j++)
-                    a[i][j] -= b[i][j];
-            }
-        }
-
-    }
 
     public static <T extends Comparable<? super T>> List<T> collectDis(List<T> list) {
         List<T> res = new ArrayList<>();

@@ -1,8 +1,8 @@
 package com.ada.common;
 
-import com.ada.GlobalTree.GDataNode;
-import com.ada.GlobalTree.GDirNode;
-import com.ada.GlobalTree.GNode;
+import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GDirNode;
+import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCNode;
 
 import java.util.ArrayList;
