@@ -2,14 +2,10 @@ package com.ada;
 
 import com.ada.DTflinkFunction.*;
 import com.ada.common.Constants;
-import com.ada.model.TwoThreeData;
 import com.ada.geometry.TrackPoint;
-import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.util.Collector;
 
 
 public class StreamingJob {
@@ -46,18 +42,11 @@ public class StreamingJob {
 				.process(new DensityPF())
 				.setParallelism(Constants.densityPartition)
 
-				.flatMap(new WaterAndDensityFMP())
-				.setParallelism(Constants.inputPartition)
-				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> key, "key")
-				.flatMap(new HausdorffKeyTIDFunction())
-				.setParallelism(Constants.keyTIDPartition)
-				.flatMap(new FlatMapFunction<TwoThreeData, String>() {
-					@Override
-					public void flatMap(TwoThreeData value, Collector<String> out) throws Exception {
-						if (false)
-							out.collect("132");
-					}
-				})
+				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getD2GKey()))
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new HausdorffGlobalPF())
+				.setParallelism(Constants.globalPartition)
+
 //				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> Constants.divideSubTaskKayMap.get(key), "key")
 //				.flatMap(new HausdorffDivideMF())
 //				.setParallelism(Constants.dividePartition)

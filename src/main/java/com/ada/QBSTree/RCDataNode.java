@@ -2,10 +2,13 @@ package com.ada.QBSTree;
 
 import com.ada.common.Constants;
 import com.ada.geometry.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.*;
 
-
+@Getter
+@Setter
 public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 
 	public List<T> elms;
@@ -20,14 +23,6 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 		this.elms = elms;
 		if (tree.hasTIDs)
 			TIDs = Constants.getTIDs(elms);
-	}
-
-	public List<T> getElms() {
-		return elms;
-	}
-
-	public void setElms(List<T> elms) {
-		this.elms = elms;
 	}
 
 	@Override
@@ -128,25 +123,39 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 			leaves.add(this);
 	}
 
+	@Override
+	<M extends RectElem> void rectQuery(Rectangle rectangle, List<M> res, boolean isInternal){
+		List<M> list = (List<M>) elms;
+		if (isInternal){
+			for (M m : list) {
+				if (rectangle.isInternal(m.rect)) res.add(m);
+			}
+		}else {
+			for (M m : list) {
+				if (rectangle.isIntersection(m.rect)) res.add(m);
+
+			}
+		}
+	}
+
 
 
 	boolean insert() {
 		if(this.elemNum <= this.tree.upBound) { //没有上溢
 			return true;
 		}else {//上溢
-			RCNode<T> UBNode;
+			RCDirNode<T> UBNode;
 			depth = 1;
 			convertUpperLayerPD();
 			UBNode = getMinReassignNode(false,position);
 			RCNode<T> newNode;
 			if(UBNode == null) { //没有失衡
 				newNode = split();
-				UBNode = this;
 			}else {  //失衡
-				newNode = ((RCDirNode<T>)UBNode).redistribution();
+				newNode = UBNode.redistribution();
 			}
 			if(newNode.isRoot()) {
-				tree.setNewRoot(UBNode, newNode);
+				tree.setRoot(newNode);
 			}else {
 				newNode.parent.updateUpperLayerDepth();
 			}
@@ -374,5 +383,66 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 	private void updateElemLeaf(){
 		for (T elem: elms)
 			elem.leaf = this;
+	}
+
+	@Override
+	boolean check(Map<Integer, TrackKeyTID> trackMap){
+		super.check(trackMap);
+		if (!elms.isEmpty() && elms.get(0) instanceof TrackKeyTID){
+			for (T elem : elms){
+				TrackKeyTID track = (TrackKeyTID) elem;
+				if (track.topKP.isEmpty())
+					return false;
+			}
+		}
+
+		if (!elms.isEmpty() && elms.get(0) instanceof Segment){
+			for (T elem : elms){
+				Segment segment = (Segment) elem;
+				TrackKeyTID track = trackMap.get(segment.obtainTID());
+				if (!track.trajectory.elems.contains(segment))
+					return false;
+			}
+		}
+
+
+
+		if (!elms.isEmpty() && elms.get(0) instanceof RectElem){
+			for (T elem : elms){
+				RectElem rectElem = (RectElem) elem;
+				if (!region.isInternal(rectElem.rect))
+					return false;
+				if (!rectElem.rect.getCenter().equals(rectElem))
+					return false;
+			}
+		}
+
+		if (tree.hasTIDs){
+			Set<Integer> minus = Constants.getTIDs(elms);
+			if (minus.size() != TIDs.size())
+				throw new IllegalArgumentException("minus.size() != cur.TIDs.size()");
+			minus.removeAll(TIDs);
+			if (minus.size() != 0)
+				throw new IllegalArgumentException("minus.size() != 0");
+		}
+
+		for (T elem : elms) {
+			if (!centerRegion.isInternal(elem))
+				return false;
+			if (elem.leaf != this)
+				return false;
+		}
+		Rectangle checkRectangle = calculateRegion();
+		if (!Rectangle.rectangleEqual(checkRectangle, region))
+			return false;
+		if (depth != 0)
+			return false;
+		if (tree.cacheSize <= 0 && elms.size() > tree.upBound)
+			return false;
+		if (tree.cacheSize <= 0 && !isRoot() && elms.size() < tree.lowBound)
+			return false;
+		if (elemNum != elms.size())
+			return false;
+		return true;
 	}
 }

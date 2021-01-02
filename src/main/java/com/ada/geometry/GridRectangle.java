@@ -1,8 +1,13 @@
 package com.ada.geometry;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.io.Serializable;
 import java.util.Objects;
 
+@Getter
+@Setter
 public class GridRectangle implements Serializable {
     public GridPoint low;
     public GridPoint high;
@@ -13,22 +18,6 @@ public class GridRectangle implements Serializable {
         if (low.x > high.x || low.y > high.y)
             throw new IllegalArgumentException("low is bigger than high.");
         this.low = low;
-        this.high = high;
-    }
-
-    public GridPoint getLow() {
-        return low;
-    }
-
-    public void setLow(GridPoint low) {
-        this.low = low;
-    }
-
-    public GridPoint getHigh() {
-        return high;
-    }
-
-    public void setHigh(GridPoint high) {
         this.high = high;
     }
 
@@ -101,5 +90,15 @@ public class GridRectangle implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(low, high);
+    }
+
+
+    public static boolean gridRectangleEquals(GridRectangle curRectangle, GridRectangle orgRectangle) {
+        if (curRectangle == null && orgRectangle == null)
+            return true;
+        else if (curRectangle == null || orgRectangle == null)
+            return false;
+        else
+            return curRectangle.equals(orgRectangle);
     }
 }

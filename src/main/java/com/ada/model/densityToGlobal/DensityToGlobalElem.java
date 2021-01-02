@@ -1,4 +1,4 @@
-package com.ada.model.DensityToGlobal;
+package com.ada.model.densityToGlobal;
 
 import java.io.Serializable;
 

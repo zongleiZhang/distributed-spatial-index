@@ -43,13 +43,13 @@ public class Constants implements Serializable {
      * subTask: globalSubTask
      * value: key
      */
-    public static Map<Integer,Integer> globalSubTaskKayMap = new HashMap<>();
+    public static Map<Integer,Integer> globalSubTaskKeyMap = new HashMap<>();
 
     /**
      * subTask: divideSubTask
      * value: key
      */
-    public static Map<Integer,Integer> divideSubTaskKayMap = new HashMap<>();
+    public static Map<Integer,Integer> divideSubTaskKeyMap = new HashMap<>();
 
     public static List<Integer> usedLeafID = new ArrayList<>();
 
@@ -134,7 +134,7 @@ public class Constants implements Serializable {
             Integer subTask = assignKeyToParallelOperator(i, maxParallelism, globalPartition);
             if (!usedSubtask.contains(subTask)) {
                 usedSubtask.add(subTask);
-                globalSubTaskKayMap.put(subTask, i);
+                globalSubTaskKeyMap.put(subTask, i);
                 if (usedSubtask.size() == globalPartition)
                     break;
             }
@@ -147,7 +147,7 @@ public class Constants implements Serializable {
             Integer subTask = assignKeyToParallelOperator(i, maxParallelism, dividePartition);
             if (!usedSubtask.contains(subTask)) {
                 usedSubtask.add(subTask);
-                divideSubTaskKayMap.put(subTask, i);
+                divideSubTaskKeyMap.put(subTask, i);
                 if (usedSubtask.size() == dividePartition)
                     break;
             }

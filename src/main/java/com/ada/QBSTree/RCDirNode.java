@@ -2,11 +2,11 @@ package com.ada.QBSTree;
 
 import com.ada.common.Constants;
 import com.ada.geometry.Rectangle;
+import com.ada.geometry.TrackKeyTID;
+import lombok.Getter;
+import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -14,6 +14,8 @@ import java.util.Set;
  * @author zonglei.zhang
  *
  */
+@Getter
+@Setter
 public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 	/**
 	 * 子节点
@@ -25,14 +27,6 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 	RCDirNode(int depth, RCDirNode<T> parent, int position, Rectangle centerRegion, Rectangle region,
               List<Integer> preDepths, int elemNum, RCtree<T> tree, RCNode<T>[] child) {
 		super(depth, parent, position, centerRegion, region, preDepths, elemNum, tree);
-		this.child = child;
-	}
-
-	public RCNode[] getChild() {
-		return child;
-	}
-
-	public void setChild(RCNode[] child) {
 		this.child = child;
 	}
 
@@ -165,6 +159,21 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 			Rectangle mr = child[chN].region;
 			if( mr != null && rectangle.isIntersection(mr))
 				child[chN].queryLeaf(rectangle, leaves);
+		}
+	}
+
+	@Override
+	<M extends RectElem> void rectQuery(Rectangle rectangle, List<M> res, boolean isInternal){
+		for (RCNode<T> node : child) {
+			Rectangle rect = node.region;
+			if( rect != null && rectangle.isIntersection(rect)){
+				if (rectangle.isInternal(rect)){
+					node.getAllElement((List<T>) res);
+				}else {
+					node.rectQuery(rectangle, res, isInternal);
+				}
+
+			}
 		}
 	}
 
@@ -306,5 +315,36 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 		return res;
 	}
 
+	@Override
+	boolean check(Map<Integer, TrackKeyTID> trackMap){
+		super.check(trackMap);
+		if(centerRegion.getLeftBound() != child[0].centerRegion.getLeftBound() ||
+				centerRegion.getLeftBound() != child[2].centerRegion.getLeftBound() ||
+				centerRegion.getRightBound() != child[1].centerRegion.getRightBound() ||
+				centerRegion.getRightBound() != child[3].centerRegion.getRightBound() ||
+				centerRegion.getLowBound() != child[0].centerRegion.getLowBound() ||
+				centerRegion.getLowBound() != child[1].centerRegion.getLowBound() ||
+				centerRegion.getTopBound() != child[2].centerRegion.getTopBound() ||
+				centerRegion.getTopBound() != child[3].centerRegion.getTopBound() ||
+				child[0].centerRegion.getRightBound() != child[1].centerRegion.getLeftBound() ||
+				child[0].centerRegion.getRightBound() != child[3].centerRegion.getLeftBound() ||
+				child[0].centerRegion.getRightBound() != child[2].centerRegion.getRightBound() ||
+				child[0].centerRegion.getTopBound() != child[2].centerRegion.getLowBound() ||
+				child[1].centerRegion.getTopBound() != child[3].centerRegion.getLowBound() )
+			return false;
+		Rectangle rectangle = calculateRegion();
+		if (!Rectangle.rectangleEqual(rectangle, region))
+			return false;
+		if(depth != (calculateDepth(false, -1)).get(0))
+			return false;
+		if(elemNum != child[0].elemNum + child[1].elemNum + child[2].elemNum + child[3].elemNum)
+			return false;
+		if (!isBalance(0, false, 0) || !isBalance(1, false, 0) || !isBalance(2, false, 0) ||
+				!isBalance(3, false, 0))
+			return false;
+		for(int chNum = 0; chNum<4; chNum++)
+			child[chNum].check(trackMap);
+		return true;
+	}
 
 }

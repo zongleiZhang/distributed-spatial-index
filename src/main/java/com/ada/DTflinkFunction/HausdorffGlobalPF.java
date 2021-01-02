@@ -10,15 +10,18 @@ import com.ada.common.Constants;
 import com.ada.common.SortList;
 import com.ada.model.*;
 import com.ada.geometry.*;
-import org.apache.flink.api.common.functions.RichFlatMapFunction;
+import com.ada.model.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.globalToLocal.GlobalToLocalElem;
 import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 import org.jetbrains.annotations.NotNull;
 import org.roaringbitmap.RoaringBitmap;
 import java.util.*;
 
-public class HausdorffKeyTIDFunction extends RichFlatMapFunction<OneTwoData, TwoThreeData> {
+public class HausdorffGlobalPF extends ProcessWindowFunction<DensityToGlobalElem, GlobalToLocalElem, Integer, TimeWindow> {
     private int subTask;
     private boolean hasInit;
     private GTree globalTree;
@@ -40,6 +43,14 @@ public class HausdorffKeyTIDFunction extends RichFlatMapFunction<OneTwoData, Two
     private int count;
 
     @Override
+    public void process(Integer key,
+                        Context context,
+                        Iterable<DensityToGlobalElem> elements,
+                        Collector<GlobalToLocalElem> out) throws Exception {
+
+    }
+
+
     public void flatMap(OneTwoData value, Collector<TwoThreeData> out){
         this.out = out;
         if (value instanceof OneTwoPoint){ //点

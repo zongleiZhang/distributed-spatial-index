@@ -2,11 +2,14 @@ package com.ada.QBSTree;
 
 import com.ada.common.Path;
 import com.ada.geometry.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.*;
 
-
+@Setter
+@Getter
 public class RCtree<T extends ElemRoot> implements Serializable {
 
 	public RCNode<T> root;
@@ -22,12 +25,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	public List<CacheElem> cache;
 
 	public int cacheSize;
-
-	public List<Integer> leafID1;
-
-	public List<Integer> leafID2;
-
-	public List<Integer> newLeafID;
 
 	/**
 	 * 处理轨迹数据时要在叶节点存储TID集合
@@ -48,12 +45,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		this.precision = precision;
 		cache = new ArrayList<>();
 		this.cacheSize = cacheSize;
-		leafID1 = new ArrayList<>();
-		leafID2 = new ArrayList<>();
 		this.hasTIDs = hasTIDs;
-		Set<Integer> TIDs = null;
-		if (hasTIDs)
-			TIDs = new HashSet<>();
 		root = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), 0, this, new ArrayList<>());
 	}
 
@@ -181,26 +173,8 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	}
 
 	public <M extends RectElem> List<M> rectQuery(Rectangle rectangle, boolean isInternal) {
-		List<M> res = new ArrayList();
-		List<RCDataNode<T>> leaves = new ArrayList<>();
-		root.queryLeaf(rectangle, leaves);
-		if (isInternal) {
-			for (RCDataNode<T> lef : leaves) {
-				RCDataNode<M> leaf = (RCDataNode<M>) lef;
-				for (M elm : leaf.elms) {
-					if (rectangle.isInternal(elm.rect))
-						res.add(elm);
-				}
-			}
-		}else {
-			for (RCDataNode<T> lef : leaves) {
-				RCDataNode<M> leaf = (RCDataNode<M>) lef;
-				for (M elm : leaf.elms) {
-					if (rectangle.isIntersection(elm.rect))
-						res.add(elm);
-				}
-			}
-		}
+		List<M> res = new ArrayList<>();
+		root.rectQuery(rectangle, res, isInternal);
 		return res;
 	}
 
@@ -245,26 +219,6 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		}
 		return leafNode;
 	}
-
-
-	/**
-	 * 返回指定的叶节点列表中，元素数最多的叶子节点的index。
-	 * @param leaves 指定的叶节点集合
-	 * @return 返回元素数最多的叶子节点的index。
-	 */
-	private int getMaxElemIndex(List<RCDataNode<T>> leaves) {
-		int res = 0;
-		int number = -1;
-		for (int i = 0; i < leaves.size(); i++) {
-			if (leaves.get(i).elms.size() > number) {
-				number = leaves.get(i).elms.size();
-				res = i;
-			}
-		}
-		return res;
-	}
-
-
 
 
 	public boolean check(Map<Integer, TrackKeyTID> trackMap) {
