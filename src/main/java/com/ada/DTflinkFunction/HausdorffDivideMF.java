@@ -7,6 +7,7 @@ import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.model.*;
 import com.ada.geometry.*;
+import com.ada.model.globalToLocal.GlobalToLocalElem;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
@@ -21,8 +22,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
     private long startWindow;
     private Map<Long, RoaringBitmap> startWinTIDs;
     private RoaringBitmap TIDs;
-    private LinkedList<TwoThreeTrackInfo> trackInfoQueue;
-    private Comparator<TwoThreeTrackInfo> comparator;
+    private LinkedList<GlobalToLocalElem> trackInfoQueue;
+    private Comparator<GlobalToLocalElem> comparator;
     private Tuple2<Boolean, Rectangle> adjInfo;
 
     private Map<Integer, TrackHauOne> passTrackMap;
@@ -32,8 +33,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
 
     @Override
     public void flatMap(TwoThreeData value, Collector<String> out) throws Exception {
-        if (value instanceof TwoThreeTrackInfo){ //轨迹信息
-            DTConstants.addOnePointQueue(trackInfoQueue, (TwoThreeTrackInfo) value, comparator);
+        if (value instanceof GlobalToLocalElem){ //轨迹信息
+            DTConstants.addOnePointQueue(trackInfoQueue, (GlobalToLocalElem) value, comparator);
         }else if (value instanceof TwoThreeWater){ //水印
             Long water = ((TwoThreeWater) value).water;
             int wNum = waterMap.get(water);
@@ -41,7 +42,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
             if (wNum == Constants.globalPartition){ //水印上升
                 waterMap.remove(water);
                 curWater = water;
-                List<TwoThreeTrackInfo> trackInfo = removePointQueue(curWater);
+                List<GlobalToLocalElem> trackInfo = removePointQueue(curWater);
                 long minus = curWater - startWindow;
                 if ( minus >= Constants.windowSize ){ //窗口发生滑动
                     startWindow += ((int) (minus/Constants.windowSize))*Constants.windowSize;
@@ -61,7 +62,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                             for (int i = 6; i < 12; i++)
                                 adjRegionInfo.put(i, new ArrayList<>());
                             for (int i = trackInfo.size() - 1; i > -1; i--) {
-                                TwoThreeTrackInfo info = trackInfo.remove(i);
+                                GlobalToLocalElem info = trackInfo.remove(i);
                                 if (info.flag > 5) {
                                     adjRegionInfo.get((int)info.flag).add(info.message);
                                 }else {
@@ -434,9 +435,9 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
 
 
 
-    private void processPoint(List<TwoThreeTrackInfo> trackInfo){
+    private void processPoint(List<GlobalToLocalElem> trackInfo){
         try {
-            for (TwoThreeTrackInfo info : trackInfo) {
+            for (GlobalToLocalElem info : trackInfo) {
                 if (info.flag == 0 || info.flag == 1) { //0:添加经过点;  1:添加topK点
                     TrackPoint point = (TrackPoint) info.message;
                     int TID = point.TID;
@@ -549,8 +550,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
         return track;
     }
 
-    private List<TwoThreeTrackInfo> removePointQueue(long timeStamp){
-        List<TwoThreeTrackInfo> list = new ArrayList<>();
+    private List<GlobalToLocalElem> removePointQueue(long timeStamp){
+        List<GlobalToLocalElem> list = new ArrayList<>();
         while (trackInfoQueue.getLast().message.getTimeStamp() < timeStamp && !trackInfoQueue.isEmpty())
             list.add(trackInfoQueue.removeLast());
         return list;
