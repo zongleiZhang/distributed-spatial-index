@@ -5,9 +5,8 @@ import com.ada.geometry.GridRectangle;
 import com.ada.QBSTree.DualRootTree;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
-import com.ada.model.*;
 import com.ada.geometry.*;
-import com.ada.model.globalToLocal.GlobalToLocalElem;
+import com.ada.model.globalToLocal.Global2LocalElem;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
@@ -22,8 +21,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
     private long startWindow;
     private Map<Long, RoaringBitmap> startWinTIDs;
     private RoaringBitmap TIDs;
-    private LinkedList<GlobalToLocalElem> trackInfoQueue;
-    private Comparator<GlobalToLocalElem> comparator;
+    private LinkedList<Global2LocalElem> trackInfoQueue;
+    private Comparator<Global2LocalElem> comparator;
     private Tuple2<Boolean, Rectangle> adjInfo;
 
     private Map<Integer, TrackHauOne> passTrackMap;
@@ -33,8 +32,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
 
     @Override
     public void flatMap(TwoThreeData value, Collector<String> out) throws Exception {
-        if (value instanceof GlobalToLocalElem){ //轨迹信息
-            DTConstants.addOnePointQueue(trackInfoQueue, (GlobalToLocalElem) value, comparator);
+        if (value instanceof Global2LocalElem){ //轨迹信息
+            DTConstants.addOnePointQueue(trackInfoQueue, (Global2LocalElem) value, comparator);
         }else if (value instanceof TwoThreeWater){ //水印
             Long water = ((TwoThreeWater) value).water;
             int wNum = waterMap.get(water);
@@ -42,7 +41,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
             if (wNum == Constants.globalPartition){ //水印上升
                 waterMap.remove(water);
                 curWater = water;
-                List<GlobalToLocalElem> trackInfo = removePointQueue(curWater);
+                List<Global2LocalElem> trackInfo = removePointQueue(curWater);
                 long minus = curWater - startWindow;
                 if ( minus >= Constants.windowSize ){ //窗口发生滑动
                     startWindow += ((int) (minus/Constants.windowSize))*Constants.windowSize;
@@ -62,7 +61,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                             for (int i = 6; i < 12; i++)
                                 adjRegionInfo.put(i, new ArrayList<>());
                             for (int i = trackInfo.size() - 1; i > -1; i--) {
-                                GlobalToLocalElem info = trackInfo.remove(i);
+                                Global2LocalElem info = trackInfo.remove(i);
                                 if (info.flag > 5) {
                                     adjRegionInfo.get((int)info.flag).add(info.message);
                                 }else {
@@ -135,9 +134,9 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
             Rectangle outerMBR = null;
             for (TrackHauOne track : passTrackMap.values()) {
                 int TID = track.trajectory.TID;
-                long startWin = ((int) (track.trajectory.elems.getFirst().p1.timestamp/Constants.windowSize)) * Constants.windowSize;
+                long startWin = ((int) (track.trajectory.elms.getFirst().p1.timestamp/Constants.windowSize)) * Constants.windowSize;
                 startWinTIDs.get(startWin).add(TID);
-                for (Segment segment : track.trajectory.elems) {
+                for (Segment segment : track.trajectory.elms) {
                     startWin = ((int) (segment.p2.timestamp/Constants.windowSize)) * Constants.windowSize;
                     startWinTIDs.get(startWin).add(TID);
                     if (newRectangle.isInternal(segment)) {
@@ -185,7 +184,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                     if (index != -1)
                         pruneChangeTIDs.add(comparedTid);
                 });
-                for (Segment elem : track.trajectory.elems)
+                for (Segment elem : track.trajectory.elms)
                     pointIndex.delete(elem);
             }
 
@@ -209,7 +208,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                         pruneChangeTIDs.add(comparedTid);
                     }
                 }
-                for (Segment elem : track.trajectory.elems)
+                for (Segment elem : track.trajectory.elms)
                     pointIndex.delete(elem);
             }
 
@@ -217,7 +216,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                 int TID = ((TrackPoint) info).TID;
                 TrackHauOne track = topKTrackMap.remove(TID);
                 passTrackMap.put(TID, track);
-                for (Segment elem : track.trajectory.elems)
+                for (Segment elem : track.trajectory.elms)
                     pointIndex.insert(elem);
                 Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
                 rebuildMeyBeAnoTopK(pruneChangeTIDs, track, MBR);
@@ -227,7 +226,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
             for (Message info : adjRegionInfo.get(10)) { //10：(调整负责区域)新增经过轨迹   (TrackMessage)
                 TrackHauOne track = toTrackHauOne((TrackMessage) info);
                 passTrackMap.put(track.trajectory.TID, track);
-                for (Segment elem : track.trajectory.elems)
+                for (Segment elem : track.trajectory.elms)
                     pointIndex.insert(elem);
                 Rectangle MBR = track.rect.clone();
                 track.rect = DTConstants.newTrackCalculate(track, MBR, MBR.clone(), pointIndex, passTrackMap);
@@ -382,7 +381,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                     //topK处理
                     List<Segment> timeElems = track.trajectory.removeElem(logicStartWin);
                     if (timeElems.size() != 0) {
-                        if (track.trajectory.elems.size() == 0)
+                        if (track.trajectory.elms.size() == 0)
                             removeTopKTrack(track);
                         else
                             removeElemMap.put(tid, timeElems);
@@ -393,7 +392,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                 if (timeElems.size() != 0) {
                     for (Segment segment : timeElems)
                         pointIndex.delete(segment);
-                    if (track.trajectory.elems.size() == 0)
+                    if (track.trajectory.elms.size() == 0)
                         emptyTIDs.add(tid);
                     else
                         removeElemMap.put(tid, timeElems);
@@ -435,9 +434,9 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
 
 
 
-    private void processPoint(List<GlobalToLocalElem> trackInfo){
+    private void processPoint(List<Global2LocalElem> trackInfo){
         try {
-            for (GlobalToLocalElem info : trackInfo) {
+            for (Global2LocalElem info : trackInfo) {
                 if (info.flag == 0 || info.flag == 1) { //0:添加经过点;  1:添加topK点
                     TrackPoint point = (TrackPoint) info.message;
                     int TID = point.TID;
@@ -447,7 +446,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                         track = passTrackMap.get(TID);
                     else
                         track = topKTrackMap.get(TID);
-                    Segment segment = new Segment(track.trajectory.elems.getLast().p2, point);
+                    Segment segment = new Segment(track.trajectory.elms.getLast().p2, point);
                     track.trajectory.addElem(segment);
                     Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
                     MBR = MBR.getUnionRectangle(segment.rect);
@@ -468,7 +467,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                     pruneIndex.alterELem(track, pruneArea);
                 }else if (info.flag == 2) { //新增经过轨迹   (TrackMessage)
                     TrackHauOne track = toTrackHauOne((TrackMessage) info.message);
-                    for (Segment elem : track.trajectory.elems)
+                    for (Segment elem : track.trajectory.elms)
                         pointIndex.insert(elem);
                     passTrackMap.put(track.trajectory.TID, track);
                     if (passTrackMap.size() > Constants.topK * Constants.KNum) {
@@ -517,7 +516,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
             if (index != -1)
                 DTConstants.changeThreshold(track, -1, null,pruneIndex, pointIndex, passTrackMap);
         });
-        for (Segment elem : track.trajectory.elems)
+        for (Segment elem : track.trajectory.elms)
             pointIndex.delete(elem);
     }
 
@@ -550,8 +549,8 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
         return track;
     }
 
-    private List<GlobalToLocalElem> removePointQueue(long timeStamp){
-        List<GlobalToLocalElem> list = new ArrayList<>();
+    private List<Global2LocalElem> removePointQueue(long timeStamp){
+        List<Global2LocalElem> list = new ArrayList<>();
         while (trackInfoQueue.getLast().message.getTimeStamp() < timeStamp && !trackInfoQueue.isEmpty())
             list.add(trackInfoQueue.removeLast());
         return list;

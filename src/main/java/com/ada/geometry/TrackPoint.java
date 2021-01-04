@@ -1,7 +1,7 @@
 package com.ada.geometry;
 
 
-import com.ada.model.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.densityToGlobal.Density2GlobalElem;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +13,7 @@ import java.util.*;
 
 @Getter
 @Setter
-public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, Comparable<TrackPoint>, Serializable, DensityToGlobalElem {
+public class TrackPoint extends Point implements TrackInfo, Message,Cloneable, Comparable<TrackPoint>, Serializable, Density2GlobalElem {
 	public long timestamp;
 	public int TID;
 

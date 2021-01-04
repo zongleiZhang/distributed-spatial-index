@@ -400,7 +400,7 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 			for (T elem : elms){
 				Segment segment = (Segment) elem;
 				TrackKeyTID track = trackMap.get(segment.obtainTID());
-				if (!track.trajectory.elems.contains(segment))
+				if (!track.trajectory.elms.contains(segment))
 					return false;
 			}
 		}

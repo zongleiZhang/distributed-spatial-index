@@ -7,10 +7,7 @@ import com.ada.common.Constants;
 import com.ada.common.SortList;
 import org.apache.flink.api.java.tuple.*;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TrackKeyTID extends TrackHauOne {
     public List<GDataNode> passP;
@@ -22,11 +19,11 @@ public class TrackKeyTID extends TrackHauOne {
     public TrackKeyTID(RCDataNode leaf,
                        double[] data,
                        Rectangle rect,
-                       LinkedList<Segment> trackPoints,
+                       ArrayDeque<Segment> elms,
                        int TID,
                        List<Integer> candidateInfo,
                        Map<SimilarState, SimilarState> relatedInfo){
-        super(leaf, data, rect, trackPoints, TID, candidateInfo, relatedInfo);
+        super(leaf, data, rect, elms, TID, candidateInfo, relatedInfo);
         passP = new ArrayList<>();
         topKP = new SortList<>();
         enlargeTuple = new Tuple2<>();

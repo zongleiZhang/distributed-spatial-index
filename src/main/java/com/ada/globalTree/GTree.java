@@ -400,6 +400,9 @@ public class GTree {
         return list;
     }
 
+    /**
+     * 计算track的经过分区passP、topK分区track.topKP、和enlargeTuple
+     */
     public void countPartitions(Rectangle MBR, TrackKeyTID track) {
         root.getIntersectLeafNodes(MBR, track.passP);
         List<GDataNode> topKLeafs = new ArrayList<>();

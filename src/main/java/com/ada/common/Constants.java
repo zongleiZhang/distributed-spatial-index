@@ -163,20 +163,8 @@ public class Constants implements Serializable {
         return TIDs;
     }
 
-    public static SimilarState getDTW(Trajectory<TrackPointElem> t1, Trajectory<TrackPointElem> t2){
-        double[][] pds = pointDistance(t1, t2);
-        Tuple2<Double, Integer>[][] pro = initPro(t1.elems.size()+1,t2.elems.size()+1);
-        for (int i = 1; i < pro.length; i++) {
-            for (int i1 = 1; i1 < pro[i].length; i1++)
-                pro[i][i1] = new Tuple2<>(0.0, 0);
-        }
-        DTWValue(pds,pro,1,1);
-        Tuple2<Tuple2<Double, Integer>[], Tuple2<Double, Integer>[]> tuple2 = getDTWState(pro);
-        return new SimilarState(t1.TID, t2.TID, tuple2.f0, tuple2.f1);
-    }
 
-
-    public static SimilarState getHausdorff(Trajectory<Segment> t1, Trajectory<Segment> t2){
+    public static SimilarState getHausdorff(Trajectory t1, Trajectory t2){
         double[][] pds = pointDistance(t1, t2);
         Tuple2<Double, Integer>[] col = rowMin(pds);
         Tuple2<Double, Integer>[] row = colMin(pds);
@@ -184,49 +172,6 @@ public class Constants implements Serializable {
     }
 
 
-
-    /**
-     * 轨迹的新的采样点points到达时，增量计算其余与轨迹trajectory的DTW距离，并将其计算的中间结果更新到state中。
-     * @param points 新到达的采样点
-     * @param trajectory 被计算相似度的轨迹
-     * @param state 相似度计算中间状态
-     */
-    public static<T extends Point & TrackInfo> void incrementDTW(List<T> points, Trajectory<TrackPointElem> trajectory, SimilarState state){
-        double[][] pds;
-        if (state.comparingTID == points.get(0).obtainTID()){
-            int oldRowNum = state.col.length;
-            int newRowNum = state.col.length+points.size();
-            int colNum = state.row.length;
-            pds = new double[newRowNum][colNum];
-            for (int k = oldRowNum; k < newRowNum; k++) {
-                for (int l = 0; l < colNum; l++)
-                    pds[k][l] = points.get(k - oldRowNum).distancePoint(trajectory.elems.get(l));
-            }
-            Tuple2<Double, Integer>[][] pro = initPro(newRowNum+1, colNum+1);
-            System.arraycopy(state.row, 0, pro[oldRowNum], 1, colNum);
-            for (int i = 0; i < oldRowNum; i++)
-                pro[i+1][colNum] = state.col[i];
-            DTWValue(pds,pro,oldRowNum+1,colNum+1);
-            Tuple2<Tuple2<Double, Integer>[], Tuple2<Double, Integer>[]> tuple2 = getDTWState(pro);
-            state.update(tuple2.f0,tuple2.f1);
-        }else{
-            int rowNum = state.col.length;
-            int oldColNum = state.row.length;
-            int newColNum = state.row.length + points.size();
-            pds = new double[rowNum][newColNum];
-            for (int k = oldColNum; k < newColNum; k++) {
-                for (int l = 0; l < rowNum; l++)
-                    pds[l][k] = points.get(k-oldColNum).distancePoint(trajectory.elems.get(l));
-            }
-            Tuple2<Double, Integer>[][] pro = initPro(rowNum+1, newColNum+1);
-            System.arraycopy(state.row, 0, pro[rowNum], 1, oldColNum);
-            for (int i = 0; i < rowNum; i++)
-                pro[i+1][oldColNum] = state.col[i];
-            DTWValue(pds,pro,rowNum+1,oldColNum+1);
-            Tuple2<Tuple2<Double, Integer>[], Tuple2<Double, Integer>[]> tuple2 = getDTWState(pro);
-            state.update(tuple2.f0,tuple2.f1);
-        }
-    }
 
     private static Tuple2<Tuple2<Double, Integer>[], Tuple2<Double, Integer>[]> getDTWState(Tuple2<Double, Integer>[][] pro){
         Tuple2<Double, Integer>[] row = new Tuple2[pro[0].length-1];
@@ -238,9 +183,10 @@ public class Constants implements Serializable {
     }
 
 
-    public static <T extends Point & TrackInfo> void incrementHausdorff(List<T> points, Trajectory<Segment> track, SimilarState state){
+    @SuppressWarnings("unchecked")
+    public static void incrementHausdorff(List<TrackPoint> points, Trajectory track, SimilarState state){
         double[][] pds;
-        if (state.comparingTID == points.get(0).obtainTID()){
+        if (state.comparingTID != track.TID){
             int oldRowNum = state.col.length;
             int newRowNum = points.size();
             int colNum = state.row.length;
@@ -254,10 +200,11 @@ public class Constants implements Serializable {
             System.arraycopy(row, 0, newCol, state.col.length, row.length);
             Tuple2<Double, Integer>[] newRow = new Tuple2[colNum];
             for (int i = 0; i < newRow.length; i++) {
-                if (col[i].f0 < state.row[i].f0)
+                if (col[i].f0 < state.row[i].f0) {
                     newRow[i] = new Tuple2<>(col[i].f0, col[i].f1 + state.col.length);
-                else
+                }else {
                     newRow[i] = state.row[i];
+                }
             }
             state.update(newRow,newCol);
         }else{
@@ -266,13 +213,11 @@ public class Constants implements Serializable {
             int rowNum = state.col.length;
             pds = new double[rowNum][newColNum];
             int i = 0;
-            for (Segment seg : track.elems) {
-                for (int j = 0; j < points.size(); j++)
-                    pds[i][j] = seg.p1.distancePoint(points.get(j));
+            for (Segment seg : track.elms) {
+                for (int j = 0; j < points.size(); j++) pds[i][j] = seg.p1.distancePoint(points.get(j));
                 i++;
             }
-            for (int j = 0; j < points.size(); j++)
-                pds[i][j] = track.elems.getLast().p2.distancePoint(points.get(j));
+            for (int j = 0; j < points.size(); j++) pds[i][j] = track.elms.getLast().p2.distancePoint(points.get(j));
             Tuple2<Double, Integer>[] row = rowMin(pds);
             Tuple2<Double, Integer>[] col = colMin(pds);
             Tuple2<Double, Integer>[] newRow = new Tuple2[newColNum + oldColNum];
@@ -280,10 +225,11 @@ public class Constants implements Serializable {
             System.arraycopy(col, 0, newRow, state.row.length, col.length);
             Tuple2<Double, Integer>[] newCol = new Tuple2[rowNum];
             for (i = 0; i < newCol.length; i++) {
-                if (row[i].f0 < state.col[i].f0)
+                if (row[i].f0 < state.col[i].f0) {
                     newCol[i] = new Tuple2<>(row[i].f0, row[i].f1 + state.row.length);
-                else
+                }else {
                     newCol[i] = state.col[i];
+                }
             }
             state.update(newRow,newCol);
         }
@@ -293,6 +239,7 @@ public class Constants implements Serializable {
      * 求矩阵pds每一列的最小值。返回tuple2数组，数组的第i个元素，tuple.f0表示
      * pds第i列的最小值, tuple.f1表示这个最小值是哪一行的。
      */
+    @SuppressWarnings("unchecked")
     private static Tuple2<Double, Integer>[] colMin(double[][] pds) {
         Tuple2<Double, Integer>[] res = new Tuple2[pds[0].length];
         for (int i = 0; i <res.length; i++) {
@@ -314,6 +261,7 @@ public class Constants implements Serializable {
      * 求矩阵pds每一行的最小值。返回tuple2数组，数组的第i个元素，tuple.f0表示
      * pds第i行的最小值, tuple.f1表示这个最小值是哪一列的。
      */
+    @SuppressWarnings("unchecked")
     private static Tuple2<Double, Integer>[] rowMin(double[][] pds) {
         Tuple2<Double, Integer>[] res = new Tuple2[pds.length];
         for (int i = 0; i <res.length; i++)
@@ -337,59 +285,27 @@ public class Constants implements Serializable {
     /**
      * 求两条轨迹t1和t2的每个采样点之前的距离，结果用二维数组返回。
      */
-    private static <T extends TrackInfo> double[][] pointDistance(Trajectory<T> t1, Trajectory<T> t2) {
-        if (t1.elems.getFirst() instanceof Segment){
-            Trajectory<Segment> tt1 = (Trajectory<Segment>) t1;
-            Trajectory<Segment> tt2 = (Trajectory<Segment>) t2;
-            if (t1 == null || t2 == null || t1.elems == null || t2.elems == null)
-                System.out.print("");
-            double[][] res = new double[t1.elems.size()+1][t2.elems.size()+1];
-            int i = 0;
-            for(Segment seg : tt1.elems){
-                res[i] = pointDistance(seg.p1, tt2);
-                i++;
-            }
-            res[i] = pointDistance(tt1.elems.getLast().p2, tt2);
-            return res;
-        }else {
-            Trajectory<TrackPointElem> tt1 = (Trajectory<TrackPointElem>) t1;
-            Trajectory<TrackPointElem> tt2 = (Trajectory<TrackPointElem>) t2;
-            double[][] res = new double[t1.elems.size()][t2.elems.size()];
-            int i = 0;
-            for(TrackPointElem point:tt1.elems){
-                res[i] = pointDistance(point, tt2);
-                i++;
-            }
-            return res;
+    private static double[][] pointDistance(Trajectory t1, Trajectory t2) {
+        double[][] res = new double[t1.elms.size()+1][t2.elms.size()+1];
+        int i = 0;
+        for(Segment seg : t1.elms){
+            res[i] = pointDistance(seg.p1, t2);
+            i++;
         }
-
+        res[i] = pointDistance(t1.elms.getLast().p2, t2);
+        return res;
     }
 
 
     /**
      * 求点p和轨迹t的每个采样点之前的距离，结果用数组返回。
      */
-    private static <T extends TrackInfo> double[] pointDistance(Point p, Trajectory<T> t){
-        if (t.elems.getFirst() instanceof Segment){
-            Trajectory<Segment> tt = (Trajectory<Segment>) t;
-            double[] res = new double[tt.elems.size()+1];
-            int i = 0;
-            for (Segment seg : tt.elems) {
-                res[i] = seg.p1.distancePoint(p);
-                i++;
-            }
-            res[i] = tt.elems.getLast().p2.distancePoint(p);
-            return res;
-        }else {
-            Trajectory<TrackPointElem> tt = (Trajectory<TrackPointElem>) t;
-            double[] res = new double[tt.elems.size()];
-            int i = 0;
-            for (TrackPointElem pointElem : tt.elems) {
-                res[i] = pointElem.distancePoint(p);
-                i++;
-            }
-            return res;
-        }
+    private static <T extends TrackInfo> double[] pointDistance(Point p, Trajectory t){
+        double[] res = new double[t.elms.size()+1];
+        int i = 0;
+        for (Segment seg : t.elms) res[i++] = seg.p1.distancePoint(p);
+        res[i] = t.elms.getLast().p2.distancePoint(p);
+        return res;
     }
 
     /**
@@ -399,12 +315,12 @@ public class Constants implements Serializable {
 //     * @param points deTrack移出的采样点
      * @param state 轨迹相似度中间状态，该方法修改这个中间状态。
      */
-    public static void decrementHausdorff(Trajectory<Segment> track0,
+    public static void decrementHausdorff(Trajectory track0,
                                           List<Segment> segments0,
-                                          Trajectory<Segment> track1,
+                                          Trajectory track1,
                                           List<Segment> segments1,
                                           SimilarState state){
-        Trajectory<Segment> tmpTrack;
+        Trajectory tmpTrack;
         List<Segment> tmpPoints;
         if (track1.TID == state.comparingTID){
             tmpTrack = track0;
@@ -416,13 +332,14 @@ public class Constants implements Serializable {
         }
         if (segments0 == null || segments1 == null)
             System.out.print("");
-        List<Point> points0 = Segment.segmentsToPoints(segments0);
-        List<Point> points1 = Segment.segmentsToPoints(segments1);
-        if (state.row.length != track1.elems.size()+segments1.size()+1 ||
-                state.col.length != track0.elems.size()+segments0.size()+1)
+        assert segments0 != null;
+        List<TrackPoint> points0 = Segment.segmentsToPoints(segments0);
+        List<TrackPoint> points1 = Segment.segmentsToPoints(segments1);
+        if (state.row.length != track1.elms.size()+segments1.size()+1 ||
+                state.col.length != track0.elms.size()+segments0.size()+1)
             throw new IllegalArgumentException(Constants.logicWindow + " " + "error decrement");
-        Tuple2<Double, Integer>[] newRow = new Tuple2[track1.elems.size()+1];
-        Tuple2<Double, Integer>[] newCol = new Tuple2[track0.elems.size()+1];
+        Tuple2<Double, Integer>[] newRow = new Tuple2[track1.elms.size()+1];
+        Tuple2<Double, Integer>[] newCol = new Tuple2[track0.elms.size()+1];
         System.arraycopy(state.row, segments1.size(), newRow, 0, newRow.length);
         System.arraycopy(state.col, segments0.size(), newCol, 0, newCol.length);
         deDealColRow(track1, track0, points1, newCol);
@@ -430,9 +347,9 @@ public class Constants implements Serializable {
         state.update(newRow, newCol);
     }
 
-    private static void deDealColRow(Trajectory<Segment> track0, Trajectory<Segment> track1, List<Point> points0, Tuple2<Double, Integer>[] newRow) {
+    private static void deDealColRow(Trajectory track0, Trajectory track1, List<Point> points0, Tuple2<Double, Integer>[] newRow) {
         int j = 0;
-        for (Segment seg : track1.elems) {
+        for (Segment seg : track1.elms) {
             if (newRow[j].f1 < points0.size()){
                 double[] ds = pointDistance(seg.p1, track0);
                 newRow[j] = arrayMin(ds);
@@ -442,7 +359,7 @@ public class Constants implements Serializable {
             j++;
         }
         if (newRow[j].f1 < points0.size()){
-            double[] ds = pointDistance(track1.elems.getLast().p2, track0);
+            double[] ds = pointDistance(track1.elms.getLast().p2, track0);
             newRow[j] = arrayMin(ds);
         }else {
             newRow[j].f1 -= points0.size();
@@ -562,10 +479,10 @@ public class Constants implements Serializable {
     /**
      * 用指定的阈值threshold计算轨迹的裁剪域。
      */
-    public static Rectangle getPruningRegion(Trajectory<Segment> track, double threshold){
+    public static Rectangle getPruningRegion(Trajectory track, double threshold){
         Rectangle rectangle = null;
         boolean flag = true;
-        for (Segment s : track.elems) {
+        for (Segment s : track.elms) {
             if (flag){
                 flag = false;
                 rectangle = s.rect.clone();

@@ -62,8 +62,8 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
             return;
 
         if (trackMap.size() > Constants.topK*Constants.KNum*2){ //正常计算
-            if (track.trajectory.elems.size() == 1) { //新的轨迹
-                Rectangle MBR = track.trajectory.elems.getFirst().rect.clone();
+            if (track.trajectory.elms.size() == 1) { //新的轨迹
+                Rectangle MBR = track.trajectory.elms.getFirst().rect.clone();
                 Rectangle pruneArea = MBR.clone().extendLength(Constants.extend);
                 DTConstants.newTrackCalculate(track, MBR, pruneArea, pointIndex, trackMap);
                 track.rect = MBR.extendLength(track.threshold);
@@ -86,7 +86,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
         for (TrackHauOne track : trackMap.values()) {
             List<Integer> candidate = new ArrayList<>(trackMap.keySet());
             candidate.remove(track.trajectory.TID);
-            TrackHauOne newTrackHauOne = new TrackHauOne(null, null,null, track.trajectory.elems, track.trajectory.TID,candidate,new HashMap<>());
+            TrackHauOne newTrackHauOne = new TrackHauOne(null, null,null, track.trajectory.elms, track.trajectory.TID,candidate,new HashMap<>());
             map.put(track.trajectory.TID, newTrackHauOne);
         }
         for (TrackHauOne track : map.values()) {
@@ -188,7 +188,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
                 trackMap.put(trackPoint.TID, track);
             }
         }else {
-            segment = new Segment(track.trajectory.elems.getLast().p2, trackPoint);
+            segment = new Segment(track.trajectory.elms.getLast().p2, trackPoint);
             track.trajectory.addElem(segment);
         }
         pointIndex.insert(segment);
@@ -196,7 +196,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
     }
 
     private void hasTrackCalculate(TrackHauOne track) throws CloneNotSupportedException {
-        Segment newSegment = track.trajectory.elems.getLast();
+        Segment newSegment = track.trajectory.elms.getLast();
         Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
         MBR = MBR.getUnionRectangle(newSegment.rect);
         DTConstants.updateTrackRelated(newSegment, track,trackMap, null, pruneIndex, pointIndex);
@@ -224,7 +224,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
     private boolean trackCheck(TrackHauOne track){
         if(!track.leaf.elms.contains(track)) //pruneIndex检查
             throw new IllegalArgumentException(track.trajectory.obtainTID() + "");
-        for (Segment trackPoint : track.trajectory.elems) { //pointIndex检查
+        for (Segment trackPoint : track.trajectory.elms) { //pointIndex检查
             if (!trackPoint.leaf.elms.contains(trackPoint))
                 throw new IllegalArgumentException(track.trajectory.obtainTID() + " " + trackPoint.p1);
         }

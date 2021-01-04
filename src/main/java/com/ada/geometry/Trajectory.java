@@ -1,49 +1,46 @@
 package com.ada.geometry;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * Trajectory继承RectElem，RectElem的rect域是Trajectory对象的裁剪域
- */
-public class Trajectory <T extends TrackInfo> implements Serializable,TrackInfo {
-    public LinkedList<T> elems;
+import java.io.Serializable;
+import java.util.*;
+
+@Getter
+@Setter
+public class Trajectory implements Serializable, TrackInfo {
+    public ArrayDeque<Segment> elms;
     public Integer TID;
 
 
-    public Trajectory(){}
-
-    public Trajectory(LinkedList<T> elems,
+    public Trajectory(ArrayDeque<Segment> elms,
                       int TID){
-        this.elems = elems;
+        this.elms = elms;
         this.TID = TID;
     }
 
-    public LinkedList<T> getElems() {
-        return elems;
+
+    public void addSegment(Segment segment) {
+        elms.add(segment);
     }
 
-    public void setElems(LinkedList<T> elems) {
-        this.elems = elems;
+    public void addSegments(List<Segment> value) {
+        elms.addAll(value);
     }
 
-    public Integer getTID() {
-        return TID;
+    /**
+     * 移除过时采样点
+     * @param time 时间标准
+     * @return 0 本轨迹的所有采样点都过时， 1移除过时采样点后还有超过一个元素保留
+     */
+    public List<Segment> removeElem(long time){
+        List<Segment> timeOutElem = new ArrayList<>();
+        while(!elms.isEmpty() && elms.element().p1.getTimeStamp() < time) {
+            timeOutElem.add(elms.remove());
+        }
+        return timeOutElem;
     }
 
-    public void setTID(Integer TID) {
-        this.TID = TID;
-    }
-
-    public void addElem(T t){
-        elems.add(t);
-    }
-
-    public void addElems(List<T> ts){
-        this.elems.addAll(ts);
-    }
 
     @Override
     public TrackMessage toMessage(){
@@ -54,7 +51,7 @@ public class Trajectory <T extends TrackInfo> implements Serializable,TrackInfo 
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Trajectory)) return false;
-        Trajectory<T> that = (Trajectory<T>) o;
+        Trajectory that = (Trajectory) o;
         return TID.equals(that.TID);
     }
 
@@ -63,55 +60,6 @@ public class Trajectory <T extends TrackInfo> implements Serializable,TrackInfo 
         return TID.hashCode();
     }
 
-    /**
-     * 移除过时采样点
-     * @param time 时间标准
-     * @return 0 本轨迹的所有采样点都过时， 1移除过时采样点后还有超过一个元素保留
-     */
-    public List<T> removeElem(long time){
-        List<T> timeOutElem = new ArrayList<>();
-        while(!elems.isEmpty() && elems.getFirst().obtainTimeStamp() < time)
-            timeOutElem.add(elems.removeFirst());
-        return timeOutElem;
-    }
-
-//    /**
-//     * 用指定的阈值threshold计算轨迹的裁剪域。
-//     */
-//    public Rectangle getPruningRegion(double threshold) throws CloneNotSupportedException {
-//        Rectangle rectangle = null;
-//        if (elems.getFirst() instanceof Segment){
-//            List<Segment> ss = (List<Segment>) elems;
-//            boolean flag = true;
-//            for (Segment s : ss) {
-//                if (flag){
-//                    flag = false;
-//                    rectangle = s.rect.clone();
-//                }else {
-//                    rectangle = rectangle.getUnionRectangle(s.rect);
-//                }
-//            }
-//        }else {
-//            List<TrackPointElem> ss = (List<TrackPointElem>) elems;
-//            rectangle = Rectangle.pointsMBR(ss.toArray(new Point[0]));
-//        }
-//        assert rectangle != null;
-//        return rectangle.extendLength(threshold);
-//    }
-//
-//    public void initCache(Collection<Trajectory<T>> tracks) {
-//        for (Trajectory<T> comparedTrack : tracks) {
-//            SimilarState state = Constants.getDTW((Trajectory<TrackPointElem>) this, (Trajectory<TrackPointElem>)comparedTrack);
-//            if (state == null) {
-//                state = Constants.getHausdorff((Trajectory<Segment>) this, (Trajectory<Segment>) comparedTrack);
-//                this.relatedInfo.put(state, state);
-//                comparedTrack.relatedInfo.put(state, state);
-//            }
-//            this.candidateInfo.add(comparedTrack.TID);
-//        }
-//        sortCandidateInfo();
-//    }
-
     @Override
     public int obtainTID() {
         return TID;
@@ -119,7 +67,7 @@ public class Trajectory <T extends TrackInfo> implements Serializable,TrackInfo 
 
     @Override
     public long obtainTimeStamp() {
-        return elems.getFirst().obtainTimeStamp();
+        return elms.element().obtainTimeStamp();
     }
 }
 

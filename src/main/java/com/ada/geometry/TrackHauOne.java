@@ -5,13 +5,10 @@ import com.ada.QBSTree.RectElem;
 import com.ada.common.Constants;
 
 import java.io.Serializable;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TrackHauOne extends RectElem implements Serializable {
-    public Trajectory<Segment> trajectory;
+    public Trajectory trajectory;
     public List<Integer> candidateInfo;
     private Map<SimilarState, SimilarState> relatedInfo;
     public double threshold;
@@ -21,12 +18,12 @@ public class TrackHauOne extends RectElem implements Serializable {
     public TrackHauOne(RCDataNode leaf,
                        double[] data,
                        Rectangle rect,
-                       LinkedList<Segment> elms,
+                       ArrayDeque<Segment> elms,
                        int TID,
                        List<Integer> candidateInfo,
                        Map<SimilarState, SimilarState> relatedInfo) {
         super(leaf, data, rect);
-        trajectory = new Trajectory<>(elms, TID);
+        trajectory = new Trajectory(elms, TID);
         this.candidateInfo = candidateInfo;
         this.relatedInfo = relatedInfo;
     }
@@ -45,15 +42,20 @@ public class TrackHauOne extends RectElem implements Serializable {
             state.convert();
             oldState = relatedInfo.get(state);
             state.convert();
-        }
-        if (oldState != null) {
+            if(oldState == null){
+                relatedInfo.put(state,state);
+                return state;
+            }else {
+                if (!Constants.isEqual(oldState.distance, state.distance))
+                    System.out.print("");
+                return oldState;
+            }
+        }else {
             if (!Constants.isEqual(oldState.distance, state.distance))
                 System.out.print("");
             return oldState;
-//            relatedInfo.remove(state);
         }
-        relatedInfo.put(state,state);
-        return state;
+
     }
 
     public void removeRelatedInfo(SimilarState state){
@@ -201,7 +203,7 @@ public class TrackHauOne extends RectElem implements Serializable {
      * 判断本轨迹是否有在pruneArea外部的采样点，有返回true，没有返回false
      */
     public boolean outSideRectangle(Rectangle pruneArea) {
-        for (Segment elem : trajectory.elems) {
+        for (Segment elem : trajectory.elms) {
             if (!pruneArea.isInternal(elem.rect))
                 return true;
         }

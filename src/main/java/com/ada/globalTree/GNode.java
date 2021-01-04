@@ -1,16 +1,11 @@
 package com.ada.globalTree;
 
-import com.ada.geometry.GridPoint;
-import com.ada.geometry.GridRectangle;
-import com.ada.geometry.GLeafAndBound;
-import com.ada.geometry.Rectangle;
-import com.ada.geometry.TrackKeyTID;
-import org.roaringbitmap.RoaringBitmap;
+import com.ada.geometry.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.roaringbitmap.RoaringBitmap;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;

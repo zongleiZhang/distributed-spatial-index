@@ -14,9 +14,9 @@ import java.util.*;
 public class DTConstants implements Serializable {
 
     static <T extends TrackHauOne> Rectangle tightenThresholdCommon(T track,
-                                                                 int notRemove,
-                                                                 List<Integer> removeRI,
-                                                                 Map<Integer, T> trackMap) {
+                                                                    int notRemove,
+                                                                    List<Integer> removeRI,
+                                                                    Map<Integer, T> trackMap) {
         double newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
         Rectangle pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
         if (DTConstants.cacheTighten(track, pruneArea, notRemove, trackMap))
@@ -31,9 +31,9 @@ public class DTConstants implements Serializable {
      * @return track作为noRemove轨迹的related track是否可以在relatedInfo中删除，true可以，false不可以
      */
     static <T extends TrackHauOne> boolean cacheTighten(T track,
-                                                       Rectangle pruneArea,
-                                                       Integer noRemove,
-                                                       Map<Integer, T> trackMap) {
+                                                        Rectangle pruneArea,
+                                                        Integer noRemove,
+                                                        Map<Integer, T> trackMap) {
         boolean res = false;
         for (int i = Constants.topK + Constants.t; i < track.candidateInfo.size(); i++) {
             Integer comparedTID = track.candidateInfo.get(i);
@@ -56,23 +56,23 @@ public class DTConstants implements Serializable {
         return res;
     }
 
-    static <T extends TrackHauOne, M extends RCtree<Segment>> Rectangle newTrackCalculate(T track,
-                                                                                         Rectangle MBR,
-                                                                                         Rectangle pruneArea,
-                                                                                         M pointIndex,
-                                                                                         Map<Integer, T> trackMap) {
+    static <T extends TrackHauOne> Rectangle newTrackCalculate(TrackHauOne track,
+                                                               Rectangle MBR,
+                                                               Rectangle pruneArea,
+                                                               RCtree<Segment> segmentIndex,
+                                                               Map<Integer, T> trackMap) {
         Integer TID = track.trajectory.TID;
         //筛选出计算阈值的轨迹集合，得出裁剪域
         Set<Integer> selectedTIDs = new HashSet<>();  //阈值计算轨迹集
         while (selectedTIDs.size() < Constants.topK * Constants.KNum) { //阈值计算轨迹集的元素数要大于Constants.k*Constants.cDTW。
-            selectedTIDs = pointIndex.getRegionInternalTIDs(pruneArea);
+            selectedTIDs = segmentIndex.getIntersectTIDs(pruneArea);
             pruneArea.extendMultiple(0.3);   //查询轨迹MBR扩展
         }
         selectedTIDs.remove(TID);
         Constants.cutTIDs(selectedTIDs);
         List<SimilarState> result = new ArrayList<>();
         for (Integer comparedTid : selectedTIDs) {
-            T comparedTrack = trackMap.get(comparedTid);
+            TrackHauOne comparedTrack = trackMap.get(comparedTid);
             SimilarState state = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
             result.add(state);
         }
@@ -82,7 +82,7 @@ public class DTConstants implements Serializable {
         pruneArea = MBR.clone().extendLength(threshold);
 
         //用裁剪域筛选出候选轨迹集，计算距离并排序
-        Set<Integer> needCompareTIDS = pointIndex.getRegionInternalTIDs(pruneArea);
+        Set<Integer> needCompareTIDS = segmentIndex.getRegionInternalTIDs(pruneArea);
         needCompareTIDS.remove(TID);
         List<SimilarState> needCompareState = new ArrayList<>();
         for (Integer compareTid : needCompareTIDS) {
@@ -108,7 +108,7 @@ public class DTConstants implements Serializable {
             }
             for (int i = Constants.topK + Constants.t; i < needCompareState.size(); i++) {
                 SimilarState state = needCompareState.get(i);
-                T comparedTrack = trackMap.get(state.comparedTID);
+                TrackHauOne comparedTrack = trackMap.get(state.comparedTID);
                 if (!comparedTrack.outSideRectangle(pruneArea)){
                     track.candidateInfo.add(state.comparedTID);
                     state = trackMap.get(state.comparedTID).putRelatedInfo(state);
@@ -231,7 +231,7 @@ public class DTConstants implements Serializable {
                 if (timeElems.size() != 0) {
                     for (Segment segment : timeElems)
                         pointIndex.delete(segment);
-                    if (track.trajectory.elems.size() == 0)
+                    if (track.trajectory.elms.size() == 0)
                         emptyTIDs.add(tid);
                     else
                         removeElemMap.put(tid, timeElems);
@@ -468,7 +468,7 @@ public class DTConstants implements Serializable {
                 i++;
             }
             if (newCanDi.size() < Constants.topK) {
-                TrackHauOne tmpTrack = new TrackHauOne(null, null, null, track.trajectory.elems, TID, new ArrayList<>(), new HashMap<>());
+                TrackHauOne tmpTrack = new TrackHauOne(null, null, null, track.trajectory.elms, TID, new ArrayList<>(), new HashMap<>());
                 double threshold = track.getKCanDistance(Constants.topK).distance;
                 Rectangle MBR = Constants.getPruningRegion(track.trajectory, 0.0);
                 Rectangle pruneArea = MBR.clone().extendLength(threshold);
@@ -511,7 +511,7 @@ public class DTConstants implements Serializable {
 
     public static void addTrackTopK(TrackKeyTID track, Rectangle MBR, List<GDataNode> changeTopKLeaf) {
         for (GDataNode topKLeaf : changeTopKLeaf) {
-            double bound = Constants.countEnlargeBound(MBR, topKLeaf.rectangle);
+            double bound = Constants.countEnlargeBound(MBR, topKLeaf.region);
             track.topKP.add(new GLeafAndBound(topKLeaf, bound) );
         }
     }
@@ -520,7 +520,7 @@ public class DTConstants implements Serializable {
     static Tuple2<GNode, Double> countEnlarge(Collection<GDataNode> newLeafsSet, Rectangle MBR) {
         Tuple2<GNode, Double> res = new Tuple2<>(null, Double.MAX_VALUE);
         for (GDataNode dataNode : newLeafsSet) {
-            double bound = Constants.countEnlargeBound(MBR, dataNode.rectangle);
+            double bound = Constants.countEnlargeBound(MBR, dataNode.region);
             if (res.f1 > bound){
                 res.f0 = dataNode;
                 res.f1 = bound;

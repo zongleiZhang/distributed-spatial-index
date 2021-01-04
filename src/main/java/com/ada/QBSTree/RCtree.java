@@ -230,7 +230,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	 * 获取指定区域region相交的轨迹ID集，包括与边界相交的轨迹ID
 	 * @param region 指定的区域
 	 */
-	public Set<Integer> getRegionIntersectTIDs(Rectangle region) {
+	public Set<Integer> getIntersectTIDs(Rectangle region) {
 		Set<Integer> allTIDs = new HashSet<>();
 		root.getRegionTIDs(region, allTIDs);
 		return allTIDs;

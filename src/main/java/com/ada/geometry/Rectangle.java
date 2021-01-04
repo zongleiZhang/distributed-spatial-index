@@ -1,12 +1,14 @@
 package com.ada.geometry;
 
 import com.ada.common.Constants;
+import com.ada.model.globalToLocal.Global2LocalValue;
 
 import java.awt.geom.Line2D;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
-public class Rectangle implements Cloneable, Serializable {
+public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
 	public Point low; // 左下角的点
 	public Point high; // 右上角的点
 
@@ -346,6 +348,19 @@ public class Rectangle implements Cloneable, Serializable {
 				return false; // 没有相交
 		}
 		return true;
+	}
+
+	/**
+	 * 判断一个点是否在矩形内部,包括边
+	 */
+	public <T extends Point> boolean isInternal(List<T> points) {
+		boolean result = true;
+		for (Point point : points) {
+			if (!isInternal(point)){
+				return false;
+			}
+		}
+		return result;
 	}
 
 	/**
