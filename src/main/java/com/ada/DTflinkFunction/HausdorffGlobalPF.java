@@ -1,6 +1,7 @@
 package com.ada.DTflinkFunction;
 
 import com.ada.QBSTree.RCtree;
+import com.ada.common.ArrayQueue;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.geometry.*;
@@ -44,8 +45,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Collector<Global2LocalElem> out) throws Exception {
         this.out = out;
         RoaringBitmap bitmap = new RoaringBitmap();
-        Map<Integer, List<Segment>> inSegMap = new HashMap<>();
-        int[][] density = preElements(elements, bitmap, inSegMap);
+        Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
+        int[][] density = preElements(elements, bitmap, inPointsMap);
         tIDsQue.add(bitmap);
         if (density != null){
             densityQue.add(density);
@@ -62,38 +63,30 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             inTIDs.andNot(inAndOutTIDs);
             outTIDs.andNot(inAndOutTIDs);
 
-            //处理只有滑入没有滑出的轨迹
-            for (Integer tid : inTIDs) {
-                TrackKeyTID track = trackMap.get(tid);
-                List<Segment> segments = inSegMap.get(tid);
-                if (track.trajectory.elms.size() == segments.size()){ //新的轨迹
-                    Rectangle MBR = track.rect.clone();
-                    Rectangle pruneArea = MBR.clone().extendLength(Constants.extend);
-                    track.rect = DTConstants.newTrackCalculate(track, MBR, pruneArea, segmentIndex, trackMap);
-                    globalTree.countPartitions(MBR, track);
-                    track.enlargeTuple.f0.bitmap.add(track.trajectory.TID);
-                    Global2LocalPoints g2LPoints = Global2LocalPoints.ToG2LPoints(track.trajectory);
-                    if (!track.topKP.isEmpty()) {
-                        outAddTopKTrackGB(track.topKP.getList(), g2LPoints);
-                        pruneIndex.insert(track);
-                    }
-                    outAddPassTrack(track.passP, g2LPoints);
-                    mayBeAnotherTopK(track);
-                }else { //已有轨迹
-                    updateTrackRelated(inSegMap.get(tid), track);
-                    //重新做一次裁剪和距离计算
-                    track.sortCandidateInfo();
-                    recalculateAddPointTrackTopK(track, segment);
-                }
-            }
-
-            //整条轨迹滑出窗口的轨迹ID集
             Set<Integer> emptyTIDs = new HashSet<>();
 
-            //有采样点滑出窗口的轨迹（但没有整条滑出），记录其ID和滑出的Segment
-            Map<Integer, List<Segment>> outSegMap = new HashMap<>();
+            DTConstants.removeSegment(outTIDs, inAndOutTIDs, logicWinStart, emptyTIDs, segmentIndex, trackMap);
 
-            DTConstants.removeSegment(outTIDs, logicWinStart, outSegMap, emptyTIDs, segmentIndex, trackMap);
+            //记录无采样点滑出，但其topK结果可能发生变化的轨迹
+            Set<Integer> pruneChangeTIDs = new HashSet<>();
+
+            //记录无采样点滑出，别的轨迹滑出导致其候选轨迹集小于K的轨迹
+            Set<Integer> canSmallTIDs = new HashSet<>();
+
+            //处理整条轨迹滑出窗口的轨迹
+            for (Integer tid : emptyTIDs) {
+                TrackKeyTID track = trackMap.remove(tid);
+                track.enlargeTuple.f0.bitmap.remove(tid);
+                for (GDataNode leaf : track.passP) leaf.bitmap.remove(tid);
+                if (!track.topKP.isEmpty()){
+                    for (GLeafAndBound gb : track.topKP.getList()) gb.leaf.bitmap.remove(tid);
+                }
+                DTConstants.dealAllSlideOutTracks(track, inTIDs, outTIDs, inAndOutTIDs, pruneChangeTIDs, emptyTIDs, canSmallTIDs, trackMap,null, pruneIndex);
+            }
+
+            //处理整条轨迹未完全滑出窗口的轨迹
+            processUpdatedTrack(inTIDs, outTIDs, inAndOutTIDs, inPointsMap, pruneChangeTIDs);
+
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
             if (density != null) globalTree.updateTree();
             if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
@@ -137,6 +130,97 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
             if (!nodeMap.isEmpty() && subTask == 0)
                 adjustLocalTasksRegion(nodeMap);
+        }
+    }
+
+    /**
+     * 轨迹track有采样点滑出窗口，但不是全部。修改相关数据。
+     */
+    private void processUpdatedTrack(RoaringBitmap inTIDs,
+                                     RoaringBitmap outTIDs,
+                                     RoaringBitmap inAndOutTIDs,
+                                     Map<Integer, List<TrackPoint>> inPoints,
+                                     Set<Integer> pruneChangeTIDs) {
+        RoaringBitmap calculatedTIDs = new RoaringBitmap();
+        for (Integer tid : outTIDs) {
+            TrackKeyTID track = trackMap.get(tid);
+            for (SimilarState state : track.getRelatedInfo().values()) {
+                int comparedTid = Constants.getStateAnoTID(state, tid);
+                if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
+                    TrackKeyTID comparedTrack = trackMap.get(comparedTid);
+                    if (inAndOutTIDs.contains(comparedTid)) {
+                        Constants.NOIOHausdorff(track.trajectory, comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    }else if (outTIDs.contains(comparedTid)){
+                        Constants.NONOHausdorff(track.trajectory, comparedTrack.trajectory, state);
+                    }else if (inTIDs.contains(comparedTid)){
+                        Constants.NOINHausdorff(track.trajectory, comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    }else {
+                        Constants.NONNHausdorff(track.trajectory, comparedTrack.trajectory, state);
+                        int oldIndex = comparedTrack.candidateInfo.indexOf(tid);
+                        if (oldIndex != -1) {
+                            comparedTrack.updateCandidateInfo(tid);
+                            pruneChangeTIDs.add(comparedTid);
+                        }
+                    }
+                }
+            }
+            track.sortCandidateInfo();
+            recalculateOutPointTrack(track);
+            calculatedTIDs.add(tid);
+        }
+
+        for (Integer tid : inTIDs) {
+            TrackKeyTID track = trackMap.get(tid);
+            for (SimilarState state : track.getRelatedInfo().values()) {
+                int comparedTid = Constants.getStateAnoTID(state, tid);
+                if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
+                    TrackKeyTID comparedTrack = trackMap.get(comparedTid);
+                    if (inAndOutTIDs.contains(comparedTid)) {
+                        Constants.INIOHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    } else if (outTIDs.contains(comparedTid)) {
+                        Constants.INNOHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, state);
+                    } else if (inTIDs.contains(comparedTid)) {
+                        Constants.ININHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    } else {
+                        Constants.INNNHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, state);
+                        int oldIndex = comparedTrack.candidateInfo.indexOf(tid);
+                        if (oldIndex != -1) {
+                            comparedTrack.updateCandidateInfo(tid);
+                            pruneChangeTIDs.add(comparedTid);
+                        }
+                    }
+                }
+            }
+            track.sortCandidateInfo();
+            recalculateInPointTrack(track);
+            calculatedTIDs.add(tid);
+        }
+
+        for (Integer tid : inAndOutTIDs) {
+            TrackKeyTID track = trackMap.get(tid);
+            for (SimilarState state : track.getRelatedInfo().values()) {
+                int comparedTid = Constants.getStateAnoTID(state, tid);
+                if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
+                    TrackKeyTID comparedTrack = trackMap.get(comparedTid);
+                    if (inAndOutTIDs.contains(comparedTid)) {
+                        Constants.IOIOHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    }else if (outTIDs.contains(comparedTid)){
+                        Constants.IONOHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, state);
+                    }else if (inTIDs.contains(comparedTid)){
+                        Constants.IOINHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, inPoints.get(comparedTid), state);
+                    }else {
+                        Constants.IONNHausdorff(track.trajectory, inPoints.get(tid), comparedTrack.trajectory, state);
+                        int oldIndex = comparedTrack.candidateInfo.indexOf(tid);
+                        if (oldIndex != -1) {
+                            comparedTrack.updateCandidateInfo(tid);
+                            pruneChangeTIDs.add(comparedTid);
+                        }
+                    }
+                }
+            }
+            track.sortCandidateInfo();
+            recalculateInAndOutPointTrack(track);
+            calculatedTIDs.add(tid);
         }
     }
 
@@ -378,13 +462,12 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
      */
     private int[][] preElements(Iterable<Density2GlobalElem> elements,
                                 RoaringBitmap bitmap,
-                                Map<Integer , List<Segment>> inSegMap) {
+                                Map<Integer , List<TrackPoint>> inPointsMap) {
         List<Density> densities = new ArrayList<>(Constants.globalPartition);
-        Map<Integer, List<TrackPoint>> map = new HashMap<>();
         for (Density2GlobalElem element : elements) {
             if (element instanceof TrackPoint){
                 TrackPoint point = (TrackPoint) element;
-                map.computeIfAbsent(point.TID, tid -> new ArrayList<>(4)).add(point);
+                inPointsMap.computeIfAbsent(point.TID, tid -> new ArrayList<>(4)).add(point);
             }else {
                 densities.add((Density) element);
             }
@@ -395,22 +478,25 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             for (Density elem : densities) Arrays.addArrsToArrs(density, elem.grids, true);
         }
 
-        for (Map.Entry<Integer, List<TrackPoint>> entry : map.entrySet()) {
+        Iterator<Map.Entry<Integer, List<TrackPoint>>> ite = inPointsMap.entrySet().iterator();
+        while (ite.hasNext()){
+            Map.Entry<Integer, List<TrackPoint>> entry = ite.next();
             TrackKeyTID track = trackMap.get(entry.getKey());
             List<Segment> segments;
-            if (track == null){ //trackMap 中没有的轨迹点
+            if (track == null){ //trackMap中没有的轨迹点
                 TrackPoint prePoint = singlePointMap.remove(entry.getKey());
                 if (prePoint == null){ //新的轨迹点，且只有一个点。
                     if (entry.getValue().size() == 1){
                         singlePointMap.put(entry.getKey(), entry.getValue().get(0));
+                        ite.remove();
                         continue;
                     }else { //新的轨迹点产生
                         segments = Segment.pointsToSegments(entry.getValue());
-                        Rectangle rect = Rectangle.getUnionRectangle(com.ada.common.collections.Collections.changeCollectionElem(segments, seg -> seg.rect).toArray(new Rectangle[]));
+                        Rectangle rect = Rectangle.getUnionRectangle(com.ada.common.collections.Collections.changeCollectionElem(segments, seg -> seg.rect).toArray(new Rectangle[]{}));
                         track = new TrackKeyTID(null,
                                 rect.getCenter().data,
                                 rect,
-                                new ArrayDeque<>(segments),
+                                new ArrayQueue<>(segments),
                                 entry.getKey(),
                                 new ArrayList<>(),
                                 new HashMap<>());
@@ -424,7 +510,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             }
             for (Segment segment : segments) segmentIndex.insert(segment);
             bitmap.add(entry.getKey());
-            inSegMap.put(entry.getKey(), segments);
         }
         return density;
     }

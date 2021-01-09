@@ -1,27 +1,24 @@
 package com.ada.geometry;
 
+import com.ada.common.ArrayQueue;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 public class Trajectory implements Serializable, TrackInfo {
-    public ArrayDeque<Segment> elms;
+    public ArrayQueue<Segment> elms;
     public Integer TID;
 
 
-    public Trajectory(ArrayDeque<Segment> elms,
+    public Trajectory(ArrayQueue<Segment> elms,
                       int TID){
         this.elms = elms;
         this.TID = TID;
-    }
-
-
-    public void addSegment(Segment segment) {
-        elms.add(segment);
     }
 
     public void addSegments(List<Segment> value) {
@@ -35,7 +32,7 @@ public class Trajectory implements Serializable, TrackInfo {
      */
     public List<Segment> removeElem(long time){
         List<Segment> timeOutElem = new ArrayList<>();
-        while(!elms.isEmpty() && elms.element().p1.getTimeStamp() < time) {
+        while(!elms.isEmpty() && elms.element().p2.getTimeStamp() < time) {
             timeOutElem.add(elms.remove());
         }
         return timeOutElem;
@@ -68,6 +65,16 @@ public class Trajectory implements Serializable, TrackInfo {
     @Override
     public long obtainTimeStamp() {
         return elms.element().obtainTimeStamp();
+    }
+
+    public TrackPoint getPoint(int i) {
+        if (i < elms.size()){
+            return elms.get(i).p1;
+        }else if (i == elms.size()){
+            return elms.getLast().p2;
+        }else {
+            return null;
+        }
     }
 }
 

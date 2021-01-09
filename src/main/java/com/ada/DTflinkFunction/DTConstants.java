@@ -216,43 +216,50 @@ public class DTConstants implements Serializable {
 
 
     /**
-     * 删除轨迹集TIDs中每个条轨迹的早于startWindow的轨迹段，并将删除的轨迹段添加到removeElemMap中。
+     * 删除轨迹集TIDs中每个条轨迹的早于startWindow的轨迹段，并将删除的采样点添加到removeElemMap中。
      */
-    static <T extends TrackHauOne> void removeSegment( RoaringBitmap TIDs,
+    static <T extends TrackHauOne> void removeSegment( RoaringBitmap outTIDs,
+                                                       RoaringBitmap inAndOutTIDs,
                                                        long startWindow,
-                                                       Map<Integer, List<Segment>> removeElemMap,
                                                        Set<Integer> emptyTIDs,
                                                        RCtree<Segment> pointIndex,
                                                        Map<Integer, T> trackMap) {
-        for (Integer tid : TIDs) {
+        for (Integer tid : outTIDs) {
             T track = trackMap.get(tid);
             if (track != null) {
-                List<Segment> timeElems = track.trajectory.removeElem(startWindow);
-                if (timeElems.size() != 0) {
-                    for (Segment segment : timeElems)
-                        pointIndex.delete(segment);
-                    if (track.trajectory.elms.size() == 0)
-                        emptyTIDs.add(tid);
-                    else
-                        removeElemMap.put(tid, timeElems);
+                List<Segment> timeElms = track.trajectory.removeElem(startWindow);
+                if (timeElms.size() != 0) {
+                    for (Segment segment : timeElms) pointIndex.delete(segment);
+                    if (track.trajectory.elms.size() == 0) emptyTIDs.add(tid);
+                }
+            }
+        }
+        for (Integer tid : inAndOutTIDs) {
+            T track = trackMap.get(tid);
+            if (track != null) {
+                List<Segment> timeElms = track.trajectory.removeElem(startWindow);
+                if (timeElms.size() != 0) {
+                    for (Segment segment : timeElms) pointIndex.delete(segment);
                 }
             }
         }
     }
 
+
     /**
      * 轨迹集emptyElemMap的所有采样点都滑出窗口，删除相关数据。
      * @param pruneChangeTIDs 记录由于删除track而导致其裁剪域发生变化的轨迹。不包括在hasSlideTrackIds中的轨迹
-     * @param hasSlideTrackIds 用于判断track中记录的相关的相似度计算中间结果是否与滑出的轨迹相关
      */
     static <T extends TrackHauOne> void dealAllSlideOutTracks(T track,
-                                                              RoaringBitmap hasSlideTrackIds,
-                                                             Set<Integer> pruneChangeTIDs,
-                                                             Set<Integer> emptyTIDs,
-                                                             Set<Integer> canSmallTIDs,
-                                                             Map<Integer, T> passTrackMap,
+                                                              RoaringBitmap inTIDs,
+                                                              RoaringBitmap outTIDs,
+                                                              RoaringBitmap inAndOutTIDs,
+                                                              Set<Integer> pruneChangeTIDs,
+                                                              Set<Integer> emptyTIDs,
+                                                              Set<Integer> canSmallTIDs,
+                                                              Map<Integer, T> passTrackMap,
                                                               Map<Integer, T> topKTrackMap,
-                                                             RCtree<T> pruneIndex) {
+                                                              RCtree<T> pruneIndex) {
         Integer tid = track.trajectory.TID;
         pruneIndex.delete(track);
         for (SimilarState state : track.getRelatedInfo().values()) {
@@ -260,16 +267,16 @@ public class DTConstants implements Serializable {
             if (emptyTIDs.contains(comparedTid))
                 continue;
             T comparedTrack = passTrackMap.get(comparedTid);
-            if (comparedTrack == null)
-                comparedTrack = topKTrackMap.get(comparedTid);
+            if (comparedTrack == null) comparedTrack = topKTrackMap.get(comparedTid);
             int index = comparedTrack.candidateInfo.indexOf(tid);
             comparedTrack.candidateInfo.remove(tid);
             comparedTrack.removeRelatedInfo(state);
             if (index != -1) {
-                if (!hasSlideTrackIds.contains(comparedTid))
+                if (!inAndOutTIDs.contains(comparedTid) && !outTIDs.contains(comparedTid) && !inTIDs.contains(comparedTid)){
                     pruneChangeTIDs.add(comparedTid);
-                if (comparedTrack.candidateInfo.size() < Constants.topK) //comparedTrack的候选轨迹集太少了
-                    canSmallTIDs.add(comparedTid);
+                    //comparedTrack的候选轨迹集太少了
+                    if (comparedTrack.candidateInfo.size() < Constants.topK) canSmallTIDs.add(comparedTid);
+                }
             }
         }
     }

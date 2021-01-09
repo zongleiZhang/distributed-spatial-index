@@ -1,6 +1,7 @@
 package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
+import com.ada.common.ArrayQueue;
 
 import java.io.Serializable;
 import java.util.ArrayDeque;
@@ -63,7 +64,7 @@ public class Segment extends RectElem implements TrackInfo, Serializable {
         return points;
     }
 
-    public static List<TrackPoint> segmentsToPoints(ArrayDeque<Segment> segments){
+    public static List<TrackPoint> segmentsToPoints(ArrayQueue<Segment> segments){
         if (segments.isEmpty())
             return new ArrayList<>();
         List<TrackPoint> points = new ArrayList<>();

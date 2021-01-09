@@ -166,73 +166,358 @@ public class Constants implements Serializable {
 
     public static SimilarState getHausdorff(Trajectory t1, Trajectory t2){
         double[][] pds = pointDistance(t1, t2);
-        Tuple2<Double, Integer>[] col = rowMin(pds);
-        Tuple2<Double, Integer>[] row = colMin(pds);
+        Tuple2<Double, Integer>[] row = rowMin(pds);
+        Tuple2<Double, Integer>[] col = colMin(pds);
         return new SimilarState(t1.TID, t2.TID, row, col);
     }
 
 
 
-    private static Tuple2<Tuple2<Double, Integer>[], Tuple2<Double, Integer>[]> getDTWState(Tuple2<Double, Integer>[][] pro){
-        Tuple2<Double, Integer>[] row = new Tuple2[pro[0].length-1];
-        Tuple2<Double, Integer>[] col = new Tuple2[pro.length-1];
-        System.arraycopy(pro[pro.length - 1], 1, row, 0, row.length);
-        for (int i = 0; i < col.length; i++)
-            col[i] = pro[i+1][pro[0].length-1];
-        return new Tuple2<>(row, col);
+    public static void IOIOHausdorff(Trajectory t1,
+                                     List<TrackPoint> inPoints1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID){
+            Trajectory tmpT = t1;
+            t1 = t2;
+            t2 = tmpT;
+            List<TrackPoint> tmpP = inPoints1;
+            inPoints1 = inPoints2;
+            inPoints2 = tmpP;
+        }
+        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
+        int removeColSize = state.col.length - t2.elms.size() + 1 - inPoints2.size();
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size() + 1];
+        System.arraycopy(state.row, removeRowSize, row, 0, state.row.length - removeRowSize);
+        System.arraycopy(state.col, removeColSize, col, 0, state.col.length - removeColSize);
+        double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];
+        double[][] pdsCol = new double[t1.elms.size()+1][inPoints2.size()];
+        boolean[] rowFlag = new boolean[t1.elms.size() + 1];
+        boolean[] colFlag = new boolean[t2.elms.size() + 1];
+        for (int i = 0; i < state.row.length - removeRowSize; i++) {
+            if ((row[i].f1 -= removeColSize) < 0){
+                double[] pds = pointDistance(t1.getPoint(i), t2);
+                rowFlag[i] = true;
+                System.arraycopy(pds, state.row.length - removeRowSize, pdsCol[i], 0, inPoints2.size());
+                row[i] = arrayMin(pds);
+            }
+        }
+        for (int i = 0; i < state.col.length - removeColSize; i++) {
+            if ((col[i].f1 -= removeRowSize) < 0){
+                double[] pds = pointDistance(t2.getPoint(i), t1);
+                colFlag[i] = true;
+                for (int j = 0; j < inPoints1.size(); j++) pdsRow[j][i] = pds[j];
+                col[i] = arrayMin(pds);
+            }
+        }
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < state.col.length - removeColSize; j++) {
+                if (!colFlag[j]) {
+                    double dis = t2.getPoint(j).distancePoint(inPoints1.get(i));
+                    pdsRow[i][j] = dis;
+                    if (dis < col[j].f0) {
+                        col[j].f1 = state.row.length - removeRowSize + i;
+                        col[j].f0 = dis;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < state.row.length - removeRowSize; i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                if (!rowFlag[j]) {
+                    double dis = t1.getPoint(i).distancePoint(inPoints2.get(j));
+                    pdsCol[i][j] = dis;
+                    if (dis < row[i].f0) {
+                        row[i].f1 = state.col.length - removeColSize + j;
+                        row[i].f0 = dis;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = inPoints1.get(i).distancePoint(inPoints2.get(j));
+                pdsCol[state.row.length - removeRowSize + i][j] = pdsRow[i][state.col.length - removeColSize + j] = dis;
+            }
+        }
+        System.arraycopy(rowMin(pdsRow), 0, row, state.row.length - removeRowSize, inPoints1.size());
+        System.arraycopy(colMin(pdsCol), 0, col, state.col.length - removeColSize, inPoints2.size());
+        state.update(row, col);
     }
 
-
-    @SuppressWarnings("unchecked")
-    public static void incrementHausdorff(List<TrackPoint> points, Trajectory track, SimilarState state){
-        double[][] pds;
-        if (state.comparingTID != track.TID){
-            int oldRowNum = state.col.length;
-            int newRowNum = points.size();
-            int colNum = state.row.length;
-            pds = new double[newRowNum][colNum];
-            for (int i = 0; i < pds.length; i++)
-                pds[i] = pointDistance(points.get(i), track);
-            Tuple2<Double, Integer>[] row = rowMin(pds);
-            Tuple2<Double, Integer>[] col = colMin(pds);
-            Tuple2<Double, Integer>[] newCol = new Tuple2[newRowNum + oldRowNum];
-            System.arraycopy(state.col, 0, newCol, 0, state.col.length);
-            System.arraycopy(row, 0, newCol, state.col.length, row.length);
-            Tuple2<Double, Integer>[] newRow = new Tuple2[colNum];
-            for (int i = 0; i < newRow.length; i++) {
-                if (col[i].f0 < state.row[i].f0) {
-                    newRow[i] = new Tuple2<>(col[i].f0, col[i].f1 + state.col.length);
-                }else {
-                    newRow[i] = state.row[i];
-                }
-            }
-            state.update(newRow,newCol);
-        }else{
-            int oldColNum = state.row.length;
-            int newColNum = points.size();
-            int rowNum = state.col.length;
-            pds = new double[rowNum][newColNum];
-            int i = 0;
-            for (Segment seg : track.elms) {
-                for (int j = 0; j < points.size(); j++) pds[i][j] = seg.p1.distancePoint(points.get(j));
-                i++;
-            }
-            for (int j = 0; j < points.size(); j++) pds[i][j] = track.elms.getLast().p2.distancePoint(points.get(j));
-            Tuple2<Double, Integer>[] row = rowMin(pds);
-            Tuple2<Double, Integer>[] col = colMin(pds);
-            Tuple2<Double, Integer>[] newRow = new Tuple2[newColNum + oldColNum];
-            System.arraycopy(state.row, 0, newRow, 0, state.row.length);
-            System.arraycopy(col, 0, newRow, state.row.length, col.length);
-            Tuple2<Double, Integer>[] newCol = new Tuple2[rowNum];
-            for (i = 0; i < newCol.length; i++) {
-                if (row[i].f0 < state.col[i].f0) {
-                    newCol[i] = new Tuple2<>(row[i].f0, row[i].f1 + state.row.length);
-                }else {
-                    newCol[i] = state.col[i];
-                }
-            }
-            state.update(newRow,newCol);
+    public static void NOIOHausdorff(Trajectory t1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID) {
+            IONOHausdorff(t2, inPoints2, t1, state);
+            return;
         }
+    }
+
+    public static void NNIOHausdorff(Trajectory t1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+
+    }
+
+    public static void INIOHausdorff(Trajectory t1,
+                                     List<TrackPoint> inPoints1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+
+    }
+
+    public static void NONOHausdorff(Trajectory t1,
+                                     Trajectory t2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID){
+            Trajectory tmpT = t1;
+            t1 = t2;
+            t2 = tmpT;
+        }
+        int removeRowSize = state.row.length - t1.elms.size() + 1;
+        int removeColSize = state.col.length - t2.elms.size() + 1;
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size() + 1];
+        System.arraycopy(state.row, removeRowSize, row, 0, row.length);
+        System.arraycopy(state.col, removeColSize, col, 0, col.length);
+        for (int i = 0; i < row.length; i++) {
+            if ((row[i].f1 -= removeColSize) < 0){
+                row[i] = arrayMin(pointDistance(t1.getPoint(i), t2));
+            }
+        }
+        for (int i = 0; i < col.length; i++) {
+            if ((col[i].f1 -= removeRowSize) < 0){
+                col[i] = arrayMin(pointDistance(t2.getPoint(i), t1));
+            }
+        }
+        state.update(row, col);
+    }
+
+    public static void NNNOHausdorff(Trajectory t1,
+                                     Trajectory t2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID) NONNHausdorff(t2, t1, state);
+        int removeColSize = state.col.length - t2.elms.size() + 1;
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size() + 1];
+        System.arraycopy(state.col, removeColSize, col, 0, col.length);
+        for (int i = 0; i < state.row.length; i++) {
+            if ((state.row[i].f1 -= removeColSize) < 0){
+                state.row[i] = arrayMin(pointDistance(t1.getPoint(i), t2));
+            }
+        }
+        state.update(state.row, col);
+
+    }
+
+    public static void INNOHausdorff(Trajectory t1,
+                                     List<TrackPoint> inPoints1,
+                                     Trajectory t2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID) NOINHausdorff(t2, t1, inPoints1, state);
+    }
+
+    public static void NNINHausdorff(Trajectory t1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID){
+            INNNHausdorff(t2, inPoints2, t1, state);
+        }
+        double[][] pdsCol = new double[t1.elms.size()+1][inPoints2.size()];
+        for (int i = 0; i < state.row.length; i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = t1.getPoint(i).distancePoint(inPoints2.get(j));
+                pdsCol[i][j] = dis;
+                if (dis < state.row[i].f0){
+                    state.row[i].f1 = state.col.length + j;
+                    state.row[i].f0 = dis;
+                }
+            }
+        }
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size()+1];
+        System.arraycopy(state.col, 0, col, 0 , state.col.length);
+        System.arraycopy(colMin(pdsCol), 0, col, state.col.length, inPoints2.size());
+        state.update(state.row, col, getDistance(state.row, col));
+    }
+
+    public static void ININHausdorff(Trajectory t1,
+                                     List<TrackPoint> inPoints1,
+                                     Trajectory t2,
+                                     List<TrackPoint> inPoints2,
+                                     SimilarState state) {
+        if (t1.TID != state.comparingTID){
+            Trajectory tmpT = t1;
+            t1 = t2;
+            t2 = tmpT;
+            List<TrackPoint> tmpP = inPoints1;
+            inPoints1 = inPoints2;
+            inPoints2 = tmpP;
+        }
+        double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];
+        double[][] pdsCol = new double[t1.elms.size()+1][inPoints2.size()];
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < state.col.length; j++) {
+                double dis = t2.getPoint(j).distancePoint(inPoints1.get(i));
+                pdsRow[i][j] = dis;
+                if (dis < state.col[j].f0){
+                    state.col[j].f1 = state.row.length + i;
+                    state.col[j].f0 = dis;
+                }
+            }
+        }
+        for (int i = 0; i < state.row.length; i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = t1.getPoint(i).distancePoint(inPoints2.get(j));
+                pdsCol[i][j] = dis;
+                if (dis < state.row[i].f0){
+                    state.row[i].f1 = state.col.length + j;
+                    state.row[i].f0 = dis;
+                }
+            }
+        }
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = inPoints1.get(i).distancePoint(inPoints2.get(j));
+                pdsCol[state.row.length + i][j] = pdsRow[i][state.col.length + j] = dis;
+            }
+        }
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size()+1];
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size()+1];
+        System.arraycopy(state.row, 0, row, 0 , state.row.length);
+        System.arraycopy(state.col, 0, col, 0 , state.col.length);
+        System.arraycopy(rowMin(pdsRow), 0, row, state.row.length, inPoints1.size());
+        System.arraycopy(colMin(pdsCol), 0, col, state.col.length, inPoints2.size());
+        state.update(row, col);
+    }
+
+    public static void NOINHausdorff(Trajectory t1, Trajectory t2, List<TrackPoint> inPoints2, SimilarState state) {
+        if (t1.TID != state.comparingTID) INNOHausdorff(t2, inPoints2, t1, state);
+    }
+
+    public static void NONNHausdorff(Trajectory t1, Trajectory t2, SimilarState state) {
+        if (t1.TID != state.comparingTID) NNNOHausdorff(t2, t1, state);
+        int removeRowSize = state.row.length - t1.elms.size() + 1;
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
+        System.arraycopy(state.row, removeRowSize, row, 0, row.length);
+        for (int i = 0; i < state.col.length; i++) {
+            if ((state.col[i].f1 -= removeRowSize) < 0){
+                state.col[i] = arrayMin(pointDistance(t2.getPoint(i), t1));
+            }
+        }
+        state.update(row, state.col);
+    }
+
+    public static void INNNHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
+        if (t1.TID != state.comparingTID) {
+            NNINHausdorff(t2, t1, inPoints1, state);
+        }
+        double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < state.col.length; j++) {
+                double dis = t2.getPoint(j).distancePoint(inPoints1.get(i));
+                pdsRow[i][j] = dis;
+                if (dis < state.col[j].f0){
+                    state.col[j].f1 = state.row.length + i;
+                    state.col[j].f0 = dis;
+                }
+            }
+        }
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size()+1];
+        System.arraycopy(state.row, 0, row, 0 , state.row.length);
+        System.arraycopy(rowMin(pdsRow), 0, row, state.row.length, inPoints1.size());
+        state.update(row, state.col, getDistance(row, state.col));
+    }
+
+    public static void IONOHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
+        if (t1.TID != state.comparingTID) {
+            NOIOHausdorff(t2, t1, inPoints1, state);
+            return;
+        }
+    }
+
+    public static void IOINHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, List<TrackPoint> inPoints2, SimilarState state) {
+        if (t1.TID != state.comparingTID){
+            INIOHausdorff(t2, inPoints2, t1, inPoints1, state);
+            return;
+        }
+        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
+        @SuppressWarnings("unchecked")
+        Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size() + 1];
+        System.arraycopy(state.row, removeRowSize, row, 0, state.row.length - removeRowSize);
+        System.arraycopy(state.col, 0, col, 0, state.col.length);
+        double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];
+        double[][] pdsCol = new double[t1.elms.size()+1][inPoints2.size()];
+        boolean[] colFlag = new boolean[t2.elms.size() + 1];
+        for (int i = 0; i < state.col.length; i++) {
+            if ((col[i].f1 -= removeRowSize) < 0){
+                double[] pds = pointDistance(t2.getPoint(i), t1);
+                colFlag[i] = true;
+                for (int j = 0; j < inPoints1.size(); j++) pdsRow[j][i] = pds[j];
+                col[i] = arrayMin(pds);
+            }
+        }
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < state.col.length; j++) {
+                if (!colFlag[j]) {
+                    double dis = t2.getPoint(j).distancePoint(inPoints1.get(i));
+                    pdsRow[i][j] = dis;
+                    if (dis < col[j].f0) {
+                        col[j].f1 = state.row.length - removeRowSize + i;
+                        col[j].f0 = dis;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < state.row.length - removeRowSize; i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = t1.getPoint(i).distancePoint(inPoints2.get(j));
+                pdsCol[i][j] = dis;
+                if (dis < row[i].f0) {
+                    row[i].f1 = state.col.length + j;
+                    row[i].f0 = dis;
+                }
+            }
+        }
+        for (int i = 0; i < inPoints1.size(); i++) {
+            for (int j = 0; j < inPoints2.size(); j++) {
+                double dis = inPoints1.get(i).distancePoint(inPoints2.get(j));
+                pdsCol[state.row.length - removeRowSize + i][j] = pdsRow[i][state.col.length + j] = dis;
+            }
+        }
+        System.arraycopy(rowMin(pdsRow), 0, row, state.row.length - removeRowSize, inPoints1.size());
+        System.arraycopy(colMin(pdsCol), 0, col, state.col.length, inPoints2.size());
+        state.update(row, col);
+    }
+
+    public static void IONNHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
+        NNIOHausdorff(t2, t1, inPoints1, state);
+    }
+
+    private static double getDistance(Tuple2<Double, Integer>[] t1, Tuple2<Double, Integer>[] t2){
+        double distance = t1[0].f0;
+        for (int i = 1; i < t1.length; i++)
+            distance = Math.max(distance, t1[i].f0);
+        for (Tuple2<Double, Integer> tuple2 : t2)
+            distance = Math.max(distance, tuple2.f0);
+        return distance;
     }
 
     /**
@@ -288,10 +573,7 @@ public class Constants implements Serializable {
     private static double[][] pointDistance(Trajectory t1, Trajectory t2) {
         double[][] res = new double[t1.elms.size()+1][t2.elms.size()+1];
         int i = 0;
-        for(Segment seg : t1.elms){
-            res[i] = pointDistance(seg.p1, t2);
-            i++;
-        }
+        for(Segment seg : t1.elms) res[i++] = pointDistance(seg.p1, t2);
         res[i] = pointDistance(t1.elms.getLast().p2, t2);
         return res;
     }
@@ -300,51 +582,12 @@ public class Constants implements Serializable {
     /**
      * 求点p和轨迹t的每个采样点之前的距离，结果用数组返回。
      */
-    private static <T extends TrackInfo> double[] pointDistance(Point p, Trajectory t){
+    private static double[] pointDistance(Point p, Trajectory t){
         double[] res = new double[t.elms.size()+1];
         int i = 0;
         for (Segment seg : t.elms) res[i++] = seg.p1.distancePoint(p);
         res[i] = t.elms.getLast().p2.distancePoint(p);
         return res;
-    }
-
-    /**
-     * 轨迹Hausdorff距离的减量计算。
-     * @param track0 有采样点移出的轨迹
-     * @param track1 无变化的轨迹
-//     * @param points deTrack移出的采样点
-     * @param state 轨迹相似度中间状态，该方法修改这个中间状态。
-     */
-    public static void decrementHausdorff(Trajectory track0,
-                                          List<Segment> segments0,
-                                          Trajectory track1,
-                                          List<Segment> segments1,
-                                          SimilarState state){
-        Trajectory tmpTrack;
-        List<Segment> tmpPoints;
-        if (track1.TID == state.comparingTID){
-            tmpTrack = track0;
-            track0 = track1;
-            track1 = tmpTrack;
-            tmpPoints = segments0;
-            segments0 = segments1;
-            segments1 = tmpPoints;
-        }
-        if (segments0 == null || segments1 == null)
-            System.out.print("");
-        assert segments0 != null;
-        List<TrackPoint> points0 = Segment.segmentsToPoints(segments0);
-        List<TrackPoint> points1 = Segment.segmentsToPoints(segments1);
-        if (state.row.length != track1.elms.size()+segments1.size()+1 ||
-                state.col.length != track0.elms.size()+segments0.size()+1)
-            throw new IllegalArgumentException(Constants.logicWindow + " " + "error decrement");
-        Tuple2<Double, Integer>[] newRow = new Tuple2[track1.elms.size()+1];
-        Tuple2<Double, Integer>[] newCol = new Tuple2[track0.elms.size()+1];
-        System.arraycopy(state.row, segments1.size(), newRow, 0, newRow.length);
-        System.arraycopy(state.col, segments0.size(), newCol, 0, newCol.length);
-        deDealColRow(track1, track0, points1, newCol);
-        deDealColRow(track0, track1, points0, newRow);
-        state.update(newRow, newCol);
     }
 
     private static void deDealColRow(Trajectory track0, Trajectory track1, List<Point> points0, Tuple2<Double, Integer>[] newRow) {
@@ -761,5 +1004,7 @@ public class Constants implements Serializable {
         }
         return null;
     }
+
+
 
 }

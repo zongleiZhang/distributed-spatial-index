@@ -2,6 +2,7 @@ package com.ada.geometry;
 
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RectElem;
+import com.ada.common.ArrayQueue;
 import com.ada.common.Constants;
 
 import java.io.Serializable;
@@ -15,10 +16,11 @@ public class TrackHauOne extends RectElem implements Serializable {
 
     public TrackHauOne(){}
 
+    @SuppressWarnings("rawtypes")
     public TrackHauOne(RCDataNode leaf,
                        double[] data,
                        Rectangle rect,
-                       ArrayDeque<Segment> elms,
+                       ArrayQueue<Segment> elms,
                        int TID,
                        List<Integer> candidateInfo,
                        Map<SimilarState, SimilarState> relatedInfo) {

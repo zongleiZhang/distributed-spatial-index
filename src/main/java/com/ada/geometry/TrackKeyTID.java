@@ -1,5 +1,6 @@
 package com.ada.geometry;
 
+import com.ada.common.ArrayQueue;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCDataNode;
@@ -16,10 +17,11 @@ public class TrackKeyTID extends TrackHauOne {
 
     public TrackKeyTID(){}
 
+    @SuppressWarnings("rawtypes")
     public TrackKeyTID(RCDataNode leaf,
                        double[] data,
                        Rectangle rect,
-                       ArrayDeque<Segment> elms,
+                       ArrayQueue<Segment> elms,
                        int TID,
                        List<Integer> candidateInfo,
                        Map<SimilarState, SimilarState> relatedInfo){

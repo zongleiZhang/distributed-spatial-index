@@ -51,17 +51,17 @@ public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
         return allTIDs;
     }
 
-    public void rebuildRoot(Rectangle newRectangle, List<T> innerElems, List<T> outerElems, Rectangle innerMBR, Rectangle outerMBR) {
+    public void rebuildRoot(Rectangle newRectangle, List<T> innerElms, List<T> outerElms, Rectangle innerMBR, Rectangle outerMBR) {
         boolean flag = false;
         if (hasTIDs) {
             flag = true;
             hasTIDs = false;
         }
         RCDataNode<T> innerLeaf = new RCDataNode<>(0,null,-1, newRectangle, innerMBR, new ArrayList<>()
-                ,innerElems.size(),this,innerElems);
+                , innerElms.size(),this, innerElms);
         root = innerLeaf.recursionSplit();
         RCDataNode<T> outerLeaf = new RCDataNode<>(0,null,-1, outerRoot.centerRegion, outerMBR, new ArrayList<>()
-                ,outerElems.size(),this,outerElems);
+                , outerElms.size(),this, outerElms);
         outerRoot = outerLeaf.recursionSplit();
         if (flag){
             hasTIDs = true;

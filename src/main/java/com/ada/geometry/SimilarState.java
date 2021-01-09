@@ -17,14 +17,12 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
     public int comparedTID;
 
     /**
-     * 行中间结果
-     * 对于DTW：tuple.f0 是点距 tuple.f1是DTW步长
-     * 对于Hausdorff: tuple.f0 是点距 tuple.f1是选取comparedTrack的第几个点
+     * 每一行的最小点距：tuple.f0 是点距，tuple.f1行号
      */
     public Tuple2<Double, Integer>[] row;
 
     /**
-     * 列中间结果
+     * 每一列的最小点距：tuple.f0 是点距，tuple.f1行号
      */
     public Tuple2<Double, Integer>[] col;
 
@@ -64,24 +62,6 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         return Double.compare(distance,o.distance);
     }
 
-    /**
-     * 比较或者被比较的轨迹发生增量变化后，更新相似度计算的中间结果
-     * @param row 变化后的行
-     * @param col 变化后的列
-     * @param compareType 相似度度量DTW或Hausdorff
-     */
-    public void alterCompareTrack(Tuple2<Double, Integer>[] row, Tuple2<Double, Integer>[] col, String compareType){
-        switch (compareType){
-            case "DTW":
-                this.row = row;
-                this.col = col;
-                break;
-            case "Hausdorff":
-                break;
-            default:
-                throw new IllegalArgumentException("Error argument.");
-        }
-    }
 
     @Override
     public boolean equals(Object o) {
@@ -100,5 +80,11 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         this.row = row;
         this.col = col;
         setDistance();
+    }
+
+    public void update(Tuple2<Double, Integer>[] row, Tuple2<Double, Integer>[] col, double distance) {
+        this.row = row;
+        this.col = col;
+        this.distance = distance;
     }
 }
