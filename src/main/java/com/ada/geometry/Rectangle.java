@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
+	private static double extendToEnoughBig = (Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0])*1.5;
+
 	public Point low; // 左下角的点
 	public Point high; // 右上角的点
 
@@ -398,7 +400,7 @@ public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
 	}
 
 	/**
-	 *
+	 * 返回包含在此矩形和指定矩形rectangle内的最大矩形
 	 */
     public Rectangle createIntersection(Rectangle rectangle) {
 		if (!isIntersection(rectangle))
@@ -415,15 +417,14 @@ public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
 	 */
 	public Rectangle extendToEnoughBig() {
 		Rectangle newRect = this.clone();
-		double tmp = (Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0])*1.5;
 		if (Constants.isEqual(low.data[0],Constants.globalRegion.low.data[0]))
-			newRect.low.data[0] -= tmp;
+			newRect.low.data[0] -= extendToEnoughBig;
 		if (Constants.isEqual(low.data[1],Constants.globalRegion.low.data[1]))
-			newRect.low.data[1] -= tmp;
+			newRect.low.data[1] -= extendToEnoughBig;
 		if (Constants.isEqual(high.data[0],Constants.globalRegion.high.data[0]))
-			newRect.high.data[0] += tmp;
+			newRect.high.data[0] += extendToEnoughBig;
 		if (Constants.isEqual(high.data[1],Constants.globalRegion.high.data[1]))
-			newRect.high.data[1] += tmp;
+			newRect.high.data[1] += extendToEnoughBig;
 		return newRect;
 	}
 

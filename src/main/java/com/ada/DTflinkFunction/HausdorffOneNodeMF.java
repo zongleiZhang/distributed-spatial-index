@@ -3,6 +3,7 @@ package com.ada.DTflinkFunction;
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
+import com.ada.common.Hausdorff;
 import com.ada.geometry.*;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -95,7 +96,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
             for (TrackHauOne comparedTrack : set) {
                 SimilarState state = track.getSimilarState(comparedTrack.trajectory.TID);
                 if (state == null) {
-                    state = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                    state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
                     track.putRelatedInfo(state);
                     comparedTrack.putRelatedInfo(state);
                 }
@@ -234,7 +235,7 @@ public class HausdorffOneNodeMF extends RichFlatMapFunction<TrackPoint, String> 
                 throw new IllegalArgumentException(state.comparingTID + " " + state.comparedTID);
             int comparedTid = Constants.getStateAnoTID(state, track.trajectory.TID);
             TrackHauOne comparedTrack = trackMap.get(comparedTid);
-            SimilarState state1 = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+            SimilarState state1 = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
             if(!Constants.isEqual(state.distance, state1.distance))
                 throw new IllegalArgumentException(state.comparingTID + " " + state.comparedTID +
                         " " + state.distance + " " + state1.distance);

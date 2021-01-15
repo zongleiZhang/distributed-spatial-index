@@ -1,5 +1,6 @@
 package com.ada.DTflinkFunction;
 
+import com.ada.common.Hausdorff;
 import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
 import com.ada.QBSTree.DualRootTree;
@@ -290,7 +291,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                 TrackHauOne comparedTrack = passTrackMap.get(comparedTid);
                 SimilarState state = comparedTrack.getSimilarState(TID);
                 if (state == null)
-                    Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                    Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
                 result.add(state);
             }
             Collections.sort(result);
@@ -312,7 +313,7 @@ public class HausdorffDivideMF extends RichFlatMapFunction<TwoThreeData, String>
                         tmpState.convert();
                         index = result.indexOf(tmpState);
                         if (index == -1)
-                            state = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                            state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
                         else
                             state = result.get(index);
                     }else {

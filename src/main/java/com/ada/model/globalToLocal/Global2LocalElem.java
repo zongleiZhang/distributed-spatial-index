@@ -11,6 +11,8 @@ public class Global2LocalElem implements Serializable {
      * 3： 新增topK轨迹   (Global2LocalPoints)
      * 4： 删除经过轨迹   (Global2LocalTID)
      * 5： 删除topK轨迹   (Global2LocalTID)
+     * 6.  经过轨迹改为topK轨迹 (Global2LocalTID)
+     * 7.  topK轨迹改为经过轨迹 (Global2LocalTID)
      * 6： (调整负责区域)经过轨迹改为topK轨迹   (Global2LocalTID)
      * 7： (调整负责区域)topK轨迹改为经过轨迹   (Global2LocalTID)
      * 8： (调整负责区域)删除经过轨迹   (Global2LocalTID)

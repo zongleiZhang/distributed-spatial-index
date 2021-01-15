@@ -1,5 +1,6 @@
 package com.ada.DTflinkFunction;
 
+import com.ada.common.Hausdorff;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCtree;
@@ -73,7 +74,7 @@ public class DTConstants implements Serializable {
         List<SimilarState> result = new ArrayList<>();
         for (Integer comparedTid : selectedTIDs) {
             TrackHauOne comparedTrack = trackMap.get(comparedTid);
-            SimilarState state = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+            SimilarState state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
             result.add(state);
         }
         Collections.sort(result);
@@ -89,7 +90,7 @@ public class DTConstants implements Serializable {
             int index = result.indexOf(new SimilarState(TID, compareTid, null, null));
             SimilarState state;
             if (index == -1)
-                state = Constants.getHausdorff(track.trajectory, trackMap.get(compareTid).trajectory);
+                state = Hausdorff.getHausdorff(track.trajectory, trackMap.get(compareTid).trajectory);
             else
                 state = result.get(index);
             needCompareState.add(state);
@@ -163,7 +164,7 @@ public class DTConstants implements Serializable {
             SimilarState state = track.getSimilarState(tid);
             if (state == null) {
                 TrackHauOne comparedTrack = trackMap.get(tid);
-                state = Constants.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
                 state = comparedTrack.putRelatedInfo(state);
                 track.putRelatedInfo(state);
             }
@@ -197,7 +198,6 @@ public class DTConstants implements Serializable {
         //计算新的裁剪区域，用裁剪裁剪区域计算候选轨迹集。除去老的候选轨迹集中
         //不会再被用到的相似度计算中间状态
         if (track.getKCanDistance(Constants.topK + Constants.t*2).distance < newThreshold){
-            //有更近的topK结果更新裁剪区域即可,为了避免频繁更新，要求threshold的变动超过20
             newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
             pruneArea = MBR.clone().extendLength(newThreshold);
             for (int i = Constants.topK + Constants.t; i < track.candidateInfo.size(); i++) {
@@ -221,7 +221,7 @@ public class DTConstants implements Serializable {
     static <T extends TrackHauOne> void removeSegment( RoaringBitmap outTIDs,
                                                        RoaringBitmap inAndOutTIDs,
                                                        long startWindow,
-                                                       Set<Integer> emptyTIDs,
+                                                       Set<T> emptyTracks,
                                                        RCtree<Segment> pointIndex,
                                                        Map<Integer, T> trackMap) {
         for (Integer tid : outTIDs) {
@@ -230,7 +230,7 @@ public class DTConstants implements Serializable {
                 List<Segment> timeElms = track.trajectory.removeElem(startWindow);
                 if (timeElms.size() != 0) {
                     for (Segment segment : timeElms) pointIndex.delete(segment);
-                    if (track.trajectory.elms.size() == 0) emptyTIDs.add(tid);
+                    if (track.trajectory.elms.size() == 0) emptyTracks.add(track);
                 }
             }
         }
@@ -248,15 +248,15 @@ public class DTConstants implements Serializable {
 
     /**
      * 轨迹集emptyElemMap的所有采样点都滑出窗口，删除相关数据。
-     * @param pruneChangeTIDs 记录由于删除track而导致其裁剪域发生变化的轨迹。不包括在hasSlideTrackIds中的轨迹
+     * @param pruneChangeTracks 记录由于删除track而导致其裁剪域发生变化的轨迹。不包括在hasSlideTrackIds中的轨迹
      */
     static <T extends TrackHauOne> void dealAllSlideOutTracks(T track,
                                                               RoaringBitmap inTIDs,
                                                               RoaringBitmap outTIDs,
                                                               RoaringBitmap inAndOutTIDs,
-                                                              Set<Integer> pruneChangeTIDs,
-                                                              Set<Integer> emptyTIDs,
-                                                              Set<Integer> canSmallTIDs,
+                                                              Set<T> pruneChangeTracks,
+                                                              Set<T> emptyTracks,
+                                                              Set<T> canSmallTracks,
                                                               Map<Integer, T> passTrackMap,
                                                               Map<Integer, T> topKTrackMap,
                                                               RCtree<T> pruneIndex) {
@@ -264,18 +264,18 @@ public class DTConstants implements Serializable {
         pruneIndex.delete(track);
         for (SimilarState state : track.getRelatedInfo().values()) {
             int comparedTid = Constants.getStateAnoTID(state, tid);
-            if (emptyTIDs.contains(comparedTid))
-                continue;
             T comparedTrack = passTrackMap.get(comparedTid);
             if (comparedTrack == null) comparedTrack = topKTrackMap.get(comparedTid);
+            if (emptyTracks.contains(comparedTrack))
+                continue;
             int index = comparedTrack.candidateInfo.indexOf(tid);
             comparedTrack.candidateInfo.remove(tid);
             comparedTrack.removeRelatedInfo(state);
             if (index != -1) {
                 if (!inAndOutTIDs.contains(comparedTid) && !outTIDs.contains(comparedTid) && !inTIDs.contains(comparedTid)){
-                    pruneChangeTIDs.add(comparedTid);
+                    pruneChangeTracks.add(comparedTrack);
                     //comparedTrack的候选轨迹集太少了
-                    if (comparedTrack.candidateInfo.size() < Constants.topK) canSmallTIDs.add(comparedTid);
+                    if (comparedTrack.candidateInfo.size() < Constants.topK) canSmallTracks.add(comparedTrack);
                 }
             }
         }

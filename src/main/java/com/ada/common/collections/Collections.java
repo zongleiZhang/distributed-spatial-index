@@ -8,6 +8,7 @@ import java.util.Set;
 
 public class Collections {
 
+    @SuppressWarnings("unchecked")
     public static <FROM, TO>
         Collection<TO> changeCollectionElem(Collection<FROM> collection,
                                             ChangeAction<FROM, TO> changeAction){
@@ -19,6 +20,20 @@ public class Collections {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Collection<T> removeAndGatherElms(Collection<T> collection, Judge<T> judge) throws IllegalAccessException, InstantiationException {
+        Collection<T> out = collection.getClass().newInstance();
+        collection.removeIf(t -> {
+            if (judge.action(t)){
+                out.add(t);
+                return true;
+            }else {
+                return false;
+            }
+        });
         return out;
     }
 
