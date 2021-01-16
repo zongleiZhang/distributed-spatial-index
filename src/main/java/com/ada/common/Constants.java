@@ -48,11 +48,6 @@ public class Constants implements Serializable {
      */
     public static Map<Integer,Integer> divideSubTaskKeyMap = new HashMap<>();
 
-    public static List<Integer> usedLeafID = new ArrayList<>();
-
-    public static List<Integer> canUseLeafID = new ArrayList<>();
-
-
     /**
      * 密度统计的频度
      */
@@ -112,11 +107,6 @@ public class Constants implements Serializable {
         }catch (Exception e){
             e.printStackTrace();
         }
-
-        balanceFre = ((logicWindow/7)/densityFre)*densityFre;
-
-        for (int i = dividePartition-1; i >= 0; i--)
-            canUseLeafID.add(i);
         int maxParallelism = 128;
 //        int maxParallelism = 256;
         Set<Integer> usedSubtask = new HashSet<>();

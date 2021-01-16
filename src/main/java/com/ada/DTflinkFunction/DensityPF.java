@@ -24,7 +24,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalE
             grids[row][col]++;
             out.collect(element);
         }
-        if (context.window().getStart()%(Constants.balanceFre* Constants.windowSize) == 0){
+        if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0){
             for (int i = 0; i < Constants.globalPartition; i++) {
                 out.collect(new Density(Arrays.cloneIntMatrix(grids), i));
             }

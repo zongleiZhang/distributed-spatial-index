@@ -2,11 +2,11 @@ package com.ada.DTflinkFunction;
 
 import org.apache.flink.api.java.functions.KeySelector;
 
-public class RebalanceKeySelector<T> implements KeySelector<T, Integer> {
+public class RebalancedKeySelector<T> implements KeySelector<T, Integer> {
     private int parallelism;
     private int count;
 
-    public RebalanceKeySelector(int parallelism){
+    public RebalancedKeySelector(int parallelism){
         this.parallelism = parallelism;
         this.count = 0;
     }

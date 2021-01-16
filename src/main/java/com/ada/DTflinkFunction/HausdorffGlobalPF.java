@@ -122,21 +122,21 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
-        if (density != null){
-            densityQue.add(density);
-            Arrays.addArrsToArrs(globalTree.density, density, true);
-            if (densityQue.size() > Constants.logicWindow / Constants.balanceFre) {
-                int[][] removed = densityQue.remove();
-                Arrays.addArrsToArrs(globalTree.density, removed, false);
-            }
-
-            //调整Global Index
-            Map<GNode, GNode> nodeMap = globalTree.updateTree();
-
-            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
-            if (!nodeMap.isEmpty() && subTask == 0)
-                adjustLocalTasksRegion(nodeMap);
-        }
+//        if (density != null){
+//            densityQue.add(density);
+//            Arrays.addArrsToArrs(globalTree.density, density, true);
+//            if (densityQue.size() > Constants.logicWindow / Constants.densityFre) {
+//                int[][] removed = densityQue.remove();
+//                Arrays.addArrsToArrs(globalTree.density, removed, false);
+//            }
+//
+//            //调整Global Index
+//            Map<GNode, GNode> nodeMap = globalTree.updateTree();
+//
+//            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
+//            if (!nodeMap.isEmpty() && subTask == 0)
+//                adjustLocalTasksRegion(nodeMap);
+//        }
     }
 
     private void dealCandidateSmall(TrackKeyTID track) {
