@@ -135,12 +135,12 @@ public class DTConstants implements Serializable {
     static <T extends TrackHauOne> Tuple2<Boolean, Rectangle> enlargePrune(T track,
                                                                           double newThreshold,
                                                                           int notRemove,
-                                                                          RCtree<Segment> pointIndex,
+                                                                          RCtree<Segment> segmentIndex,
                                                                           Map<Integer, T> trackMap) {
         boolean res = false;
         Rectangle pruneArea;
         pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
-        Set<Integer> newCandidate = pointIndex.getRegionInternalTIDs(pruneArea);
+        Set<Integer> newCandidate = segmentIndex.getRegionInternalTIDs(pruneArea);
         newCandidate.remove(track.trajectory.TID);
         newCandidate.removeAll(track.candidateInfo);
         trackAddCandidate(track, newCandidate, trackMap);
@@ -160,16 +160,16 @@ public class DTConstants implements Serializable {
     private static <T extends TrackHauOne> void trackAddCandidate(T track,
                                                                   Set<Integer> newCandidate,
                                                                   Map<Integer, T> trackMap) {
-        for (Integer tid : newCandidate) {
-            SimilarState state = track.getSimilarState(tid);
+        for (Integer comparedTid : newCandidate) {
+            SimilarState state = track.getSimilarState(comparedTid);
             if (state == null) {
-                TrackHauOne comparedTrack = trackMap.get(tid);
+                TrackHauOne comparedTrack = trackMap.get(comparedTid);
                 state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
                 state = comparedTrack.putRelatedInfo(state);
                 track.putRelatedInfo(state);
             }
-            track.candidateInfo.add(tid);
-            track.updateCandidateInfo(tid);
+            track.candidateInfo.add(comparedTid);
+            track.updateCandidateInfo(comparedTid);
         }
     }
 
@@ -367,87 +367,6 @@ public class DTConstants implements Serializable {
         }
     }
 
-    /**
-     * 已有轨迹track有新的轨迹段seg到达，更新缓存中其相关的中间结果
-     */
-    static <T extends RCtree<Segment>> void updateTrackRelated(Segment seg,
-                                                               TrackHauOne track,
-                                                               Map<Integer,TrackHauOne> passTrackMap,
-                                                               Map<Integer,TrackHauOne> topKTrackMap,
-                                                               RCtree<TrackHauOne> pruneIndex,
-                                                               T pointIndex) {
-        List<Integer> removeRI = new ArrayList<>();
-        Integer TID = track.trajectory.TID;
-        //更新新采样点所属的轨迹与相关轨迹的距离
-        for (SimilarState state : track.getRelatedInfo().values()) {
-            int comparedTid = Constants.getStateAnoTID(state, TID);
-            TrackHauOne comparedTrack = passTrackMap.get(comparedTid);
-            if (comparedTrack == null)
-                comparedTrack = topKTrackMap.get(comparedTid);
-            int oldIndex = comparedTrack.candidateInfo.indexOf(TID);
-            if (oldIndex != -1){ //track是comparedTrack的候选轨迹
-                if (comparedTrack.rect.isInternal(seg.p2)){
-                    Constants.incrementHausdorff(Collections.singletonList(seg.p2), comparedTrack.trajectory, state);
-                    comparedTrack.updateCandidateInfo(TID);
-                }else {
-                    comparedTrack.removeTIDCandidate(track);
-                }
-                DTConstants.changeThreshold(comparedTrack, TID, removeRI, pruneIndex, pointIndex, passTrackMap);
-            }else {
-                Constants.incrementHausdorff(Collections.singletonList(seg.p2), comparedTrack.trajectory, state);
-            }
-        }
-        for (Integer compareTid : removeRI)
-            track.removeRelatedInfo(compareTid);
-    }
-
-
-    /**
-     * 轨迹track有采样点滑出窗口，但不是全部。修改相关数据。
-     * @param removeElemMap 有滑出的采样点的轨迹集合,及其滑出的采样点构成的map
-     * @param pruneChangeTIDs 记录由于修改track相关数据而导致其裁剪域发生变化的轨迹。
-     *                        不包括在hasSlideTrackIds中的轨迹。
-     */
-    static  <T extends RCtree<Segment>> void trackSlideOut(Map<Integer, List<Segment>> removeElemMap,
-                                                           Set<Integer> pruneChangeTIDs,
-                                                           Set<Integer> canSmallTIDs,
-                                                           Map<Integer,TrackHauOne> passTrackMap,
-                                                           Map<Integer,TrackHauOne> topKTrackMap,
-                                                           RCtree<TrackHauOne> pruneIndex,
-                                                           T pointIndex) {
-        Set<Integer> calculatedTIDs = new HashSet<>();
-        Set<Integer> hasSlideTrackIds = removeElemMap.keySet();
-        removeElemMap.forEach((tid, timeOutElems) -> {
-            TrackHauOne track = passTrackMap.get(tid);
-            if (track == null)
-                track = topKTrackMap.get(tid);
-            for (SimilarState state : track.getRelatedInfo().values()) {
-                int comparedTid = Constants.getStateAnoTID(state, tid);
-                if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
-                    TrackHauOne comparedTrack = passTrackMap.get(comparedTid);
-                    if (comparedTrack == null)
-                        comparedTrack = topKTrackMap.get(comparedTid);
-                    if (hasSlideTrackIds.contains(comparedTid)) { //本次滑动comparedTrack有采样点滑出
-                        Constants.decrementHausdorff(track.trajectory, timeOutElems, comparedTrack.trajectory, removeElemMap.get(comparedTid), state);
-                    } else { //本次滑动comparedTrack无采样点滑出
-                        Constants.decrementHausdorff(track.trajectory, timeOutElems, comparedTrack.trajectory, new ArrayList<>(), state);
-                        int oldIndex = comparedTrack.candidateInfo.indexOf(tid);
-                        if (oldIndex != -1) {
-                            comparedTrack.updateCandidateInfo(tid);
-                            pruneChangeTIDs.add(comparedTid);
-                        }
-                    }
-                }
-            }
-            if (!canSmallTIDs.contains(tid)) {
-                track.sortCandidateInfo();
-                Rectangle MBR = Constants.getPruningRegion(track.trajectory, 0.0);
-                Rectangle pruneArea = DTConstants.recalculateTrackTopK(track, MBR, pointIndex, passTrackMap);
-                pruneIndex.alterELem(track, pruneArea);
-            }
-            calculatedTIDs.add(tid);
-        });
-    }
 
 
     static <T extends RCtree<Segment>> void dealCandidateSmall(Map<Integer, List<Segment>> removeElemMap,
