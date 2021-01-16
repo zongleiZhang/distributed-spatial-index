@@ -2,7 +2,6 @@ package com.ada.common;
 
 import com.ada.geometry.*;
 import com.ada.globalTree.GDataNode;
-import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.io.FileInputStream;
 import java.io.Serializable;
@@ -64,14 +63,6 @@ public class Constants implements Serializable {
      */
     public static int balanceFre;
 
-
-    /**
-     * 存放JobID的文件位置
-     */
-    private final static String jobIDFileName = "/opt/flink-1.9.1/log/flink-chenliang-standalonesession-0-131-199.log";
-
-
-
     /**
      * 全局索引叶节点索引项数量的下届
      */
@@ -94,8 +85,9 @@ public class Constants implements Serializable {
 
     public static int logicWindow;
 
-    public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
+    public static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
 
+    public static double extendToEnoughBig = (globalRegion.high.data[0] - globalRegion.low.data[0])*1.5;
 
     static {
         try {

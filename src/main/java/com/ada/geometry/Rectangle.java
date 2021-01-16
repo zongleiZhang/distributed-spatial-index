@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
-	private static double extendToEnoughBig = (Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0])*1.5;
-
 	public Point low; // 左下角的点
 	public Point high; // 右上角的点
 
@@ -418,13 +416,13 @@ public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
 	public Rectangle extendToEnoughBig() {
 		Rectangle newRect = this.clone();
 		if (Constants.isEqual(low.data[0],Constants.globalRegion.low.data[0]))
-			newRect.low.data[0] -= extendToEnoughBig;
+			newRect.low.data[0] -= Constants.extendToEnoughBig;
 		if (Constants.isEqual(low.data[1],Constants.globalRegion.low.data[1]))
-			newRect.low.data[1] -= extendToEnoughBig;
+			newRect.low.data[1] -= Constants.extendToEnoughBig;
 		if (Constants.isEqual(high.data[0],Constants.globalRegion.high.data[0]))
-			newRect.high.data[0] += extendToEnoughBig;
+			newRect.high.data[0] += Constants.extendToEnoughBig;
 		if (Constants.isEqual(high.data[1],Constants.globalRegion.high.data[1]))
-			newRect.high.data[1] += extendToEnoughBig;
+			newRect.high.data[1] += Constants.extendToEnoughBig;
 		return newRect;
 	}
 
