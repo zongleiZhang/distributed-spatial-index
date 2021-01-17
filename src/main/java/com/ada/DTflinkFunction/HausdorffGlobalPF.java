@@ -61,8 +61,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
         long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
         if (hasInit){
-            RoaringBitmap outTIDs = new RoaringBitmap();
-            if (densityQue.size() > Constants.logicWindow)  outTIDs = tIDsQue.remove();
+            RoaringBitmap outTIDs = tIDsQue.remove();
             RoaringBitmap inAndOutTIDs = inputIDs.clone();
             inAndOutTIDs.and(outTIDs);
             RoaringBitmap inTIDs = inputIDs.clone();
@@ -101,6 +100,14 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
                 for (Integer tid : tIDsQue.remove())
                     trackMap.get(tid).trajectory.removeElem(logicWinStart);
+                for (TrackKeyTID track : trackMap.values()) {
+                    track.rect = Constants.getPruningRegion(track.trajectory, 0.0);
+                    track.data = track.rect.getCenter().data;
+                    for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
+                        leaf.bitmap.add(track.trajectory.TID);
+                    }
+                }
+
                 // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
                 boolean canInit = true;
                 for (GDataNode leaf : globalTree.getAllLeafs()) {
@@ -112,6 +119,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                 if (canInit){
                     hasInit = true;
                     initCalculate();
+                    System.out.println(subTask + " complete.");
+                }else {
+                    for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
                 }
             }
         }
@@ -259,9 +269,10 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             TrackKeyTID track = trackMap.get(tid);
             List<TrackPoint> inPoints = inPointsMap.get(tid);
             Rectangle pointsMBR = Rectangle.pointsMBR(inPoints.toArray(new Point[0]));
-            if (track.trajectory.elms.size() == inPoints.size() - 1){
+            if (track.trajectory.elms.size() == inPoints.size() - 1){ //新的轨迹
                 Rectangle pruneArea = pointsMBR.clone().extendLength(Constants.extend);
                 track.rect = DTConstants.newTrackCalculate(track, pointsMBR, pruneArea, segmentIndex, trackMap);
+                track.data = track.rect.getCenter().data;
                 globalTree.countPartitions(pointsMBR, track);
                 track.enlargeTuple.f0.bitmap.add(tid);
                 Global2LocalPoints trackPs = Global2LocalPoints.ToG2LPoints(track.trajectory);
@@ -923,10 +934,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     entry.getValue().add(0, prePoint);
                 }
                 segments = Segment.pointsToSegments(entry.getValue());
-                Rectangle rect = Rectangle.getUnionRectangle(Collections.changeCollectionElem(segments, seg -> seg.rect).toArray(new Rectangle[]{}));
                 track = new TrackKeyTID(null,
-                        rect.getCenter().data,
-                        rect,
+                        null,
+                        null,
                         new ArrayQueue<>(segments),
                         entry.getKey(),
                         new ArrayList<>(),
@@ -934,8 +944,13 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                 trackMap.put(entry.getKey(), track);
                 newTracks.add(track);
             }else { //已有的轨迹
-                entry.getValue().add(0, track.trajectory.elms.getLast().p2);
-                segments = Segment.pointsToSegments(entry.getValue());
+                if (entry.getValue().size() == 1){
+                    segments = new ArrayList<>(1);
+                    segments.add(new Segment(track.trajectory.elms.getLast().p2, entry.getValue().get(0)));
+                }else {
+                    segments = Segment.pointsToSegments(entry.getValue());
+                    segments.add(0, new Segment(track.trajectory.elms.getLast().p2, entry.getValue().get(0)));
+                }
                 track.trajectory.addSegments(segments);
             }
             for (Segment segment : segments) segmentIndex.insert(segment);

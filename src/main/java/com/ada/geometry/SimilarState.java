@@ -5,6 +5,7 @@ import com.ada.common.Constants;
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -54,6 +55,29 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         comparedTID = comparingTID;
         comparingTID = tmp;
         return this;
+    }
+
+    public static boolean isEquals(SimilarState state0, SimilarState state1){
+        if (state0 == null && state1 == null) return true;
+        if (state0 == null || state1 == null) return false;
+        if (state0.comparingTID == state1.comparedTID && state0.comparedTID == state1.comparingTID){
+            state1.convertRowCol();
+        }
+        if (state0.comparingTID == state1.comparingTID && state0.comparedTID == state1.comparedTID){
+            return Arrays.deepEquals(state0.row, state1.row) &&
+                    Arrays.deepEquals(state0.col, state1.col) &&
+                    Constants.isEqual(state0.distance, state1.distance);
+        }
+        return false;
+    }
+
+    public void convertRowCol(){
+        int tmpInt = comparingTID;
+        comparingTID = comparedTID;
+        comparedTID = tmpInt;
+        Tuple2<Double, Integer>[] tmpTuple = row;
+        row = col;
+        col = tmpTuple;
     }
 
 

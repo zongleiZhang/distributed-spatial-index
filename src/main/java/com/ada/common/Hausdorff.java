@@ -93,8 +93,8 @@ public class Hausdorff {
             inPoints1 = inPoints2;
             inPoints2 = tmpP;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
-        int removeColSize = state.col.length - t2.elms.size() + 1 - inPoints2.size();
+        int removeRowSize = state.row.length - ((t1.elms.size() + 1) - inPoints1.size());
+        int removeColSize = state.col.length - ((t2.elms.size() + 1) - inPoints2.size());
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -164,8 +164,8 @@ public class Hausdorff {
             IONOHausdorff(t2, inPoints2, t1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1;
-        int removeColSize = state.col.length - t2.elms.size() + 1 - inPoints2.size();
+        int removeRowSize = state.row.length - (t1.elms.size() + 1);
+        int removeColSize = state.col.length - ((t2.elms.size() + 1) - inPoints2.size());
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -211,7 +211,7 @@ public class Hausdorff {
             IONNHausdorff(t2, inPoints2, t1, state);
             return;
         }
-        int removeColSize = state.col.length - t2.elms.size() + 1 - inPoints2.size();
+        int removeColSize = state.col.length - ((t2.elms.size() + 1) - inPoints2.size());
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -253,7 +253,7 @@ public class Hausdorff {
             IOINHausdorff(t2, inPoints2, t1, inPoints1, state);
             return;
         }
-        int removeColSize = state.col.length - t2.elms.size() + 1;
+        int removeColSize = state.col.length - (t2.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -312,8 +312,8 @@ public class Hausdorff {
             t1 = t2;
             t2 = tmpT;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1;
-        int removeColSize = state.col.length - t2.elms.size() + 1;
+        int removeRowSize = state.row.length - (t1.elms.size() + 1);
+        int removeColSize = state.col.length - (t2.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -340,7 +340,7 @@ public class Hausdorff {
             NONNHausdorff(t2, t1, state);
             return;
         }
-        int removeColSize = state.col.length - t2.elms.size() + 1;
+        int removeColSize = state.col.length - (t2.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] col = new Tuple2[t2.elms.size() + 1];
         System.arraycopy(state.col, removeColSize, col, 0, col.length);
@@ -350,7 +350,6 @@ public class Hausdorff {
             }
         }
         state.update(state.row, col);
-
     }
 
     public static void INNOHausdorff(Trajectory t1,
@@ -361,7 +360,7 @@ public class Hausdorff {
             NOINHausdorff(t2, t1, inPoints1, state);
             return;
         }
-        int removeColSize = state.col.length - t2.elms.size() + 1;
+        int removeColSize = state.col.length - (t2.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -470,7 +469,7 @@ public class Hausdorff {
             INNOHausdorff(t2, inPoints2, t1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1;
+        int removeRowSize = state.row.length - (t1.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -502,7 +501,7 @@ public class Hausdorff {
             NNNOHausdorff(t2, t1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1;
+        int removeRowSize = state.row.length - (t1.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         System.arraycopy(state.row, removeRowSize, row, 0, row.length);
@@ -541,8 +540,8 @@ public class Hausdorff {
             NOIOHausdorff(t2, t1, inPoints1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
-        int removeColSize = state.col.length - t2.elms.size() + 1;
+        int removeRowSize = state.row.length - ((t1.elms.size() + 1) - inPoints1.size());
+        int removeColSize = state.col.length - (t2.elms.size() + 1);
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -564,9 +563,10 @@ public class Hausdorff {
                 col[i] = arrayMin(pds);
             }
         }
-        for (int i = 0; i < inPoints1.size(); i++) {
-            for (int j = 0; j < state.col.length - removeColSize; j++) {
-                if (!colFlag[j]) {
+
+        for (int j = 0; j < state.col.length - removeColSize; j++) {
+            if (!colFlag[j]) {
+                for (int i = 0; i < inPoints1.size(); i++) {
                     double dis = t2.getPoint(j).distancePoint(inPoints1.get(i));
                     pdsRow[i][j] = dis;
                     if (dis < col[j].f0) {
@@ -585,7 +585,7 @@ public class Hausdorff {
             INIOHausdorff(t2, inPoints2, t1, inPoints1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
+        int removeRowSize = state.row.length - ((t1.elms.size() + 1) - inPoints1.size());
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")
@@ -641,7 +641,7 @@ public class Hausdorff {
             NNIOHausdorff(t2, t1, inPoints1, state);
             return;
         }
-        int removeRowSize = state.row.length - t1.elms.size() + 1 - inPoints1.size();
+        int removeRowSize = state.row.length - ((t1.elms.size() + 1) - inPoints1.size());
         @SuppressWarnings("unchecked")
         Tuple2<Double, Integer>[] row = new Tuple2[t1.elms.size() + 1];
         @SuppressWarnings("unchecked")

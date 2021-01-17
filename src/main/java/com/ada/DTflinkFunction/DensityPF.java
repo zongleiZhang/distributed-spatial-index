@@ -18,7 +18,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalE
     public void process(Integer key,
                         Context context,
                         Iterable<TrackPoint> elements,
-                        Collector<Density2GlobalElem> out) throws Exception {
+                        Collector<Density2GlobalElem> out) {
         for (TrackPoint element : elements) {
             int row = (int) Math.floor(((element.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
             int col = (int) Math.floor(((element.data[1] - Constants.globalRegion.low.data[1])/(Constants.globalRegion.high.data[1] - Constants.globalRegion.low.data[1]))*(Constants.gridDensity+1.0));
