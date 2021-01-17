@@ -12,6 +12,7 @@ import org.apache.flink.util.Collector;
 
 public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalElem, Integer, TimeWindow> {
     private int[][] grids;
+    private boolean isFirst;
 
     @Override
     public void process(Integer key,
@@ -24,7 +25,8 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalE
             grids[row][col]++;
             out.collect(element);
         }
-        if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0){
+        if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0 || isFirst){
+            isFirst = false;
             for (int i = 0; i < Constants.globalPartition; i++) {
                 out.collect(new Density(Arrays.cloneIntMatrix(grids), i));
             }
@@ -36,5 +38,6 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalE
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
+        isFirst = true;
     }
 }

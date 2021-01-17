@@ -2,6 +2,7 @@ package com.ada.DTflinkFunction;
 
 import com.ada.QBSTree.RCtree;
 import com.ada.common.ArrayQueue;
+import com.ada.common.collections.Collections;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.common.Hausdorff;
@@ -14,7 +15,6 @@ import com.ada.model.densityToGlobal.Density2GlobalElem;
 import com.ada.model.globalToLocal.Global2LocalElem;
 import com.ada.model.globalToLocal.Global2LocalPoints;
 import com.ada.model.globalToLocal.Global2LocalTID;
-import com.ada.common.collections.Collections;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -46,6 +46,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Iterable<Density2GlobalElem> elements,
                         Collector<Global2LocalElem> out) {
         this.out = out;
+        if (subTask == 0 && count == 11)
+            System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
         int[][] density = preElements(elements, newTracks, inPointsMap);
@@ -113,6 +115,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                 }
             }
         }
+        count++;
 
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
@@ -900,11 +903,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                 densities.add((Density) element);
             }
         }
-        int[][] density = null;
-        if (!densities.isEmpty()){
-            density = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-            for (Density elem : densities) Arrays.addArrsToArrs(density, elem.grids, true);
-        }
+        for (int i = 1; i < densities.size(); i++)
+            Arrays.addArrsToArrs(densities.get(0).grids, densities.get(i).grids, true);
 
         Iterator<Map.Entry<Integer, List<TrackPoint>>> ite = inPointsMap.entrySet().iterator();
         while (ite.hasNext()){
@@ -923,7 +923,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     entry.getValue().add(0, prePoint);
                 }
                 segments = Segment.pointsToSegments(entry.getValue());
-                Rectangle rect = Rectangle.getUnionRectangle(com.ada.common.collections.Collections.changeCollectionElem(segments, seg -> seg.rect).toArray(new Rectangle[]{}));
+                Rectangle rect = Rectangle.getUnionRectangle(Collections.changeCollectionElem(segments, seg -> seg.rect).toArray(new Rectangle[]{}));
                 track = new TrackKeyTID(null,
                         rect.getCenter().data,
                         rect,
@@ -940,7 +940,10 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             }
             for (Segment segment : segments) segmentIndex.insert(segment);
         }
-        return density;
+        if (densities.isEmpty())
+            return null;
+        else
+            return densities.get(0).grids;
     }
 
 
@@ -954,7 +957,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 //                List<GDataNode> migrateOutLeafs = new ArrayList<>();
 //                entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
 //                migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
-//                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) com.ada.common.collections.Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
+//                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
 //                migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
 //            }
 //            leafs.clear();
@@ -962,7 +965,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 //            for (GDataNode newLeaf : leafs) {
 //                List<GDataNode> migrateFromLeafs = new ArrayList<>();
 //                entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
-//                List<Integer> migrateFromLeafIDs = (List<Integer>) com.ada.common.collections.Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
+//                List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
 //                migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
 //                migrateFromMap.put(newLeaf.leafID, new LocalRegionAdjustInfo(null, migrateFromLeafIDs, newLeaf.region));
 //            }
