@@ -2,6 +2,7 @@ package com.ada.common;
 
 import com.ada.geometry.*;
 import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GTree;
 
 import java.io.FileInputStream;
 import java.io.Serializable;
@@ -59,11 +60,6 @@ public class Constants implements Serializable {
     public static int balanceFre;
 
     /**
-     * 全局索引叶节点索引项数量的下届
-     */
-    public static int globalLowBound;
-
-    /**
      * 网格密度
      */
     public final static int gridDensity = 511;
@@ -97,7 +93,7 @@ public class Constants implements Serializable {
             dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
             keyTIDPartition = Integer.parseInt(pro.getProperty("keyTIDPartition"));
             densityFre = Integer.parseInt(pro.getProperty("densityFre"));
-            globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
+            GTree.globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
             windowSize = Integer.parseInt(pro.getProperty("windowSize"));
             logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
             topK = Integer.parseInt(pro.getProperty("topK"));

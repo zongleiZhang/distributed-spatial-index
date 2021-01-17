@@ -407,7 +407,7 @@ public class GTree {
         root.getIntersectLeafNodes(MBR, track.passP);
         List<GDataNode> topKLeafs = new ArrayList<>();
         root.getIntersectLeafNodes(track.rect, topKLeafs);
-        countEnlargeBound(track, new ArrayList<>(topKLeafs), MBR);
+        countEnlargeBound(track, topKLeafs, MBR);
         topKLeafs.removeAll(track.passP);
         if (!topKLeafs.isEmpty()) {
             List<GLeafAndBound> list = new ArrayList<>(topKLeafs.size());
