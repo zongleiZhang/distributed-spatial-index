@@ -1,5 +1,6 @@
 package com.ada.geometry;
 
+import com.ada.Hausdorff.SimilarState;
 import com.ada.common.ArrayQueue;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;

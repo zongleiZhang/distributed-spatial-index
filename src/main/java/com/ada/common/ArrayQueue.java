@@ -206,6 +206,15 @@ public class ArrayQueue<E> extends AbstractCollection<E> implements Deque<E>, Cl
         return x;
     }
 
+    public void removeFirstN(int n) {
+        if (n > size())
+            throw new IllegalArgumentException("n is too big.");
+        for (int i = 0; i < n; i++) {
+            elements[head] = null;
+            head = (head + 1) & (elements.length - 1);
+        }
+    }
+
     public E removeLast() {
         E x = pollLast();
         if (x == null)
@@ -299,6 +308,12 @@ public class ArrayQueue<E> extends AbstractCollection<E> implements Deque<E>, Cl
         @SuppressWarnings("unchecked")
         E e = (E) elements[(head + index) & (elements.length - 1)];
         return e;
+    }
+
+    public void set(int index, E e) {
+        if (index >= size() || index < 0)
+            throw new IndexOutOfBoundsException();
+        elements[(head + index) & (elements.length - 1)] = e;
     }
 
     /**
@@ -773,6 +788,27 @@ public class ArrayQueue<E> extends AbstractCollection<E> implements Deque<E>, Cl
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ArrayQueue<?> that = (ArrayQueue<?>) o;
+        if (size() != that.size()) return false;
+        Iterator<E> ite0 = iterator();
+        Iterator<?> ite1 = that.iterator();
+        for (; ite0.hasNext() && ite1.hasNext();){
+            if (!ite0.next().equals(ite1.next()))
+                return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        if (isEmpty()) return 0;
+        return Arrays.hashCode(toArray());
     }
 
     private static final long serialVersionUID = 2340985798034038923L;

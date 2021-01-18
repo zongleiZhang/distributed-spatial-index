@@ -1,6 +1,7 @@
 package com.ada.DTflinkFunction;
 
-import com.ada.common.Hausdorff;
+import com.ada.Hausdorff.Hausdorff;
+import com.ada.Hausdorff.SimilarState;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCtree;

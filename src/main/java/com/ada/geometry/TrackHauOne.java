@@ -1,5 +1,6 @@
 package com.ada.geometry;
 
+import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RectElem;
 import com.ada.common.ArrayQueue;

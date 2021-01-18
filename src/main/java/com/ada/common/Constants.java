@@ -1,5 +1,7 @@
 package com.ada.common;
 
+import com.ada.Hausdorff.Hausdorff;
+import com.ada.Hausdorff.SimilarState;
 import com.ada.geometry.*;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GTree;
@@ -337,26 +339,4 @@ public class Constants implements Serializable {
             comparedTID = state.comparingTID;
         return comparedTID;
     }
-
-    public static <T> T getElem(Collection<T> collection, Judge<T> judge){
-        for (T t : collection) {
-            if (judge.accept(t))
-                return t;
-        }
-        return null;
-    }
-
-    public static <T> T removeElem(Collection<T> collection, Judge<T> judge){
-        for (Iterator<T> ite = collection.iterator(); ite.hasNext();){
-            T t = ite.next();
-            if (judge.accept(t)) {
-                ite.remove();
-                return t;
-            }
-        }
-        return null;
-    }
-
-
-
 }

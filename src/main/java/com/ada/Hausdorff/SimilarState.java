@@ -1,7 +1,10 @@
-package com.ada.geometry;
+package com.ada.Hausdorff;
 
 
+import com.ada.common.ArrayQueue;
 import com.ada.common.Constants;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.io.Serializable;
@@ -11,6 +14,8 @@ import java.util.Objects;
 /**
  * 相似度计算的中间结果,用于增量计算。
  */
+@Setter
+@Getter
 public class SimilarState implements Comparable<SimilarState>, Cloneable, Serializable {
     //比较轨迹,对应二维表格中的行
     public int comparingTID;
@@ -20,19 +25,19 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
     /**
      * 每一行的最小点距：tuple.f0 是点距，tuple.f1行号
      */
-    public Tuple2<Double, Integer>[] row;
+    public ArrayQueue<NOAndDistance> row;
 
     /**
      * 每一列的最小点距：tuple.f0 是点距，tuple.f1行号
      */
-    public Tuple2<Double, Integer>[] col;
+    public ArrayQueue<NOAndDistance> col;
 
     public double distance;
 
     public SimilarState() {
     }
 
-    public SimilarState(int comparingTID, int comparedTID, Tuple2<Double, Integer>[] row, Tuple2<Double, Integer>[] col) {
+    public SimilarState(int comparingTID, int comparedTID, ArrayQueue<NOAndDistance> row, ArrayQueue<NOAndDistance> col) {
         this.comparingTID = comparingTID;
         this.comparedTID = comparedTID;
         this.row = row;
@@ -42,11 +47,22 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
     }
 
     public void setDistance(){
-        distance = row[0].f0;
-        for (int i = 1; i < row.length; i++)
-            distance = Math.max(distance, row[i].f0);
-        for (Tuple2<Double, Integer> tuple2 : col)
-            distance = Math.max(distance, tuple2.f0);
+        distance = Double.MIN_VALUE;
+        for (NOAndDistance nd : row) distance = Math.max(distance, nd.distance);
+        for (NOAndDistance nd : col) distance = Math.max(distance, nd.distance);
+    }
+
+    public void printDisSite(){
+        StringBuilder str = new StringBuilder();
+        for (int i = 0; i < row.size(); i++) {
+            if (row.get(i).distance == distance)
+                str.append("row [").append(i).append("]\t");
+        }
+        for (int i = 0; i < col.size(); i++) {
+            if (col.get(i).distance == distance)
+                str.append("col [").append(i).append("]\t");
+        }
+        System.out.println(str.toString());
     }
 
 
@@ -61,23 +77,16 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         if (state0 == null && state1 == null) return true;
         if (state0 == null || state1 == null) return false;
         if (state0.comparingTID == state1.comparedTID && state0.comparedTID == state1.comparingTID){
-            state1.convertRowCol();
-        }
-        if (state0.comparingTID == state1.comparingTID && state0.comparedTID == state1.comparedTID){
-            return Arrays.deepEquals(state0.row, state1.row) &&
-                    Arrays.deepEquals(state0.col, state1.col) &&
+            return state0.row.equals(state1.col) &&
+                    state0.col.equals(state1.row) &&
                     Constants.isEqual(state0.distance, state1.distance);
+        }else if (state0.comparingTID == state1.comparingTID && state0.comparedTID == state1.comparedTID){
+            return state0.row.equals(state1.row) &&
+                    state0.col.equals(state1.col) &&
+                    Constants.isEqual(state0.distance, state1.distance);
+        }else {
+            return false;
         }
-        return false;
-    }
-
-    public void convertRowCol(){
-        int tmpInt = comparingTID;
-        comparingTID = comparedTID;
-        comparedTID = tmpInt;
-        Tuple2<Double, Integer>[] tmpTuple = row;
-        row = col;
-        col = tmpTuple;
     }
 
 
@@ -98,17 +107,5 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
     @Override
     public int hashCode() {
         return Objects.hash(comparingTID, comparedTID);
-    }
-
-    public void update(Tuple2<Double, Integer>[] row, Tuple2<Double, Integer>[] col) {
-        this.row = row;
-        this.col = col;
-        setDistance();
-    }
-
-    public void update(Tuple2<Double, Integer>[] row, Tuple2<Double, Integer>[] col, double distance) {
-        this.row = row;
-        this.col = col;
-        this.distance = distance;
     }
 }

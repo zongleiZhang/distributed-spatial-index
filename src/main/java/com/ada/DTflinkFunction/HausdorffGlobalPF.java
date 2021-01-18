@@ -1,11 +1,12 @@
 package com.ada.DTflinkFunction;
 
+import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.ArrayQueue;
 import com.ada.common.collections.Collections;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
-import com.ada.common.Hausdorff;
+import com.ada.Hausdorff.Hausdorff;
 import com.ada.geometry.*;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
@@ -46,7 +47,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Iterable<Density2GlobalElem> elements,
                         Collector<Global2LocalElem> out) {
         this.out = out;
-        if (subTask == 0 && count == 11)
+        if (subTask == 0 && count >= 12)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
@@ -242,6 +243,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             TrackKeyTID track = trackMap.get(tid);
             for (SimilarState state : track.getRelatedInfo().values()) {
                 int comparedTid = Constants.getStateAnoTID(state, tid);
+                if ((tid == 8 && comparedTid == 11467) ||
+                        (tid == 11467 && comparedTid == 8))
+                    System.out.print("");
                 if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
                     TrackKeyTID comparedTrack = trackMap.get(comparedTid);
                     if (inAndOutTIDs.contains(comparedTid)) {
@@ -260,8 +264,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     }
                 }
             }
-            track.sortCandidateInfo();
-            recalculateOutPointTrack(track);
+//            track.sortCandidateInfo();
+//            recalculateOutPointTrack(track);
             calculatedTIDs.add(tid);
         }
 
@@ -299,8 +303,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         }
                     }
                 }
-                track.sortCandidateInfo();
-                recalculateInPointTrack(track, inPoints, pointsMBR);
+//                track.sortCandidateInfo();
+//                recalculateInPointTrack(track, inPoints, pointsMBR);
                 calculatedTIDs.add(tid);
             }
         }
@@ -311,6 +315,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             Rectangle pointsMBR = Rectangle.pointsMBR(inPoints.toArray(new Point[0]));
             for (SimilarState state : track.getRelatedInfo().values()) {
                 int comparedTid = Constants.getStateAnoTID(state, tid);
+                if ((tid == 8 && comparedTid == 11467) ||
+                        (tid == 11467 && comparedTid == 8))
+                    System.out.print("");
                 if (!calculatedTIDs.contains(comparedTid)) { //track与comparedTid的距离没有计算过
                     TrackKeyTID comparedTrack = trackMap.get(comparedTid);
                     if (inAndOutTIDs.contains(comparedTid)) {
@@ -325,8 +332,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     }
                 }
             }
-            track.sortCandidateInfo();
-            recalculateInAndOutPointTrack(track, inPoints, pointsMBR);
+//            track.sortCandidateInfo();
+//            recalculateInAndOutPointTrack(track, inPoints, pointsMBR);
             calculatedTIDs.add(tid);
         }
     }
@@ -818,8 +825,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             int TID = track.trajectory.TID;
             List<TrackKeyTID> list = new ArrayList<>(trackMap.values());
             list.remove(track);
-            for (TrackKeyTID comparedTrack : list)
+            for (TrackKeyTID comparedTrack : list) {
                 Constants.addTrackCandidate(track, comparedTrack);
+            }
             track.sortCandidateInfo();
             track.threshold = track.getKCanDistance(Constants.t + Constants.topK).distance;
             Rectangle MBR = track.rect.clone();
