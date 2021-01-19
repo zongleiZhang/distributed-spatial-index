@@ -1,10 +1,12 @@
-package com.ada.geometry;
+package com.ada.geometry.track;
 
 import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RectElem;
 import com.ada.common.ArrayQueue;
 import com.ada.common.Constants;
+import com.ada.geometry.Rectangle;
+import com.ada.geometry.Segment;
 
 import java.io.Serializable;
 import java.util.*;
@@ -100,6 +102,9 @@ public class TrackHauOne extends RectElem implements Serializable {
         candidateInfo.sort(Comparator.comparing(this::getSimilarState));
     }
 
+    /**
+     * 移除第i个候选轨迹，i从1计。
+     */
     public <T extends TrackHauOne> void removeICandidate(int i, Map<Integer, T> map){
         Integer comparedTID = candidateInfo.remove(i-1);
         T t = map.get(comparedTID);

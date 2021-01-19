@@ -3,7 +3,7 @@ package com.ada.model.globalToLocal;
 import com.ada.common.ArrayQueue;
 import com.ada.geometry.Segment;
 import com.ada.geometry.TrackPoint;
-import com.ada.geometry.Trajectory;
+import com.ada.geometry.track.Trajectory;
 import lombok.Getter;
 import lombok.Setter;
 

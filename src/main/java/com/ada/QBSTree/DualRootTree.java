@@ -1,7 +1,9 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Constants;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.Rectangle;
+import com.ada.geometry.TrackInfo;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -67,12 +69,14 @@ public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
             hasTIDs = true;
             List<RCDataNode<T>> leaves = new ArrayList<>();
             root.getLeafNodes(leaves);
-            for (RCDataNode<T> leaf : leaves)
-                leaf.TIDs = Constants.getTIDs(leaf.elms);
+            for (RCDataNode<T> leaf : leaves) {
+                leaf.TIDs = new HashSet<>(Collections.changeCollectionElem(leaf.elms, t -> ((TrackInfo) t).obtainTID()));
+            }
             leaves.clear();
             outerRoot.getLeafNodes(leaves);
-            for (RCDataNode<T> leaf : leaves)
-                leaf.TIDs = Constants.getTIDs(leaf.elms);
+            for (RCDataNode<T> leaf : leaves) {
+                leaf.TIDs = new HashSet<>(Collections.changeCollectionElem(leaf.elms, t -> ((TrackInfo) t).obtainTID()));
+            }
         }
     }
 }

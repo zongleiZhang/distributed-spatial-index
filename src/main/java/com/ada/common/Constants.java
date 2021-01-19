@@ -3,6 +3,8 @@ package com.ada.common;
 import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
 import com.ada.geometry.*;
+import com.ada.geometry.track.TrackHauOne;
+import com.ada.geometry.track.Trajectory;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GTree;
 
@@ -132,15 +134,6 @@ public class Constants implements Serializable {
         }
     }
 
-    public static Set<Integer> getTIDs(Collection os){
-        Set<Integer> TIDs = new HashSet<>();
-        for (Object o : os) {
-            TrackInfo info = (TrackInfo) o;
-            TIDs.add(info.obtainTID());
-        }
-        return TIDs;
-    }
-
 
     /**
      * 向轨迹track中添加一个新的候选轨迹comparedTrack
@@ -200,14 +193,6 @@ public class Constants implements Serializable {
                 df.format(queryElem.rect.low.data[1]) + " " +
                 df.format(queryElem.rect.high.data[0]) + " " +
                 df.format(queryElem.rect.high.data[1]);
-    }
-
-    public static String appendTrackPoint(TrackPointElem elem) {
-        DecimalFormat df = new DecimalFormat("#.0000");
-        return elem.getTID() + " " +
-                elem.timestamp + " " +
-                df.format(elem.data[0]) + " " +
-                df.format(elem.data[1]);
     }
 
 

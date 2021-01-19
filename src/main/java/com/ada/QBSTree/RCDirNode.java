@@ -1,8 +1,10 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Constants;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.Rectangle;
-import com.ada.geometry.TrackKeyTID;
+import com.ada.geometry.TrackInfo;
+import com.ada.geometry.track.TrackKeyTID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -309,15 +311,17 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 			tree.hasTIDs = true;
 			List<RCDataNode<T>> leaves = new ArrayList<>();
 			res.getLeafNodes(leaves);
-			for (RCDataNode<T> leaf : leaves)
-				leaf.TIDs = Constants.getTIDs(leaf.elms);
+			for (RCDataNode<T> leaf : leaves) {
+				leaf.TIDs = new HashSet<>(Collections.changeCollectionElem(leaf.elms, t -> ((TrackInfo) t).obtainTID()));
+			}
 		}
 		return res;
 	}
 
 	@Override
 	boolean check(Map<Integer, TrackKeyTID> trackMap){
-		super.check(trackMap);
+		if (!super.check(trackMap))
+			return false;
 		if(centerRegion.getLeftBound() != child[0].centerRegion.getLeftBound() ||
 				centerRegion.getLeftBound() != child[2].centerRegion.getLeftBound() ||
 				centerRegion.getRightBound() != child[1].centerRegion.getRightBound() ||
@@ -339,7 +343,9 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 			return false;
 		if(elemNum != child[0].elemNum + child[1].elemNum + child[2].elemNum + child[3].elemNum)
 			return false;
-		if (!isBalance(0, false, 0) || !isBalance(1, false, 0) || !isBalance(2, false, 0) ||
+		if (!isBalance(0, false, 0) ||
+				!isBalance(1, false, 0) ||
+				!isBalance(2, false, 0) ||
 				!isBalance(3, false, 0))
 			return false;
 		for(int chNum = 0; chNum<4; chNum++)

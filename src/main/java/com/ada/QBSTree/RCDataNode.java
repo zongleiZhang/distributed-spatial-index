@@ -1,7 +1,11 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Constants;
+import com.ada.common.collections.ChangeAction;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.*;
+import com.ada.geometry.track.TrackHauOne;
+import com.ada.geometry.track.TrackKeyTID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,8 +25,9 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
                       List<Integer> preDepths, int elemNum, RCtree<T> tree, List<T> elms) {
 		super(depth, parent, position, centerRegion,region, preDepths, elemNum, tree);
 		this.elms = elms;
-		if (tree.hasTIDs)
-			TIDs = Constants.getTIDs(elms);
+		if (tree.hasTIDs) {
+			TIDs = new HashSet<>(Collections.changeCollectionElem(elms, t -> ((TrackInfo) t).obtainTID()));
+		}
 	}
 
 	@Override
@@ -387,7 +392,8 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 
 	@Override
 	boolean check(Map<Integer, TrackKeyTID> trackMap){
-		super.check(trackMap);
+		if (!super.check(trackMap))
+			return false;
 		if (!elms.isEmpty() && elms.get(0) instanceof TrackKeyTID){
 			for (T elem : elms){
 				TrackKeyTID track = (TrackKeyTID) elem;
@@ -418,12 +424,9 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 		}
 
 		if (tree.hasTIDs){
-			Set<Integer> minus = Constants.getTIDs(elms);
-			if (minus.size() != TIDs.size())
-				throw new IllegalArgumentException("minus.size() != cur.TIDs.size()");
-			minus.removeAll(TIDs);
-			if (minus.size() != 0)
-				throw new IllegalArgumentException("minus.size() != 0");
+			Set<Integer> minus = new HashSet<>(Collections.changeCollectionElem(elms, t -> ((TrackInfo) t).obtainTID()));
+			if (!Collections.collectionsEqual(minus, TIDs))
+				return false;
 		}
 
 		for (T elem : elms) {

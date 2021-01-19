@@ -1,6 +1,9 @@
-package com.ada.geometry;
+package com.ada.geometry.track;
 
 import com.ada.common.ArrayQueue;
+import com.ada.geometry.Segment;
+import com.ada.geometry.TrackInfo;
+import com.ada.geometry.TrackPoint;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,16 +35,10 @@ public class Trajectory implements Serializable, TrackInfo {
      */
     public List<Segment> removeElem(long time){
         List<Segment> timeOutElem = new ArrayList<>();
-        while(!elms.isEmpty() && elms.element().p2.getTimeStamp() < time) {
+        while(!elms.isEmpty() && elms.element().p2.getTimestamp() < time) {
             timeOutElem.add(elms.remove());
         }
         return timeOutElem;
-    }
-
-
-    @Override
-    public TrackMessage toMessage(){
-        return null;
     }
 
     @Override
@@ -60,11 +57,6 @@ public class Trajectory implements Serializable, TrackInfo {
     @Override
     public int obtainTID() {
         return TID;
-    }
-
-    @Override
-    public long obtainTimeStamp() {
-        return elms.element().obtainTimeStamp();
     }
 
     public TrackPoint getPoint(int i) {

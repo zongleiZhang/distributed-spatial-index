@@ -81,17 +81,6 @@ public class Segment extends RectElem implements TrackInfo, Serializable {
 
 
     @Override
-    public long obtainTimeStamp(){
-        return p1.timestamp;
-    }
-
-    @Override
-    public SegmentMessage toMessage(){
-        return new SegmentMessage(p1, p2);
-    }
-
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Segment)) return false;

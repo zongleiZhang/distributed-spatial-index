@@ -1,7 +1,11 @@
-package com.ada.geometry;
+package com.ada.geometry.track;
 
 import com.ada.Hausdorff.SimilarState;
 import com.ada.common.ArrayQueue;
+import com.ada.geometry.GLeafAndBound;
+import com.ada.geometry.Rectangle;
+import com.ada.geometry.Segment;
+import com.ada.geometry.track.TrackHauOne;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCDataNode;

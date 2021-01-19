@@ -1,9 +1,7 @@
 package com.ada.QBSTree;
 
-import com.ada.common.Constants;
 import com.ada.geometry.Rectangle;
-import com.ada.geometry.Segment;
-import com.ada.geometry.TrackKeyTID;
+import com.ada.geometry.track.TrackKeyTID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -319,8 +317,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 
 	boolean check(Map<Integer, TrackKeyTID> trackMap) {
 		if(this.parent != null) {
-			if (parent.child[position] != this)
-				return false;
+			return parent.child[position] == this;
 		}
 		return true;
 	}
@@ -376,6 +373,17 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 				return 1;
 		}
 		return 0;
+	}
+
+	/**
+	 * 判断本节点是否在索引tree中
+	 */
+	public boolean isInTree(){
+		if (parent == null)
+			return tree.root == this;
+		if (parent.child[position] != this)
+			return false;
+		return parent.isInTree();
 	}
 
 	/**

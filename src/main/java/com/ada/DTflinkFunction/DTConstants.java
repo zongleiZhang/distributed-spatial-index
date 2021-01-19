@@ -2,6 +2,8 @@ package com.ada.DTflinkFunction;
 
 import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
+import com.ada.geometry.track.TrackHauOne;
+import com.ada.geometry.track.TrackKeyTID;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.QBSTree.RCtree;
@@ -223,14 +225,14 @@ public class DTConstants implements Serializable {
                                                        RoaringBitmap inAndOutTIDs,
                                                        long startWindow,
                                                        Set<T> emptyTracks,
-                                                       RCtree<Segment> pointIndex,
+                                                       RCtree<Segment> segmentIndex,
                                                        Map<Integer, T> trackMap) {
         for (Integer tid : outTIDs) {
             T track = trackMap.get(tid);
             if (track != null) {
                 List<Segment> timeElms = track.trajectory.removeElem(startWindow);
                 if (timeElms.size() != 0) {
-                    for (Segment segment : timeElms) pointIndex.delete(segment);
+                    for (Segment segment : timeElms) segmentIndex.delete(segment);
                     if (track.trajectory.elms.size() == 0) emptyTracks.add(track);
                 }
             }
@@ -240,7 +242,7 @@ public class DTConstants implements Serializable {
             if (track != null) {
                 List<Segment> timeElms = track.trajectory.removeElem(startWindow);
                 if (timeElms.size() != 0) {
-                    for (Segment segment : timeElms) pointIndex.delete(segment);
+                    for (Segment segment : timeElms) segmentIndex.delete(segment);
                 }
             }
         }

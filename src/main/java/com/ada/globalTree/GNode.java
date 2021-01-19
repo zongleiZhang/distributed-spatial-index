@@ -1,6 +1,7 @@
 package com.ada.globalTree;
 
 import com.ada.geometry.*;
+import com.ada.geometry.track.TrackKeyTID;
 import lombok.Getter;
 import lombok.Setter;
 import org.roaringbitmap.RoaringBitmap;
@@ -43,7 +44,7 @@ public abstract class GNode implements Serializable {
     public boolean check(Map<Integer, TrackKeyTID> trackMap) {
         int total = tree.getRangeEleNum(gridRegion);
         if (elemNum != total)
-            throw new IllegalArgumentException("elemNum error");
+            return false;
         for (Integer TID : bitmap) {
             TrackKeyTID track = trackMap.get(TID);
             if (this instanceof GDataNode){
@@ -52,17 +53,17 @@ public abstract class GNode implements Serializable {
                 if (track.enlargeTuple.f0 != dataNode &&
                         !track.passP.contains(dataNode) &&
                         (track.topKP.isEmpty() || !track.topKP.getList().contains(gb)))
-                    throw new IllegalArgumentException("bitmap error " + TID);
+                    return false;
             }else {
                 if (track.enlargeTuple.f0 != this)
-                    throw new IllegalArgumentException("track.enlargeTuple.f0 != this " + TID);
+                    return false;
             }
         }
         if (!gridRegion.toRectangle().equals(region))
-            throw new IllegalArgumentException("rectangle error");
+            return false;
         if(!isRoot()) {
             if (parent.child[position] != this)
-                throw new IllegalArgumentException("parent child node error");
+                return false;
         }
 
         if (this instanceof GDirNode) {
