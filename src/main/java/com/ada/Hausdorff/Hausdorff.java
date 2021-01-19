@@ -109,7 +109,7 @@ public class Hausdorff {
             if ((state.col.get(i).NO -= removeRowSize) < 0) {
                 double[] pds = pointDistance(t2.getPoint(i), t1);
                 colFlag[i] = true;
-                for (int j = 0; j < inPoints1.size(); j++) pdsRow[j][i] = pds[j];
+                for (int j = 0; j < inPoints1.size(); j++) pdsRow[j][i] = pds[j+state.row.size()];
                 state.col.set(i, arrayMin(pds));
             }
         }
@@ -163,7 +163,12 @@ public class Hausdorff {
         for (int i = 0; i < inPoints1.size(); i++) {
             for (int j = 0; j < inPoints2.size(); j++) {
                 double dis = inPoints1.get(i).distancePoint(inPoints2.get(j));
-                pdsCol[state.row.size() + i][j] = pdsRow[i][state.col.size() + j] = dis;
+                try {
+                    pdsCol[state.row.size() + i][j] = pdsRow[i][state.col.size() + j] = dis;
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
             }
         }
     }
@@ -499,8 +504,6 @@ public class Hausdorff {
             INIOHausdorff(t2, inPoints2, t1, inPoints1, state);
             return;
         }
-        if (t1.TID == 9662 && t2.TID == 3710) //row 143 !=
-            System.out.print("");
         int removeRowSize = state.row.size() - ((t1.elms.size() + 1) - inPoints1.size());
         state.row.removeFirstN(removeRowSize);
         double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];

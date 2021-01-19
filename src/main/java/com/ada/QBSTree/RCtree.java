@@ -180,6 +180,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 
 
+	@SuppressWarnings("unchecked")
 	public <M extends RectElem> void alterELem(M oldElem, Rectangle newRegion) {
 		Point newCenter = newRegion.getCenter();
 		if (oldElem.leaf.centerRegion.isInternal(newCenter)){

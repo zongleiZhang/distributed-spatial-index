@@ -409,25 +409,22 @@ public class GTree {
         root.getIntersectLeafNodes(track.rect, topKLeafs);
         countEnlargeBound(track, topKLeafs, MBR);
         topKLeafs.removeAll(track.passP);
-        if (!topKLeafs.isEmpty()) {
-            List<GLeafAndBound> list = new ArrayList<>(topKLeafs.size());
-            for (GDataNode leaf : topKLeafs) {
-                double bound = Constants.countEnlargeBound(MBR, leaf.region);
-                list.add(new GLeafAndBound(leaf, bound));
-            }
-            track.topKP.setList(list);
+        if (!topKLeafs.isEmpty()) countTopKBound(MBR, track, topKLeafs);
+    }
+
+    private void countTopKBound(Rectangle MBR, TrackKeyTID track, List<GDataNode> topKLeafs) {
+        List<GLeafAndBound> list = new ArrayList<>(topKLeafs.size());
+        for (GDataNode leaf : topKLeafs) {
+            double bound = Constants.countEnlargeBound(MBR, leaf.region);
+            list.add(new GLeafAndBound(leaf, bound));
         }
+        track.topKP.setList(list);
     }
 
     public void countTopKAndEnlargeBound(TrackKeyTID track, List<GDataNode> MBRLeafs, List<GDataNode> pruneAreaLeafs, Rectangle MBR) {
         countEnlargeBound(track, pruneAreaLeafs, MBR);
         pruneAreaLeafs.removeAll(MBRLeafs);
-        List<GLeafAndBound> list = new ArrayList<>(pruneAreaLeafs.size());
-        for (GDataNode leaf : pruneAreaLeafs) {
-            double bound = Constants.countEnlargeBound(MBR, leaf.region);
-            list.add(new GLeafAndBound(leaf,bound));
-        }
-        track.topKP.setList(list);
+        countTopKBound(MBR, track, pruneAreaLeafs);
     }
 
     /**
