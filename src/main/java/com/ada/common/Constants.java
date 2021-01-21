@@ -134,20 +134,6 @@ public class Constants implements Serializable {
         }
     }
 
-
-    /**
-     * 向轨迹track中添加一个新的候选轨迹comparedTrack
-     */
-    public static void addTrackCandidate(TrackHauOne track, TrackHauOne comparedTrack) {
-        SimilarState state = comparedTrack.getSimilarState(track.trajectory.TID);
-        if (state == null) {
-            state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
-            track.putRelatedInfo(state);
-            comparedTrack.putRelatedInfo(state);
-        }
-        track.candidateInfo.add(comparedTrack.trajectory.TID);
-    }
-
     /**
      * 用指定的阈值threshold计算轨迹的裁剪域。
      */

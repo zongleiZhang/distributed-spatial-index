@@ -236,8 +236,6 @@ public class Hausdorff {
         state.row.addAll(rowMin(pdsRow));
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NOIOHausdorff(Trajectory t1,
@@ -263,8 +261,6 @@ public class Hausdorff {
         addPointsUpdateStateRow(t1, inPoints2, state, pdsCol, rowFlag);
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NNIOHausdorff(Trajectory t1,
@@ -283,8 +279,6 @@ public class Hausdorff {
         addPointsUpdateStateRow(t1, inPoints2, state, pdsCol, rowFlag);
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void INIOHausdorff(Trajectory t1,
@@ -308,8 +302,6 @@ public class Hausdorff {
         state.row.addAll(rowMin(pdsRow));
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NONOHausdorff(Trajectory t1,
@@ -335,8 +327,6 @@ public class Hausdorff {
             }
         }
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NNNOHausdorff(Trajectory t1,
@@ -354,8 +344,6 @@ public class Hausdorff {
             }
         }
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void INNOHausdorff(Trajectory t1,
@@ -379,8 +367,6 @@ public class Hausdorff {
         addPointsUpdateStateCol(inPoints1, t2, state, pdsRow);
         state.row.addAll(rowMin(pdsRow));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NNINHausdorff(Trajectory t1,
@@ -395,8 +381,6 @@ public class Hausdorff {
         addPointsUpdateStateRow(t1, inPoints2, state, pdsCol);
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void ININHausdorff(Trajectory t1,
@@ -420,8 +404,6 @@ public class Hausdorff {
         state.row.addAll(rowMin(pdsRow));
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NOINHausdorff(Trajectory t1, Trajectory t2, List<TrackPoint> inPoints2, SimilarState state) {
@@ -440,8 +422,6 @@ public class Hausdorff {
         addPointsUpdateStateRow(t1, inPoints2, state, pdsCol);
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void NONNHausdorff(Trajectory t1, Trajectory t2, SimilarState state) {
@@ -457,8 +437,6 @@ public class Hausdorff {
             }
         }
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void INNNHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
@@ -470,8 +448,6 @@ public class Hausdorff {
         addPointsUpdateStateCol(inPoints1, t2, state, pdsRow);
         state.row.addAll(rowMin(pdsRow));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void IONOHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
@@ -495,8 +471,6 @@ public class Hausdorff {
         addPointsUpdateStateCol(inPoints1, t2, state, pdsRow, colFlag);
         state.row.addAll(rowMin(pdsRow));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void IOINHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, List<TrackPoint> inPoints2, SimilarState state) {
@@ -516,8 +490,6 @@ public class Hausdorff {
         state.row.addAll(rowMin(pdsRow));
         state.col.addAll(colMin(pdsCol));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 
     public static void IONNHausdorff(Trajectory t1, List<TrackPoint> inPoints1, Trajectory t2, SimilarState state) {
@@ -533,7 +505,5 @@ public class Hausdorff {
         addPointsUpdateStateCol(inPoints1, t2, state, pdsRow, colFlag);
         state.row.addAll(rowMin(pdsRow));
         state.setDistance();
-        if (!SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state))
-            SimilarState.isEquals(Hausdorff.getHausdorff(t1, t2), state);
     }
 }

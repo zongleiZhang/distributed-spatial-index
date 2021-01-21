@@ -224,7 +224,7 @@ public class DTConstants implements Serializable {
     static <T extends TrackHauOne> void removeSegment( RoaringBitmap outTIDs,
                                                        RoaringBitmap inAndOutTIDs,
                                                        long startWindow,
-                                                       Set<T> emptyTracks,
+                                                       Set<Integer> emptyTIDs,
                                                        RCtree<Segment> segmentIndex,
                                                        Map<Integer, T> trackMap) {
         for (Integer tid : outTIDs) {
@@ -233,7 +233,7 @@ public class DTConstants implements Serializable {
                 List<Segment> timeElms = track.trajectory.removeElem(startWindow);
                 if (timeElms.size() != 0) {
                     for (Segment segment : timeElms) segmentIndex.delete(segment);
-                    if (track.trajectory.elms.size() == 0) emptyTracks.add(track);
+                    if (track.trajectory.elms.size() == 0) emptyTIDs.add(tid);
                 }
             }
         }
@@ -258,7 +258,7 @@ public class DTConstants implements Serializable {
                                                               RoaringBitmap outTIDs,
                                                               RoaringBitmap inAndOutTIDs,
                                                               Set<T> pruneChangeTracks,
-                                                              Set<T> emptyTracks,
+                                                              Set<Integer> emptyTIDs,
                                                               Set<T> canSmallTracks,
                                                               Map<Integer, T> passTrackMap,
                                                               Map<Integer, T> topKTrackMap,
@@ -269,7 +269,7 @@ public class DTConstants implements Serializable {
             int comparedTid = Constants.getStateAnoTID(state, tid);
             T comparedTrack = passTrackMap.get(comparedTid);
             if (comparedTrack == null) comparedTrack = topKTrackMap.get(comparedTid);
-            if (emptyTracks.contains(comparedTrack))
+            if (emptyTIDs.contains(comparedTid))
                 continue;
             int index = comparedTrack.candidateInfo.indexOf(tid);
             comparedTrack.candidateInfo.remove(tid);
@@ -304,7 +304,8 @@ public class DTConstants implements Serializable {
             List<TrackHauOne> list = new ArrayList<>(tracks2);
             list.remove(track);
             for (TrackHauOne comparedTrack : list)
-                Constants.addTrackCandidate(track, comparedTrack);
+                track.addTrackCandidate(comparedTrack);
+            list.forEach(track::addTrackCandidate);
             track.sortCandidateInfo();
             track.threshold = track.getKCanDistance(Constants.t + Constants.topK).distance;
             track.rect = Constants.getPruningRegion(track.trajectory, track.threshold);
@@ -329,7 +330,7 @@ public class DTConstants implements Serializable {
             if (comparedTrack == null)
                 comparedTrack = topKTrackMap.get(comparedTid);
             if (!comparedTrack.candidateInfo.contains(TID)){
-                Constants.addTrackCandidate(comparedTrack, track);
+                comparedTrack.addTrackCandidate(track);
                 comparedTrack.updateCandidateInfo(TID);
                 if (comparedTrack.getKCanDistance(Constants.topK + Constants.t*2).distance < comparedTrack.threshold) {
                     double newThreshold = comparedTrack.getKCanDistance(Constants.topK + Constants.t).distance;

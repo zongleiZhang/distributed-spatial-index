@@ -1,5 +1,6 @@
 package com.ada.geometry.track;
 
+import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.RCDataNode;
 import com.ada.QBSTree.RectElem;
@@ -61,6 +62,20 @@ public class TrackHauOne extends RectElem implements Serializable {
             return oldState;
         }
 
+    }
+
+    /**
+     * 向轨迹track中添加一个新的候选轨迹comparedTrack
+     */
+    public void addTrackCandidate(TrackHauOne comparedTrack) {
+        Integer comparedTID = comparedTrack.trajectory.TID;
+        SimilarState state = getSimilarState(comparedTID);
+        if (state == null) {
+            state = Hausdorff.getHausdorff(trajectory, comparedTrack.trajectory);
+            putRelatedInfo(state);
+            comparedTrack.putRelatedInfo(state);
+        }
+        candidateInfo.add(comparedTID);
     }
 
     public void removeRelatedInfo(SimilarState state){

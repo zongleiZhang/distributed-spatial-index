@@ -24,7 +24,7 @@ public class Collections {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Collection<T> removeAndGatherElms(Collection<T> collection, Judge<T> judge) throws IllegalAccessException, InstantiationException {
+    public static <T> Collection<T> removeAndGatherElms(Collection<T> collection, Judge<T> judge) throws Exception {
         Collection<T> out = collection.getClass().newInstance();
         collection.removeIf(t -> {
             if (judge.action(t)){
