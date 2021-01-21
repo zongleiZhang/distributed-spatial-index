@@ -88,8 +88,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             processUpdatedTrack(inTIDs, outTIDs, inAndOutTIDs, inPointsMap, pruneChangeTracks, canSmallTracks);
             pruneChangeTracks.removeAll(canSmallTracks);
             for (TrackKeyTID track : pruneChangeTracks) {
-                if (count == 14 && track.trajectory.TID == 22102)
-                    System.out.print("");
                 changeThreshold(track);
             }
             for (TrackKeyTID track : canSmallTracks) {
