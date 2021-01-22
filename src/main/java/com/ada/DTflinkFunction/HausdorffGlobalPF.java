@@ -66,100 +66,108 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
         long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
         if (hasInit){
-            RoaringBitmap outTIDs = tIDsQue.remove();
-            RoaringBitmap inAndOutTIDs = inputIDs.clone();
-            inAndOutTIDs.and(outTIDs);
-            RoaringBitmap inTIDs = inputIDs.clone();
-            inTIDs.andNot(inAndOutTIDs);
-            outTIDs.andNot(inAndOutTIDs);
-            Set<Integer> emptyTracks = new HashSet<>();
-            DTConstants.removeSegment(outTIDs, inAndOutTIDs, logicWinStart, emptyTracks, segmentIndex, trackMap);
-            for (Integer TID : emptyTracks) outTIDs.remove(TID);
-            //记录无采样点滑出，但其topK结果可能发生变化的轨迹
-            Set<TrackKeyTID> pruneChangeTracks = new HashSet<>();
-            //记录无采样点滑出，别的轨迹滑出导致其候选轨迹集小于K的轨迹
-            Set<TrackKeyTID> canSmallTracks = new HashSet<>();
-            //处理整条轨迹滑出窗口的轨迹
-            for (Integer tid : emptyTracks) {
-                TrackKeyTID track = trackMap.get(tid);
-                track.enlargeTuple.f0.bitmap.remove(tid);
-                for (GDataNode leaf : track.passP) leaf.bitmap.remove(tid);
-                if (!track.topKP.isEmpty()){
-                    for (GLeafAndBound gb : track.topKP.getList()) gb.leaf.bitmap.remove(tid);
-                }
-                DTConstants.dealAllSlideOutTracks(track, inTIDs, outTIDs, inAndOutTIDs, pruneChangeTracks, emptyTracks, canSmallTracks, trackMap,null, pruneIndex);
-            }
-            for (Integer tid : emptyTracks) trackMap.remove(tid);
-            //处理整条轨迹未完全滑出窗口的轨迹
-            processUpdatedTrack(inTIDs, outTIDs, inAndOutTIDs, inPointsMap, pruneChangeTracks, canSmallTracks);
-            pruneChangeTracks.removeAll(canSmallTracks);
-            for (TrackKeyTID track : pruneChangeTracks) changeThreshold(track);
-            for (TrackKeyTID track : canSmallTracks) dealCandidateSmall(track);
-            for (Integer tid : outTIDs) mayBeAnotherTopK(trackMap.get(tid));
-            for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
-            for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
-
-            // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
-            if (density != null){
-                densityQue.add(density);
-                Arrays.addArrsToArrs(globalTree.density, density, true);
-                if (densityQue.size() > Constants.logicWindow / Constants.densityFre) {
-                    int[][] removed = densityQue.remove();
-                    Arrays.addArrsToArrs(globalTree.density, removed, false);
-                }
-
-                //调整Global Index
-                Map<GNode, GNode> nodeMap = globalTree.updateTree();
-
-                //Global Index发生了调整，通知Local Index迁移数据，重建索引。
-                if (!nodeMap.isEmpty()){
-                    if (subTask == 0) {
-                        //通知Local Index其索引区域发生的变化
-                        adjustLocalTasksRegion(nodeMap);
-                    }
-                    redispatchGNode(nodeMap);
-                    check();
-                }
-
-            }
+            windowSlide(newTracks, inPointsMap, inputIDs, logicWinStart);
+            if (density != null)
+                adjustGlobalTree();
             if (count % 20 == 0) {
                 System.out.println(count);
                 check();
             }
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
-            if (density != null)
-                globalTree.updateTree();
-            if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
-                for (Integer tid : tIDsQue.remove()) {
-                    for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
-                        segmentIndex.delete(segment);
-                    }
-                }
-                for (TrackKeyTID track : trackMap.values()) {
-                    track.rect = Constants.getPruningRegion(track.trajectory, 0.0);
-                    track.data = track.rect.getCenter().data;
-                    for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
-                        leaf.bitmap.add(track.trajectory.TID);
-                    }
-                }
-
-                // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
-                boolean canInit = true;
-                for (GDataNode leaf : globalTree.getAllLeafs()) {
-                    if (leaf.bitmap.toArray().length <= Constants.topK){
-                        canInit = false;
-                        break;
-                    }
-                }
-                if (canInit){
-                    hasInit = true;
-                    initCalculate();
-                }else {
-                    for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
-                }
-            }
+            forInitCode(density, logicWinStart);
         }
         count++;
+    }
+
+    /**
+     * 调整Global Index, 然后将调整结果同步到相关的Local Index中。
+     */
+    private void adjustGlobalTree() {
+        Arrays.addArrsToArrs(globalTree.density, densityQue.remove(), false);
+        //调整Global Index
+        Map<GNode, GNode> nodeMap = globalTree.updateTree();
+
+        //Global Index发生了调整，通知Local Index迁移数据，重建索引。
+        if (!nodeMap.isEmpty()){
+            if (subTask == 0) {
+                //通知Local Index其索引区域发生的变化
+                adjustLocalTasksRegion(nodeMap);
+            }
+            redispatchGNode(nodeMap);
+            check();
+        }
+    }
+
+    private void forInitCode(int[][] density, long logicWinStart) {
+        if (density != null)
+            globalTree.updateTree();
+        if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
+            for (Integer tid : tIDsQue.remove()) {
+                for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
+                    segmentIndex.delete(segment);
+                }
+            }
+            for (TrackKeyTID track : trackMap.values()) {
+                track.rect = Constants.getPruningRegion(track.trajectory, 0.0);
+                track.data = track.rect.getCenter().data;
+                for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
+                    leaf.bitmap.add(track.trajectory.TID);
+                }
+            }
+
+            // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
+            boolean canInit = true;
+            for (GDataNode leaf : globalTree.getAllLeafs()) {
+                if (leaf.bitmap.toArray().length <= Constants.topK){
+                    canInit = false;
+                    break;
+                }
+            }
+            if (canInit){
+                hasInit = true;
+                initCalculate();
+            }else {
+                for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
+            }
+        }
+    }
+
+    private void windowSlide(List<TrackKeyTID> newTracks,
+                             Map<Integer, List<TrackPoint>> inPointsMap,
+                             RoaringBitmap inputIDs,
+                             long logicWinStart) {
+        RoaringBitmap outTIDs = tIDsQue.remove();
+        RoaringBitmap inAndOutTIDs = inputIDs.clone();
+        inAndOutTIDs.and(outTIDs);
+        RoaringBitmap inTIDs = inputIDs.clone();
+        inTIDs.andNot(inAndOutTIDs);
+        outTIDs.andNot(inAndOutTIDs);
+        Set<Integer> emptyTracks = new HashSet<>();
+        DTConstants.removeSegment(outTIDs, inAndOutTIDs, logicWinStart, emptyTracks, segmentIndex, trackMap);
+        for (Integer TID : emptyTracks) outTIDs.remove(TID);
+        //记录无采样点滑出，但其topK结果可能发生变化的轨迹
+        Set<TrackKeyTID> pruneChangeTracks = new HashSet<>();
+        //记录无采样点滑出，别的轨迹滑出导致其候选轨迹集小于K的轨迹
+        Set<TrackKeyTID> canSmallTracks = new HashSet<>();
+        //处理整条轨迹滑出窗口的轨迹
+        for (Integer tid : emptyTracks) {
+            TrackKeyTID track = trackMap.get(tid);
+            track.enlargeTuple.f0.bitmap.remove(tid);
+            for (GDataNode leaf : track.passP) leaf.bitmap.remove(tid);
+            if (!track.topKP.isEmpty()){
+                for (GLeafAndBound gb : track.topKP.getList()) gb.leaf.bitmap.remove(tid);
+            }
+            DTConstants.dealAllSlideOutTracks(track, inTIDs, outTIDs, inAndOutTIDs, pruneChangeTracks, emptyTracks, canSmallTracks, trackMap,null, pruneIndex);
+        }
+        for (Integer tid : emptyTracks) trackMap.remove(tid);
+        //处理整条轨迹未完全滑出窗口的轨迹
+        processUpdatedTrack(inTIDs, outTIDs, inAndOutTIDs, inPointsMap, pruneChangeTracks, canSmallTracks);
+        pruneChangeTracks.removeAll(canSmallTracks);
+        for (TrackKeyTID track : pruneChangeTracks) changeThreshold(track);
+        for (TrackKeyTID track : canSmallTracks) dealCandidateSmall(track);
+        for (Integer tid : outTIDs) mayBeAnotherTopK(trackMap.get(tid));
+        for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
+        for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
     }
 
     private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap){
@@ -188,7 +196,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         //key：轨迹ID
         //value：该轨迹需要出现的节点{tuple0:为经过节点，tuple1为topK节点}
         Map<Integer, Tuple2<List<GDataNode>,List<GDataNode>>> trackLeafsMap = new HashMap<>();
-        map.forEach((oldNode, newNode) -> {
+        for (GNode oldNode : map.keySet()) {
             List<GDataNode> oldLeafs = new ArrayList<>();
             oldNode.getLeafs(oldLeafs);
             List<GDirNode> dirNodes = new ArrayList<>();
@@ -202,7 +210,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         enlargeTIDs.add(TID);
                 }
             }
-        });
+        }
         HashSet<GDataNode> allNewLeafs = new HashSet<>();
         map.forEach((oldNode, newNode) -> {
             Map<Integer, Tuple2<List<GDataNode>,List<GDataNode>>> trackLeafsInnerMap = new HashMap<>();
