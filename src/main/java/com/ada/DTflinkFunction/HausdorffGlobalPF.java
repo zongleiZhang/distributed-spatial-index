@@ -3,6 +3,7 @@ package com.ada.DTflinkFunction;
 import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.ArrayQueue;
+import com.ada.common.SortList;
 import com.ada.common.collections.Collections;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
@@ -11,6 +12,7 @@ import com.ada.geometry.*;
 import com.ada.geometry.track.TrackHauOne;
 import com.ada.geometry.track.TrackKeyTID;
 import com.ada.globalTree.GDataNode;
+import com.ada.globalTree.GDirNode;
 import com.ada.globalTree.GNode;
 import com.ada.globalTree.GTree;
 import com.ada.model.densityToGlobal.Density;
@@ -57,6 +59,10 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         RoaringBitmap inputIDs = new RoaringBitmap();
         inputIDs.add(inPointsMap.keySet().stream().mapToInt(Integer::valueOf).toArray());
         tIDsQue.add(inputIDs);
+        if (density != null){
+            densityQue.add(density);
+            Arrays.addArrsToArrs(globalTree.density, density, true);
+        }
 
         long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
         if (hasInit){
@@ -87,28 +93,40 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             //处理整条轨迹未完全滑出窗口的轨迹
             processUpdatedTrack(inTIDs, outTIDs, inAndOutTIDs, inPointsMap, pruneChangeTracks, canSmallTracks);
             pruneChangeTracks.removeAll(canSmallTracks);
-            for (TrackKeyTID track : pruneChangeTracks) {
-                changeThreshold(track);
-            }
-            for (TrackKeyTID track : canSmallTracks) {
-                dealCandidateSmall(track);
-            }
+            for (TrackKeyTID track : pruneChangeTracks) changeThreshold(track);
+            for (TrackKeyTID track : canSmallTracks) dealCandidateSmall(track);
             for (Integer tid : outTIDs) mayBeAnotherTopK(trackMap.get(tid));
-            for (Integer tid : inAndOutTIDs) {
-                if (count == 14 && tid == 22609)
-                    System.out.print("");
-                mayBeAnotherTopK(trackMap.get(tid));
-            }
+            for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
+
+            // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
+            if (density != null){
+                densityQue.add(density);
+                Arrays.addArrsToArrs(globalTree.density, density, true);
+                if (densityQue.size() > Constants.logicWindow / Constants.densityFre) {
+                    int[][] removed = densityQue.remove();
+                    Arrays.addArrsToArrs(globalTree.density, removed, false);
+                }
+
+                //调整Global Index
+                Map<GNode, GNode> nodeMap = globalTree.updateTree();
+
+                //Global Index发生了调整，通知Local Index迁移数据，重建索引。
+                if (!nodeMap.isEmpty()){
+                    if (subTask == 0) {
+                        //通知Local Index其索引区域发生的变化
+                        adjustLocalTasksRegion(nodeMap);
+                    }
+                    redispatchGNode(nodeMap);
+                    check();
+                }
+
+            }
             if (count % 20 == 0) {
                 System.out.println(count);
                 check();
             }
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
-            if (density != null){
-                densityQue.add(density);
-                Arrays.addArrsToArrs(globalTree.density, density, true);
-            }
             if (density != null)
                 globalTree.updateTree();
             if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
@@ -142,25 +160,323 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             }
         }
         count++;
-
-
-        // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
-//        if (density != null){
-//            densityQue.add(density);
-//            Arrays.addArrsToArrs(globalTree.density, density, true);
-//            if (densityQue.size() > Constants.logicWindow / Constants.densityFre) {
-//                int[][] removed = densityQue.remove();
-//                Arrays.addArrsToArrs(globalTree.density, removed, false);
-//            }
-//
-//            //调整Global Index
-//            Map<GNode, GNode> nodeMap = globalTree.updateTree();
-//
-//            //Global Index发生了调整，通知Local Index迁移数据，重建索引。
-//            if (!nodeMap.isEmpty() && subTask == 0)
-//                adjustLocalTasksRegion(nodeMap);
-//        }
     }
+
+    private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap){
+        Map<Integer, LocalRegionAdjustInfo> migrateOutMap = new HashMap<>();
+        Map<Integer, LocalRegionAdjustInfo> migrateFromMap = new HashMap<>();
+        for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
+            List<GDataNode> leafs = new ArrayList<>();
+            entry.getKey().getLeafs(leafs);
+            for (GDataNode oldLeaf : leafs) {
+                List<GDataNode> migrateOutLeafs = new ArrayList<>();
+                entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
+                migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
+                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs;
+                migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
+                migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
+            }
+            leafs.clear();
+            entry.getValue().getLeafs(leafs);
+            for (GDataNode newLeaf : leafs) {
+                List<GDataNode> migrateFromLeafs = new ArrayList<>();
+                entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
+                List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
+                migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
+                migrateFromMap.put(newLeaf.leafID, new LocalRegionAdjustInfo(null, migrateFromLeafIDs, newLeaf.region));
+            }
+        }
+        Iterator<Map.Entry<Integer, LocalRegionAdjustInfo>> ite = migrateOutMap.entrySet().iterator();
+        while (ite.hasNext()){
+            Map.Entry<Integer, LocalRegionAdjustInfo> entry = ite.next();
+            LocalRegionAdjustInfo elem = migrateFromMap.get(entry.getKey());
+            if (elem != null){
+                elem.setMigrateOutST(entry.getValue().getMigrateOutST());
+                ite.remove();
+            }
+        }
+        migrateFromMap.putAll(migrateOutMap);
+        for (Map.Entry<Integer, LocalRegionAdjustInfo> entry : migrateFromMap.entrySet())
+            out.collect(new GlobalToLocalElem(entry.getKey(), 3, entry.getValue()));
+    }
+
+    private void redispatchGNode(Map<GNode, GNode> map) {
+        //记录轨迹的enlarge node bound在在修改节点集中的轨迹
+        RoaringBitmap enlargeTIDs = new RoaringBitmap();
+
+        //记录轨迹在调整后的节点newNode中的经过节点和topK节点
+        //key：轨迹ID
+        //value：该轨迹需要出现的节点{tuple0:为经过节点，tuple1为topK节点}
+        Map<Integer, Tuple2<List<GDataNode>,List<GDataNode>>> trackLeafsMap = new HashMap<>();
+        map.forEach((oldNode, newNode) -> {
+            List<GDataNode> oldLeafs = new ArrayList<>();
+            oldNode.getLeafs(oldLeafs);
+            List<GDirNode> dirNodes = new ArrayList<>();
+            oldNode.getAllDirNode(dirNodes);
+            for (GDirNode dirNode : dirNodes)
+                enlargeTIDs.or(dirNode.bitmap);
+            for (GDataNode oldLeaf : oldLeafs) {
+                for (Integer TID : oldLeaf.bitmap) {
+                    TrackKeyTID track = trackMap.get(TID);
+                    if(track.enlargeTuple.f0.equals(oldLeaf))
+                        enlargeTIDs.add(TID);
+                }
+            }
+        });
+        map.forEach((oldNode, newNode) -> {
+            Map<Integer, Tuple2<List<GDataNode>,List<GDataNode>>> trackLeafsInnerMap = new HashMap<>();
+            List<GDataNode> oldLeafs = new ArrayList<>();
+            oldNode.getLeafs(oldLeafs);
+            List<GDataNode> newLeafs = new ArrayList<>();
+            newNode.getLeafs(newLeafs);
+            for (GDataNode oldLeaf : oldLeafs) {
+                for (Integer TID : oldLeaf.bitmap) {
+                    TrackKeyTID track = trackMap.get(TID);
+                    //轨迹track在newNode子树上的经过叶节点和topK叶节点
+                    trackLeafsInnerMap.computeIfAbsent(TID, key -> {
+                        Tuple2<List<GDataNode>,List<GDataNode>> value = new Tuple2<>(new ArrayList<>(), new ArrayList<>());
+                        Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
+                        newNode.getIntersectLeafNodes(MBR, value.f0);
+                        newNode.getIntersectLeafNodes(track.rect, value.f1);
+                        value.f1.forEach(leaf -> leaf.bitmap.add(TID));
+                        if (!enlargeTIDs.contains(TID)) {
+                            Set<GDataNode> newLeafsSet = new HashSet<>(newLeafs);
+                            newLeafsSet.removeAll(value.f1);
+                            Tuple2<GNode, Double> tuple = DTConstants.countEnlarge(newLeafsSet, MBR);
+                            if (track.enlargeTuple.f1 > tuple.f1) {
+                                track.enlargeTuple.f0.bitmap.remove(TID);
+                                track.enlargeTuple = tuple;
+                                track.enlargeTuple.f0.bitmap.add(TID);
+                            }
+                        }
+                        value.f1.removeAll(value.f0);
+                        return value;
+                    });
+                }
+            }
+            trackLeafsInnerMap.forEach((TID, listTuple2) -> {
+                Tuple2<List<GDataNode>,List<GDataNode>> trackLeafsOuter = trackLeafsMap.get(TID);
+                if (trackLeafsOuter == null){
+                    trackLeafsMap.put(TID, listTuple2);
+                }else {
+                    trackLeafsOuter.f0.addAll(listTuple2.f0);
+                    trackLeafsOuter.f1.addAll(listTuple2.f1);
+                }
+            });
+        });
+
+
+        Collection<GDataNode> allLeafs = globalTree.getAllLeafs();
+        trackLeafsMap.forEach((TID, trackLeafs) -> {
+            TrackKeyTID track = trackMap.get(TID);
+            Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
+            TrackPoint point =  new TrackPoint(null, curWater-1, TID);
+            TrackMessage message = toTrackMessage(track.trajectory);
+            if (track.topKP.isEmpty() && trackLeafs.f1.isEmpty()){ //修改前后都没有topK节点
+                bothHasNoTopKNode(allLeafs, trackLeafs, track, point, message);
+            }else if (!track.topKP.isEmpty() && !trackLeafs.f1.isEmpty()){ //修改前后都有topK节点
+                bothHasTopKNode(allLeafs, trackLeafs, track, MBR, point, message);
+            }else if(track.topKP.isEmpty() && !trackLeafs.f1.isEmpty()) { //调整后track有了topK节点
+                topKAppear(allLeafs, trackLeafs, track, MBR, point, message);
+            }else { //调整后track没了topK节点
+                topKDisappear(allLeafs, trackLeafs, track, MBR, point, message);
+            }
+        });
+
+        for (Integer TID : enlargeTIDs) {
+            TrackKeyTID track = trackMap.get(TID);
+            List<GDataNode> removeLeafs = new ArrayList<>(track.passP);
+            if (!track.topKP.isEmpty()){
+                for (GLeafAndBound gb : track.topKP.getList())
+                    removeLeafs.add(gb.leaf);
+            }
+            List<GDataNode> pruneLeafs = globalTree.getIntersectLeafNodes(track.rect);
+            if (!removeLeafs.containsAll(pruneLeafs) || !pruneLeafs.containsAll(removeLeafs))
+                System.out.print("");
+            globalTree.countEnlargeBound(track, removeLeafs, track.rect.clone().extendLength(-track.threshold));
+            track.enlargeTuple.f0.bitmap.add(TID);
+        }
+    }
+
+    private void bothHasNoTopKNode(Collection<GDataNode> allLeafs,
+                                   Tuple2<List<GDataNode>, List<GDataNode>> trackLeafs,
+                                   TrackKeyTID track,
+                                   TrackPoint point,
+                                   TrackMessage message) {
+        int i = 0;
+        for (Iterator<GDataNode> ite = track.passP.iterator(); ite.hasNext();) {
+            GDataNode oldLeaf = ite.next();
+            if (!allLeafs.contains(oldLeaf)){ //该叶节点发生了调整
+                GDataNode newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
+                if (newLeaf == null){ //调整后轨迹track不经过这个leafID了
+                    out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 8, point));
+                    i--;
+                    ite.remove();
+                }else { //调整后轨迹track还经过这个leafID了
+                    track.passP.set(i, newLeaf);
+                }
+            }
+            i++;
+        }
+        trackLeafs.f0.forEach(dataNode -> out.collect(new TwoThreeTrackInfo(dataNode.leafID, (byte) 10, message)));
+        track.passP.addAll(trackLeafs.f0);
+    }
+
+    private void bothHasTopKNode(Collection<GDataNode> allLeafs,
+                                 Tuple2<List<GDataNode>, List<GDataNode>> trackLeafs,
+                                 TrackKeyTID track,
+                                 Rectangle MBR,
+                                 TrackPoint point,
+                                 TrackMessage message) {
+        int i = 0;
+        List<GDataNode> changeTopKLeaf = new ArrayList<>();
+        for (Iterator<GDataNode> ite = track.passP.iterator(); ite.hasNext();) {
+            GDataNode oldLeaf = ite.next();
+            if (!allLeafs.contains(oldLeaf)){ //该pass节点发生了调整
+                GDataNode newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
+                if (newLeaf == null){ //调整后轨迹track不经过这个leafID了
+                    newLeaf = Constants.removeElem(trackLeafs.f1, leaf -> leaf.leafID == oldLeaf.leafID);
+                    if (newLeaf == null){ //调整后轨迹track与这个leafID无关了
+                        out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 8, point));
+                    }else { //这个leafID在调整后成为轨迹track的topK节点了
+                        changeTopKLeaf.add(newLeaf);
+                        out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 6, point));
+                    }
+                    i--;
+                    ite.remove();
+                }else { //调整后轨迹track还经过这个leafID了
+                    track.passP.set(i, newLeaf);
+                }
+            }
+            i++;
+        }
+        for (Iterator<GLeafAndBound> ite = track.topKP.getList().iterator(); ite.hasNext();) {
+            GDataNode oldLeaf = ite.next().leaf;
+            if (!allLeafs.contains(oldLeaf)){ //该topK节点发生了调整
+                ite.remove();
+                GDataNode newLeaf = Constants.removeElem(trackLeafs.f1, leaf -> leaf.leafID == oldLeaf.leafID);
+                if (newLeaf == null){ //调整后这个leafID不是轨迹track的topK节点
+                    newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
+                    if (newLeaf == null){ //调整后这个leafID与轨迹track无关了
+                        out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 9, point));
+                    }else { //调整后这个leafID成为轨迹track的pass节点
+                        track.passP.add(newLeaf);
+                        out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 7, point));
+                    }
+                }else { //调整后这个leafID还是轨迹track的topK节点
+                    changeTopKLeaf.add(newLeaf);
+                }
+            }
+        }
+        trackLeafs.f0.forEach(dataNode -> out.collect(new TwoThreeTrackInfo(dataNode.leafID, (byte) 10, message)));
+        track.passP.addAll(trackLeafs.f0);
+        trackLeafs.f1.forEach(leaf -> out.collect(new TwoThreeTrackInfo(leaf.leafID, (byte) 11, message)));
+        DTConstants.addTrackTopK(track, MBR, changeTopKLeaf);
+        DTConstants.addTrackTopK(track, MBR, trackLeafs.f1);
+    }
+
+    private void topKAppear(Collection<GDataNode> allLeafs,
+                            Tuple2<List<GDataNode>, List<GDataNode>> trackLeafs,
+                            TrackKeyTID track,
+                            Rectangle MBR,
+                            TrackPoint point,
+                            TrackMessage message) {
+        int TID = track.trajectory.TID;
+        track.enlargeTuple.f0.bitmap.remove(TID);
+        track.rect = extendTopKP(track, MBR,-1, null);
+        SortList<GLeafAndBound> gbs = new SortList<>();
+        gbs.setList(new ArrayList<>());
+        List<GDataNode> removeLeafs = new ArrayList<>(trackLeafs.f0);
+        for (GDataNode topKLeaf : trackLeafs.f1) {
+            if (track.rect.isIntersection(topKLeaf.rectangle)){
+                double bound = Constants.countEnlargeBound(MBR, topKLeaf.rectangle);
+                gbs.add(new GLeafAndBound(topKLeaf, bound) );
+                removeLeafs.add(topKLeaf);
+            }else {
+                topKLeaf.bitmap.remove(TID);
+            }
+        }
+        if (gbs.isEmpty()) { //还没有topK扩展节点
+            bothHasNoTopKNode(allLeafs, trackLeafs, track, point, message);
+            track.cutOffCandidate(trackMap, -1, null);
+        }else { //有topK扩展节点了
+            pruneIndex.insert(track);
+            track.topKP.setList(new ArrayList<>());
+            int i = 0;
+            for (Iterator<GDataNode> ite = track.passP.iterator(); ite.hasNext();) {
+                GDataNode oldLeaf = ite.next();
+                if (!allLeafs.contains(oldLeaf)){ //该pass节点发生了调整
+                    GDataNode newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
+                    if (newLeaf == null){ //调整后轨迹track不经过这个leafID了
+                        GLeafAndBound gLB = Constants.removeElem(gbs.getList(), gb -> gb.leaf.leafID == oldLeaf.leafID);
+                        if (gLB == null){ //调整后轨迹track与这个leafID无关了
+                            out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 8, point));
+                        }else { //这个leafID在调整后成为轨迹track的topK节点了
+                            track.topKP.add(gLB);
+                            out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 6, point));
+                        }
+                        i--;
+                        ite.remove();
+                    }else { //调整后轨迹track还经过这个leafID了
+                        track.passP.set(i, newLeaf);
+                    }
+                }
+                i++;
+            }
+            trackLeafs.f0.forEach(dataNode -> out.collect(new TwoThreeTrackInfo(dataNode.leafID, (byte) 10, message)));
+            track.passP.addAll(trackLeafs.f0);
+            gbs.getList().forEach(gb -> out.collect(new TwoThreeTrackInfo(gb.leaf.leafID, (byte) 11, message)));
+            track.topKP.addAll(gbs.getList());
+        }
+        globalTree.countEnlargeBound(track, removeLeafs,MBR);
+        track.enlargeTuple.f0.bitmap.add(TID);
+    }
+
+    private void topKDisappear(Collection<GDataNode> allLeafs,
+                               Tuple2<List<GDataNode>, List<GDataNode>> trackLeafs,
+                               TrackKeyTID track,
+                               Rectangle MBR,
+                               TrackPoint point,
+                               TrackMessage message) {
+        int i = 0;
+        for (Iterator<GDataNode> ite = track.passP.iterator(); ite.hasNext();) {
+            GDataNode oldLeaf = ite.next();
+            if (!allLeafs.contains(oldLeaf)){ //该叶节点发生了调整
+                GDataNode newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
+                if (newLeaf == null){ //调整后轨迹track不经过这个leafID了
+                    out.collect(new TwoThreeTrackInfo(oldLeaf.leafID, (byte) 8, point));
+                    i--;
+                    ite.remove();
+                }else { //调整后轨迹track还经过这个leafID了
+                    track.passP.set(i, newLeaf);
+                }
+            }
+            i++;
+        }
+        for (Iterator<GLeafAndBound> ite = track.topKP.getList().iterator(); ite.hasNext();) {
+            GLeafAndBound gb = ite.next();
+            GDataNode newLeaf = Constants.removeElem(trackLeafs.f0, leaf -> leaf.leafID == gb.leaf.leafID);
+            if (newLeaf != null){
+                ite.remove();
+                out.collect(new TwoThreeTrackInfo(newLeaf.leafID, (byte) 7, point));
+                track.passP.add(newLeaf);
+            }
+        }
+        trackLeafs.f0.forEach(dataNode -> out.collect(new TwoThreeTrackInfo(dataNode.leafID, (byte) 10, message)));
+        track.passP.addAll(trackLeafs.f0);
+        track.topKP.getList().forEach(gB -> out.collect(new TwoThreeTrackInfo(gB.leaf.leafID, (byte) 9, point)));
+
+        if (track.topKP.isEmpty()){
+            pruneIndex.delete(track);
+            globalTree.countEnlargeBound(track, track.passP, MBR);
+            track.topKP.clear();
+        }else {
+            pruneIndexRemove(track);
+        }
+        track.cutOffCandidate(trackMap);
+    }
+
+
 
     private boolean check(){
         if (!pruneIndex.check(trackMap))
@@ -1072,44 +1388,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             return null;
         else
             return densities.get(0).grids;
-    }
-
-
-    private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap){
-//        Map<Integer, LocalRegionAdjustInfo> migrateOutMap = new HashMap<>();
-//        Map<Integer, LocalRegionAdjustInfo> migrateFromMap = new HashMap<>();
-//        for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
-//            List<GDataNode> leafs = new ArrayList<>();
-//            entry.getKey().getLeafs(leafs);
-//            for (GDataNode oldLeaf : leafs) {
-//                List<GDataNode> migrateOutLeafs = new ArrayList<>();
-//                entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
-//                migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
-//                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
-//                migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
-//            }
-//            leafs.clear();
-//            entry.getValue().getLeafs(leafs);
-//            for (GDataNode newLeaf : leafs) {
-//                List<GDataNode> migrateFromLeafs = new ArrayList<>();
-//                entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
-//                List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
-//                migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
-//                migrateFromMap.put(newLeaf.leafID, new LocalRegionAdjustInfo(null, migrateFromLeafIDs, newLeaf.region));
-//            }
-//        }
-//        Iterator<Map.Entry<Integer, LocalRegionAdjustInfo>> ite = migrateOutMap.entrySet().iterator();
-//        while (ite.hasNext()){
-//            Map.Entry<Integer, LocalRegionAdjustInfo> entry = ite.next();
-//            LocalRegionAdjustInfo elem = migrateFromMap.get(entry.getKey());
-//            if (elem != null){
-//                elem.setMigrateOutST(entry.getValue().getMigrateOutST());
-//                ite.remove();
-//            }
-//        }
-//        migrateFromMap.putAll(migrateOutMap);
-//        for (Map.Entry<Integer, LocalRegionAdjustInfo> entry : migrateFromMap.entrySet())
-//            out.collect(new GlobalToLocalElem(entry.getKey(), 3, entry.getValue()));
     }
 
     @Override
