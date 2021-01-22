@@ -163,41 +163,21 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
     }
 
     private void adjustLocalTasksRegion(Map<GNode, GNode> nodeMap){
-        Map<Integer, LocalRegionAdjustInfo> migrateOutMap = new HashMap<>();
-        Map<Integer, LocalRegionAdjustInfo> migrateFromMap = new HashMap<>();
-        for (Map.Entry<GNode, GNode> entry : nodeMap.entrySet()) {
-            List<GDataNode> leafs = new ArrayList<>();
-            entry.getKey().getLeafs(leafs);
-            for (GDataNode oldLeaf : leafs) {
-                List<GDataNode> migrateOutLeafs = new ArrayList<>();
-                entry.getValue().getIntersectLeafNodes(oldLeaf.region, migrateOutLeafs);
-                migrateOutLeafs.removeIf(leaf -> leaf.leafID == oldLeaf.leafID);
-                List<Tuple2<Integer, Rectangle>> migrateOutLeafIDs;
-                migrateOutLeafIDs = (List<Tuple2<Integer, Rectangle>>) Collections.changeCollectionElem(migrateOutLeafs, node -> new Tuple2<>(node.leafID,node.region));
-                migrateOutMap.put(oldLeaf.leafID, new LocalRegionAdjustInfo(migrateOutLeafIDs, null, null));
-            }
-            leafs.clear();
-            entry.getValue().getLeafs(leafs);
-            for (GDataNode newLeaf : leafs) {
-                List<GDataNode> migrateFromLeafs = new ArrayList<>();
-                entry.getKey().getIntersectLeafNodes(newLeaf.region, migrateFromLeafs);
-                List<Integer> migrateFromLeafIDs = (List<Integer>) Collections.changeCollectionElem(migrateFromLeafs, node -> node.leafID);
-                migrateFromLeafIDs.remove(new Integer(newLeaf.leafID));
-                migrateFromMap.put(newLeaf.leafID, new LocalRegionAdjustInfo(null, migrateFromLeafIDs, newLeaf.region));
+        List<GDataNode> oldLeafs = new ArrayList<>();
+        List<GDataNode> newLeafs = new ArrayList<>();
+        nodeMap.forEach((oldNode, newNode) -> {
+            oldNode.getLeafs(oldLeafs);
+            newNode.getLeafs(newLeafs);
+        });
+        for (GDataNode newLeaf : newLeafs) {
+            out.collect(new Global2LocalElem(newLeaf.leafID, (byte) 12, newLeaf.region));
+        }
+        for (GDataNode oldLeaf : oldLeafs) {
+            newLeafs.contains(oldLeaf){
+
             }
         }
-        Iterator<Map.Entry<Integer, LocalRegionAdjustInfo>> ite = migrateOutMap.entrySet().iterator();
-        while (ite.hasNext()){
-            Map.Entry<Integer, LocalRegionAdjustInfo> entry = ite.next();
-            LocalRegionAdjustInfo elem = migrateFromMap.get(entry.getKey());
-            if (elem != null){
-                elem.setMigrateOutST(entry.getValue().getMigrateOutST());
-                ite.remove();
-            }
-        }
-        migrateFromMap.putAll(migrateOutMap);
-        for (Map.Entry<Integer, LocalRegionAdjustInfo> entry : migrateFromMap.entrySet())
-            out.collect(new GlobalToLocalElem(entry.getKey(), 3, entry.getValue()));
+
     }
 
     private void redispatchGNode(Map<GNode, GNode> map) {
