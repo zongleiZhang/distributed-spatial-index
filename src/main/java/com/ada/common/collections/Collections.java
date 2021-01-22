@@ -1,10 +1,7 @@
 package com.ada.common.collections;
 
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Collections {
 
@@ -35,6 +32,19 @@ public class Collections {
             }
         });
         return out;
+    }
+
+    public static <T> T removeAndGatherElem(Collection<T> collection, Judge<T> judge){
+        T res = null;
+        for (Iterator<T> ite = collection.iterator(); ite.hasNext();){
+            T t = ite.next();
+            if (judge.action(t)){
+                res = t;
+                ite.remove();
+                break;
+            }
+        }
+        return res;
     }
 
     public static <T> boolean collectionsEqual(Collection<T> col1, Collection<T> col2) {
