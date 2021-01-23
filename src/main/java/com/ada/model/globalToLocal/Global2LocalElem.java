@@ -13,13 +13,13 @@ public class Global2LocalElem implements Serializable {
      * 5： 删除topK轨迹   (Global2LocalTID)
      * 6.  经过轨迹改为topK轨迹 (Global2LocalTID)
      * 7.  topK轨迹改为经过轨迹 (Global2LocalTID)
-     * 6： (调整负责区域)经过轨迹改为topK轨迹   (Global2LocalTID)
-     * 7： (调整负责区域)topK轨迹改为经过轨迹   (Global2LocalTID)
-     * 8： (调整负责区域)删除经过轨迹   (Global2LocalTID)
-     * 9： (调整负责区域)删除topK轨迹   (Global2LocalTID)
-     * 10：(调整负责区域)新增经过轨迹   (Global2LocalPoints)
-     * 11：(调整负责区域)新增topK轨迹   (Global2LocalPoints)
-     * 12: 通知Local subTask其新的负责区域   （Rectangle）
+     * 8： (调整负责区域)经过轨迹改为topK轨迹   (Global2LocalTID)
+     * 9： (调整负责区域)topK轨迹改为经过轨迹   (Global2LocalTID)
+     * 10： (调整负责区域)删除经过轨迹   (Global2LocalTID)
+     * 11： (调整负责区域)删除topK轨迹   (Global2LocalTID)
+     * 12：(调整负责区域)新增经过轨迹   (Global2LocalPoints)
+     * 13：(调整负责区域)新增topK轨迹   (Global2LocalPoints)
+     * 14: 通知Local subTask其新的负责区域   （Rectangle）
      */
     public byte flag;
 

@@ -60,23 +60,4 @@ public class TrackKeyTID extends TrackHauOne {
         while (candidateInfo.size() > k)
             removeICandidate(k, trackMap);
     }
-
-    /**
-     * 轨迹没有topKP了，将轨迹的topK候选减少
-     */
-    public <T extends  TrackHauOne> void cutOffCandidate(Map<Integer, T> trackMap, int notRemove, List<Integer> removeRI) {
-        int k = (int) (Constants.topK*1.5);
-        while (candidateInfo.size() > k) {
-            Integer comparedTID = candidateInfo.remove(k-1);
-            T comparedTrack = trackMap.get(comparedTID);
-            if (!comparedTrack.candidateInfo.contains(trajectory.TID)){
-                if (comparedTID == notRemove){
-                    removeRI.add(trajectory.TID);
-                }else {
-                    comparedTrack.removeRelatedInfo(trajectory.TID);
-                }
-                removeRelatedInfo(comparedTID);
-            }
-        }
-    }
 }
