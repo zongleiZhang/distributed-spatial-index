@@ -57,7 +57,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Iterable<Density2GlobalElem> elements,
                         Collector<Global2LocalElem> out) {
         this.out = out;
-        if (count >= 28)
+        if (count >= 43)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
@@ -70,13 +70,13 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         if (hasInit){
             windowSlide(newTracks, inPointsMap, inputIDs, logicWinStart);
             System.out.println(count);
-//            if (count >= 13)
-//                check();
+            if (count >= 44)
+                check();
             if (density != null) {
                 densityQue.add(density);
                 Arrays.addArrsToArrs(globalTree.density, density, true);
                 adjustGlobalTree();
-                if (count >= 13) {
+                if (count >= 43) {
                     check();
                     System.out.println("adjustGlobalTree success");
                 }
@@ -272,7 +272,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         delLeaves.removeAll(newLeaves);
         trackLeafsMap.forEach((TID, trackLeafs) -> {
             TrackKeyTID track = trackMap.get(TID);
-            if (count == 13 && TID == 23560)
+            if (count == 43 && TID == 20485)
                 System.out.print("");
             Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
             Global2LocalPoints trackPs = Global2LocalPoints.ToG2LPoints(track.trajectory);
@@ -292,7 +292,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         enlargeTIDs.andNot(rb);
         for (Integer TID : enlargeTIDs) {
             TrackKeyTID track = trackMap.get(TID);
-            if (count == 28 && TID == 16796)
+            if (count == 43 && TID == 20485)
                 System.out.print("");
             List<GDataNode> removeLeafs = new ArrayList<>(track.passP);
             if (!track.topKP.isEmpty()){
@@ -552,9 +552,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
     private boolean trackCheck(TrackKeyTID track){
         Integer TID = track.trajectory.TID;
 
-        if (count == 13 && TID == 23560)
-            System.out.print("");
-
         //trajectory.elms -- segmentIndex检查
         for (Segment segment : track.trajectory.elms) {
             if (!segment.leaf.isInTree())
@@ -630,6 +627,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
         //enlargeTuple 检查
         globalTree.countPartitions(MBR, tmpTrack);
+        if (!track.enlargeTuple.f0.isInTree())
+            return false;
         if (!Constants.isEqual(track.enlargeTuple.f1, tmpTrack.enlargeTuple.f1))
             return false;
         if (!track.enlargeTuple.f0.bitmap.contains(TID))
@@ -649,6 +648,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         if (!Collections.collectionsEqual(track.passP, tmpTrack.passP))
             return false;
         for (GDataNode passLeaf : track.passP) {
+            if (!passLeaf.isInTree())
+                return false;
             if (!passLeaf.bitmap.contains(TID))
                 return false;
         }
@@ -668,15 +669,19 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         }else {
             if (track.topKP.isEmpty())
                 return false;
-            if (!Collections.collectionsEqual(track.topKP.getList(), tmpTrack.topKP.getList()))
-                return false;
             for (GLeafAndBound gb : track.topKP.getList()) {
+                if (!gb.leaf.isInTree())
+                    return false;
                 GLeafAndBound gbb = tmpTrack.topKP.get(gb);
+                if (!gbb.leaf.isInTree())
+                    return false;
                 if (!Constants.isEqual(gb.bound, gbb.bound))
                     return false;
                 if (!gb.leaf.bitmap.contains(TID))
                     return false;
             }
+            if (!Collections.collectionsEqual(track.topKP.getList(), tmpTrack.topKP.getList()))
+                return false;
             if (!track.leaf.isInTree()) //pruneIndex检查
                 return false;
             if(!track.leaf.elms.contains(track))

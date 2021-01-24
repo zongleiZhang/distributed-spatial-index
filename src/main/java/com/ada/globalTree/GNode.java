@@ -117,4 +117,12 @@ public abstract class GNode implements Serializable {
     public abstract GNode getInternalNode(Rectangle rectangle);
 
     public abstract void getAllDirNode(List<GDirNode> dirNodes);
+
+    public boolean isInTree(){
+        if (parent == null)
+            return tree.root == this;
+        if (parent.child[position] != this)
+            return false;
+        return parent.isInTree();
+    }
 }
