@@ -119,6 +119,7 @@ public class TrackHauOne extends RectElem implements Serializable {
 
     /**
      * 移除第i个候选轨迹，i从1计。
+     * 待优化
      */
     public <T extends TrackHauOne> void removeICandidate(int i, Map<Integer, T> map){
         Integer comparedTID = candidateInfo.remove(i-1);
@@ -224,6 +225,7 @@ public class TrackHauOne extends RectElem implements Serializable {
 
     /**
      * 判断本轨迹是否有在pruneArea外部的采样点，有返回true，没有返回false
+     * 待优化
      */
     public boolean outSideRectangle(Rectangle pruneArea) {
         for (Segment elem : trajectory.elms) {

@@ -8,6 +8,7 @@ import com.ada.common.collections.Collections;
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.Hausdorff.Hausdorff;
+import com.ada.common.collections.Judge;
 import com.ada.geometry.*;
 import com.ada.geometry.track.TrackHauOne;
 import com.ada.geometry.track.TrackKeyTID;
@@ -69,12 +70,13 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         if (hasInit){
             windowSlide(newTracks, inPointsMap, inputIDs, logicWinStart);
             System.out.println(count);
-//            check();
+//            if (count >= 13)
+//                check();
             if (density != null) {
                 densityQue.add(density);
                 Arrays.addArrsToArrs(globalTree.density, density, true);
                 adjustGlobalTree();
-                if (count >= 28) {
+                if (count >= 13) {
                     check();
                     System.out.println("adjustGlobalTree success");
                 }
@@ -270,7 +272,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         delLeaves.removeAll(newLeaves);
         trackLeafsMap.forEach((TID, trackLeafs) -> {
             TrackKeyTID track = trackMap.get(TID);
-            if (count == 28 && TID == 16796)
+            if (count == 13 && TID == 23560)
                 System.out.print("");
             Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
             Global2LocalPoints trackPs = Global2LocalPoints.ToG2LPoints(track.trajectory);
@@ -413,18 +415,23 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         int TID = track.trajectory.TID;
         Global2LocalTID glTID = new Global2LocalTID(TID);
         if (track.enlargeTuple.f0 != track.passP.get(0)) track.enlargeTuple.f0.bitmap.remove(TID);
+        double oldThreshold = track.threshold;
         track.rect = extendTopKP(track, MBR, false);
-        SortList<GLeafAndBound> newTopKGBs = new SortList<>();
-        newTopKGBs.setList(new ArrayList<>());
-        for (GDataNode topKLeaf : trackLeafs.f1) {
-            if (track.rect.isIntersection(topKLeaf.region)){
-                double bound = Constants.countEnlargeBound(MBR, topKLeaf.region);
-                newTopKGBs.add(new GLeafAndBound(topKLeaf, bound) );
-            }else {
-                topKLeaf.bitmap.remove(TID);
+        if (oldThreshold < track.threshold){
+            List<GDataNode> pruneLeafs = globalTree.getIntersectLeafNodes(track.rect);
+            pruneLeafs.removeAll(globalTree.getIntersectLeafNodes(MBR));
+            for (GDataNode leaf : pruneLeafs) leaf.bitmap.add(TID);
+            trackLeafs.f1 = pruneLeafs;
+        }else {
+            for(Iterator<GDataNode> ite = trackLeafs.f1.iterator(); ite.hasNext();){
+                GDataNode topKLeaf = ite.next();
+                if (!track.rect.isIntersection(topKLeaf.region)){
+                    ite.remove();
+                    topKLeaf.bitmap.remove(TID);
+                }
             }
         }
-        if (newTopKGBs.isEmpty()) { //还没有topK扩展节点
+        if (trackLeafs.f1.isEmpty()) { //还没有topK扩展节点
             bothHasNoTopKNode(newLeaves, delLeaves, trackLeafs, track, MBR, trackPs);
             track.cutOffCandidate(trackMap);
         }else { //有topK扩展节点了
@@ -440,11 +447,12 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     if (newLeaves.contains(oldLeaf)) { //该节点在调整节点中
                         GDataNode newLeaf = Collections.removeAndGatherElem(trackLeafs.f0, leaf -> leaf.leafID == oldLeaf.leafID);
                         if (newLeaf == null) { //调整后轨迹track不经过这个leafID了
-                            GLeafAndBound gLB = Collections.removeAndGatherElem(newTopKGBs.getList(), gb -> gb.leaf.leafID == oldLeaf.leafID);
-                            if (gLB == null) { //调整后轨迹track与这个leafID无关了
+                            newLeaf = Collections.removeAndGatherElem(trackLeafs.f1, leaf -> leaf.leafID == oldLeaf.leafID);
+                            if (newLeaf == null) { //调整后轨迹track与这个leafID无关了
                                 out.collect(new Global2LocalElem(oldLeaf.leafID, (byte) 10, glTID));
                             } else { //这个leafID在调整后成为轨迹track的topK节点了
-                                track.topKP.add(gLB);
+                                double bound = Constants.countEnlargeBound(MBR, newLeaf.region);
+                                track.topKP.add(new GLeafAndBound(newLeaf, bound));
                                 out.collect(new Global2LocalElem(oldLeaf.leafID, (byte) 8, glTID));
                             }
                             i--;
@@ -458,8 +466,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             }
             trackLeafs.f0.forEach(dataNode -> out.collect(new Global2LocalElem(dataNode.leafID, (byte) 12, trackPs)));
             track.passP.addAll(trackLeafs.f0);
-            newTopKGBs.getList().forEach(gb -> out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 13, trackPs)));
-            track.topKP.addAll(newTopKGBs.getList());
+            trackLeafs.f1.forEach(leaf -> out.collect(new Global2LocalElem(leaf.leafID, (byte) 13, trackPs)));
+            track.topKP.addAll(Collections.changeCollectionElem(trackLeafs.f1, leaf -> new GLeafAndBound(leaf, Constants.countEnlargeBound(MBR, leaf.region))));
             List<GDataNode> removeLeafs = new ArrayList<>(track.passP);
             removeLeafs.addAll(Collections.changeCollectionElem(track.topKP.getList(), gb -> gb.leaf));
             globalTree.countEnlargeBound(track, removeLeafs, MBR);
@@ -543,6 +551,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
     private boolean trackCheck(TrackKeyTID track){
         Integer TID = track.trajectory.TID;
+
+        if (count == 13 && TID == 23560)
+            System.out.print("");
 
         //trajectory.elms -- segmentIndex检查
         for (Segment segment : track.trajectory.elms) {
@@ -1147,12 +1158,17 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
             }
             Map<SimilarState, SimilarState> map = track.getRelatedInfo();
+            Judge<TrackKeyTID> judge;
+            if (flag){
+                judge = t -> t.outSideRectangle(pruneArea);
+            }else {
+                judge = t -> !pruneArea.isInternal(t.rect.clone().extendLength(-t.threshold));
+            }
             for (int i = Constants.topK + Constants.t; i < needCompareState.size(); i++) {
                 SimilarState state = needCompareState.get(i);
                 Integer comparedTID = Constants.getStateAnoTID(state, TID);
                 TrackKeyTID comparedTrack = trackMap.get(comparedTID);
-                if ((flag && comparedTrack.outSideRectangle(pruneArea)) ||
-                        (pruneArea.isInternal(comparedTrack.rect.clone().extendLength(-comparedTrack.threshold)))) {
+                if (judge.action(comparedTrack)) {
                     if (map.containsKey(state) && !comparedTrack.candidateInfo.contains(TID)) {
                         track.removeRelatedInfo(state);
                         comparedTrack.removeRelatedInfo(state);
@@ -1303,7 +1319,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             globalTree.countPartitions(MBR, track);
             track.enlargeTuple.f0.bitmap.add(TID);
             Global2LocalPoints trackPs = Global2LocalPoints.ToG2LPoints(track.trajectory);
-            if (!track.topKP.isEmpty()) {
+            if (track.topKP.isEmpty()) {
+               track.cutOffCandidate(trackMap);
+            }else {
                 outAddTopKTrackGB(track.topKP.getList(), trackPs);
                 pruneIndex.insert(track);
             }

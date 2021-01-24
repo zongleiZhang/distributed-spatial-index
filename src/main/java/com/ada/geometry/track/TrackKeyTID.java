@@ -56,8 +56,8 @@ public class TrackKeyTID extends TrackHauOne {
      * 轨迹没有topKP了，将轨迹的topK候选减少
      */
     public <T extends  TrackHauOne> void cutOffCandidate(Map<Integer, T> trackMap) {
-        int k = (int) (Constants.topK*1.5);
-        while (candidateInfo.size() > k)
-            removeICandidate(k, trackMap);
+        for (int i = candidateInfo.size(); i > (int) (Constants.topK*1.5); i--) {
+            removeICandidate(i, trackMap);
+        }
     }
 }
