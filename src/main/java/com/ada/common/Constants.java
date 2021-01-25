@@ -223,18 +223,6 @@ public class Constants implements Serializable {
         return res;
     }
 
-    public static boolean collectionsEqual(Collection<GDataNode> collection1, Collection<GDataNode> collection2) {
-        Set<GDataNode> set1 = new HashSet<>(collection1);
-        Set<GDataNode> set2 = new HashSet<>(collection2);
-        set1.removeAll(collection2);
-        set2.removeAll(collection1);
-        if (!set1.isEmpty())
-            return false;
-        if (!set2.isEmpty())
-            return false;
-        return true;
-    }
-
     public static void rectangleToInts(Rectangle rectangle, int[] low, int[] high){
         low[0] = (int) Math.round(rectangle.low.data[0]*10000);
         low[1] = (int) Math.round(rectangle.low.data[1]*10000);

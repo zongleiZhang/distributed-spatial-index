@@ -56,8 +56,8 @@ public class Collections {
             return false;
         Set<T> set1 = new HashSet<>(col1);
         Set<T> set2 = new HashSet<>(col2);
-        set1.removeAll(col2);
-        set2.removeAll(col1);
+        for (T t : col2) set1.remove(t);
+        for (T t : col1) set2.remove(t);
         if (!set1.isEmpty())
             return false;
         return set2.isEmpty();

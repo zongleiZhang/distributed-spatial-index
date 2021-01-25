@@ -145,7 +145,7 @@ public class DTConstants implements Serializable {
         pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
         Set<Integer> newCandidate = segmentIndex.getRegionInternalTIDs(pruneArea);
         newCandidate.remove(track.trajectory.TID);
-        newCandidate.removeAll(track.candidateInfo);
+        for (Integer id : track.candidateInfo) newCandidate.remove(id);
         trackAddCandidate(track, newCandidate, trackMap);
         //紧缩裁剪区以查找需要保留相似度计算中间结果的轨迹
         if (track.getKCanDistance(Constants.topK + Constants.t*2).distance < newThreshold) {
@@ -193,8 +193,8 @@ public class DTConstants implements Serializable {
         Set<Integer> newCandidate = pointIndex.getRegionInternalTIDs(pruneArea);
         newCandidate.remove(TID);
         Set<Integer> oldCandidate = new HashSet<>(track.candidateInfo);
-        oldCandidate.removeAll(newCandidate);
-        newCandidate.removeAll(track.candidateInfo);
+        for (Integer candidate : newCandidate) oldCandidate.remove(candidate);
+        for (Integer candidate : track.candidateInfo) newCandidate.remove(candidate);
         for (Integer tid : oldCandidate)
             track.removeTIDCandidate(tid, trackMap);
         trackAddCandidate(track, newCandidate, trackMap);
@@ -295,23 +295,6 @@ public class DTConstants implements Serializable {
                 break;
         }
         queue.add(index, t);
-    }
-
-    static void initCalculate(List<TrackHauOne> tracks0,
-                               List<TrackHauOne> tracks2,
-                               RCtree<TrackHauOne> pruneIndex) {
-        for (TrackHauOne track : tracks0) {
-            List<TrackHauOne> list = new ArrayList<>(tracks2);
-            list.remove(track);
-            for (TrackHauOne comparedTrack : list)
-                track.addTrackCandidate(comparedTrack);
-            list.forEach(track::addTrackCandidate);
-            track.sortCandidateInfo();
-            track.threshold = track.getKCanDistance(Constants.t + Constants.topK).distance;
-            track.rect = Constants.getPruningRegion(track.trajectory, track.threshold);
-            track.data = track.rect.getCenter().data;
-            pruneIndex.insert(track);
-        }
     }
 
     /**

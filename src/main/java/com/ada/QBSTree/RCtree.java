@@ -246,7 +246,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		Set<Integer> allTIDs = new HashSet<>();
 		Set<Integer> intersections = new HashSet<>();
 		root.getRegionTIDs(region, allTIDs, intersections);
-		allTIDs.removeAll(intersections);
+		for (Integer intersection : intersections) allTIDs.remove(intersection);
 		return allTIDs;
 	}
 

@@ -8,10 +8,14 @@ import com.ada.common.ArrayQueue;
 import com.ada.common.Constants;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.*;
 
+@Getter
+@Setter
 public class TrackHauOne extends RectElem implements Serializable {
     public Trajectory trajectory;
     public List<Integer> candidateInfo;
@@ -31,14 +35,6 @@ public class TrackHauOne extends RectElem implements Serializable {
         super(leaf, data, rect);
         trajectory = new Trajectory(elms, TID);
         this.candidateInfo = candidateInfo;
-        this.relatedInfo = relatedInfo;
-    }
-
-    public Map<SimilarState, SimilarState> getRelatedInfo() {
-        return relatedInfo;
-    }
-
-    public void setRelatedInfo(Map<SimilarState, SimilarState> relatedInfo) {
         this.relatedInfo = relatedInfo;
     }
 

@@ -42,11 +42,11 @@ public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
                 if (!innerRect.extendLength(-1000).isInternal(region)){ //region和外tree负责的区域也有交集
                     outerRoot.getRegionTIDs(region, allTIDs, intersections);
                 }
-                allTIDs.removeAll(intersections);
+                for (Integer intersection : intersections) allTIDs.remove(intersection);
             }else {//region只在外tree中
                 outerRoot.getRegionTIDs(region, allTIDs, intersections);
             }
-            allTIDs.removeAll(intersections);
+            for (Integer intersection : intersections) allTIDs.remove(intersection);
         }catch (Exception e){
             e.printStackTrace();
         }
