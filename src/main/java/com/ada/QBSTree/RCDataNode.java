@@ -212,7 +212,7 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 					parent.getAllElement(elms);
                     RCDataNode<T> newRoot = new RCDataNode<>(0, null, -1, parent.centerRegion, parent.region,
                             new ArrayList<>(), parent.elemNum, tree, elms);
-                    tree.setNewRoot(parent, newRoot);
+                    tree.root = newRoot;
                     newRoot.updateElemLeaf();
 					return true;
 				}
@@ -232,10 +232,11 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 				}
 			}
 			if(newNode != null) {
-				if (newNode.parent == null)
-					tree.setNewRoot(UBNode, newNode);
-				else
+				if (newNode.parent == null) {
+					tree.root = newNode;
+				}else {
 					newNode.parent.updateUpperLayerDepth();
+				}
 			}
 		}
 		return true;

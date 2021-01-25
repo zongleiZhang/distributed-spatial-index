@@ -287,17 +287,4 @@ public class RCtree<T extends ElemRoot> implements Serializable {
         root.trackInternal(MBR, TIDs);
         return TIDs;
     }
-
-
-	void setNewRoot(RCNode<T> oldRoot, RCNode<T> newRoot) {
-    	if (this instanceof DualRootTree){
-    		if (root == oldRoot){
-    			root = newRoot;
-			}else {
-				((DualRootTree<T>) this).outerRoot = newRoot;
-			}
-		}else {
-    		root = newRoot;
-		}
-	}
 }

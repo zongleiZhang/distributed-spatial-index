@@ -1,6 +1,5 @@
 package com.ada.QBSTree;
 
-import com.ada.common.Constants;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.TrackInfo;
@@ -10,22 +9,36 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
-    public RCNode<T> outerRoot;
+public class DualRootTree<T extends RectElem> {
+    public RCtree<T> innerTree;
+    public RCtree<T> outerTree;
+    public Rectangle innerRegion;
+    public Rectangle outerRegion;
 
-    public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle centerRegion, Rectangle outerCenterRegion, boolean hasTIDs) {
-        super(lowBound, balanceFactor, precision, centerRegion, 0,hasTIDs);
-        outerRoot = new RCDataNode<>(0, null, -1, outerCenterRegion, null, new ArrayList<>(), 0, this, new ArrayList<>());
+    public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle innerRegion, Rectangle outerRegion, boolean hasTIDs) {
+        this.innerTree = new RCtree<>(lowBound, balanceFactor, precision, innerRegion, 0, hasTIDs);
+        this.outerTree = new RCtree<>(lowBound, balanceFactor, precision, outerRegion, 0, hasTIDs);
+        this.innerRegion = innerRegion;
+        this.outerRegion = outerRegion;
     }
 
     public RCDataNode<T> insert(T elem) {
-        RCDataNode<T> leafNode;
-        if (root.centerRegion.isInternal(elem))
-            leafNode = root.chooseLeafNode(elem);
-        else
-            leafNode = outerRoot.chooseLeafNode(elem);
-        leafNode.insert();
-        return leafNode;
+        if (innerRegion.isInternal(elem.rect)) {
+            return innerTree.insert(elem);
+        }else {
+            return outerTree.insert(elem);
+        }
+    }
+
+    public boolean delete(T elem) {
+        @SuppressWarnings("unchecked")
+        RCDataNode<T> leafNode = elem.leaf;
+        if (leafNode == null) {
+            return false;
+        } else {
+            elem.leaf = null;
+            return leafNode.delete(elem);
+        }
     }
 
     /**
@@ -35,18 +48,12 @@ public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
     public Set<Integer> getRegionInternalTIDs(Rectangle region) {
         Set<Integer> allTIDs = new HashSet<>();
         try {
-            Rectangle innerRect = root.centerRegion.clone();
             Set<Integer> intersections = new HashSet<>();
-            if (innerRect.extendLength(500).isIntersection(region)){ //region和内tree负责的区域有交集
-                root.getRegionTIDs(region, allTIDs, intersections);
-                if (!innerRect.extendLength(-1000).isInternal(region)){ //region和外tree负责的区域也有交集
-                    outerRoot.getRegionTIDs(region, allTIDs, intersections);
-                }
-                for (Integer intersection : intersections) allTIDs.remove(intersection);
-            }else {//region只在外tree中
-                outerRoot.getRegionTIDs(region, allTIDs, intersections);
+            if (innerRegion.isIntersection(region)){ //region和内tree负责的区域有交集
+                innerTree.root.getRegionTIDs(region, allTIDs, intersections);
             }
-            for (Integer intersection : intersections) allTIDs.remove(intersection);
+            outerTree.root.getRegionTIDs(region, allTIDs, intersections);
+            allTIDs.removeAll(intersections);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -54,11 +61,11 @@ public class DualRootTree<T extends ElemRoot> extends RCtree<T> {
     }
 
     public void rebuildRoot(Rectangle newRectangle, List<T> innerElms, List<T> outerElms, Rectangle innerMBR, Rectangle outerMBR) {
-        boolean flag = false;
-        if (hasTIDs) {
-            flag = true;
-            hasTIDs = false;
-        }
+        this.innerRegion = innerMBR;
+        this.outerRegion = outerMBR;
+        this.innerTree = new RCtree<>();
+        this.outerTree = new RCtree<>();
+
         RCDataNode<T> innerLeaf = new RCDataNode<>(0,null,-1, newRectangle, innerMBR, new ArrayList<>()
                 , innerElms.size(),this, innerElms);
         root = innerLeaf.recursionSplit();

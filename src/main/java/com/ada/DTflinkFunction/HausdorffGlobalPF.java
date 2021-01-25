@@ -36,7 +36,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
     private int subTask;
     private GTree globalTree;
     private Queue<int[][]> densityQue;
-    private Queue<RoaringBitmap> tIDsQue;
+    private Queue<Tuple2<Long, RoaringBitmap>> tIDsQue;
 
     private Map<Integer, TrackKeyTID> trackMap;
     private Map<Integer, TrackPoint> singlePointMap;
@@ -62,11 +62,15 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         int[][] density = preElements(elements, newTracks, inPointsMap);
         RoaringBitmap inputIDs = new RoaringBitmap();
         inputIDs.add(inPointsMap.keySet().stream().mapToInt(Integer::valueOf).toArray());
-        tIDsQue.add(inputIDs);
+        tIDsQue.add(new Tuple2<>(context.window().getStart(), inputIDs));
 
         long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
         if (hasInit){
-            outTIDs = tIDsQue.remove();
+            if (tIDsQue.element().f0 < logicWinStart) {
+                outTIDs = tIDsQue.remove().f1;
+            }else {
+                outTIDs = new RoaringBitmap();
+            }
             inAndOutTIDs = inputIDs.clone();
             inTIDs = inputIDs.clone();
             inAndOutTIDs.and(outTIDs);
@@ -100,7 +104,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
 
             System.out.println(count);
-            if (count%20 == 0)
+            if (count%10 == 0)
                 check();
 
             if (density != null) {
@@ -138,9 +142,11 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             globalTree.updateTree();
         }
         if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
-            for (Integer tid : tIDsQue.remove()) {
-                for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
-                    segmentIndex.delete(segment);
+            if (tIDsQue.element().f0 < logicWinStart) {
+                for (Integer tid : tIDsQue.remove().f1) {
+                    for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
+                        segmentIndex.delete(segment);
+                    }
                 }
             }
             for (TrackKeyTID track : trackMap.values()) {
