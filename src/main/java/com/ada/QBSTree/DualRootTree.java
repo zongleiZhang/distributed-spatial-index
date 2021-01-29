@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Set;
 
 public class DualRootTree<T extends RectElem> implements Index<T>{
-    private RCtree<T> innerTree;
-    private RCtree<T> outerTree;
-    private Rectangle innerRegion;
-    private Rectangle outerRegion;
-    private Rectangle OSR;
+//    private RCtree<T> innerTree;
+//    private RCtree<T> outerTree;
+//    private Rectangle innerRegion;
+//    private Rectangle outerRegion;
+//    private Rectangle OSR;
 
     private RCtree<T> verifyTree;
     private Rectangle verifyRegion;
@@ -22,46 +22,17 @@ public class DualRootTree<T extends RectElem> implements Index<T>{
     public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle region, boolean hasTIDs) {
         verifyRegion = region.clone().extendMultiple(1.0);
         verifyTree = new RCtree<>(lowBound, balanceFactor, precision, verifyRegion.clone(), 0, hasTIDs);
-
-        this.innerRegion = region.clone().extendMultiple(0.075);
-        this.outerRegion = region.clone().extendMultiple(0.35);
-        this.OSR = region.clone().shrinkMultiple(0.1);
-        this.innerTree = new RCtree<>(lowBound, balanceFactor, precision, innerRegion.clone(), 0, hasTIDs);
-        this.outerTree = new RCtree<>(lowBound, balanceFactor, precision, outerRegion.clone(), 0, hasTIDs);
     }
 
     public List<T> getAllElement(){
-        List<T> list = new ArrayList<>(innerTree.root.elemNum + outerTree.root.elemNum);
-        innerTree.root.getAllElement(list);
-        outerTree.root.getAllElement(list);
+        List<T> list = new ArrayList<>(verifyTree.root.elemNum);
+        verifyTree.root.getAllElement(list);
         return list;
     }
 
-    public void rebuildRoot(List<T> innerElms,
-                            List<T> outerElms,
-                            Rectangle innerRegion,
-                            Rectangle outerRegion,
-                            Rectangle OSR) {
-        verifyRegion = innerRegion.clone().extendMultiple(1.0);
-        List<T> list = new ArrayList<>(innerElms);
-        list.addAll(outerElms);
-        verifyTree = new RCtree<>(innerTree.lowBound, innerTree.balanceFactor, innerTree.precision, verifyRegion.clone(), 0, innerTree.hasTIDs, list);
-
-        for (T innerElm : innerElms) {
-            if (!innerRegion.isInternal(innerElm.rect))
-                throw new IllegalArgumentException();
-        }
-        for (T outerElm : outerElms) {
-            if (!(outerRegion.isInternal(outerElm.rect) && !OSR.isIntersection(outerElm.rect)))
-                throw new IllegalArgumentException();
-        }
-        if (outerRegion.isInternal(OSR))
-            throw new IllegalArgumentException();
-        this.innerRegion = innerRegion;
-        this.outerRegion = outerRegion;
-        this.OSR = OSR;
-        innerTree = new RCtree<>(innerTree.lowBound, innerTree.balanceFactor, innerTree.precision, innerRegion.clone(), 0, innerTree.hasTIDs, innerElms);
-        outerTree = new RCtree<>(outerTree.lowBound, outerTree.balanceFactor, outerTree.precision, outerRegion.clone(), 0, outerTree.hasTIDs, outerElms);
+    public void rebuildRoot(List<T> elms, Rectangle region) {
+        verifyRegion = region.clone().extendMultiple(1.0);
+        verifyTree = new RCtree<>(verifyTree.lowBound, verifyTree.balanceFactor, verifyTree.precision, verifyRegion.clone(), 0, verifyTree.hasTIDs, elms);
     }
 
     @Override
@@ -71,63 +42,17 @@ public class DualRootTree<T extends RectElem> implements Index<T>{
             verifyRegion.extendMultiple(0.1);
             verifyTree.rebuildRoot(verifyRegion.clone());
         }
-        verifyTree.insert(elem);
-
-        if (innerRegion.isInternal(elem.rect)) {
-            return innerTree.insert(elem);
-        }else {
-            if (!outerRegion.isInternal(elem)){
-                outerRegion.getUnionRectangle(elem);
-                outerRegion.extendMultiple(0.05);
-                outerTree.rebuildRoot(outerRegion);
-            }
-            shrinkOSR(OSR, elem);
-            return outerTree.insert(elem);
-        }
+        return verifyTree.insert(elem);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public boolean delete(T elem) {
-        verifyTree.delete(elem);
-        RCDataNode<T> leafNode = elem.leaf;
-        if (leafNode == null) {
-            return false;
-        } else {
-            elem.leaf = null;
-            return leafNode.delete(elem);
-        }
+        return verifyTree.delete(elem);
     }
 
     @Override
     public <M extends RectElem> void alterELem(M oldElem, Rectangle newRegion) {
         verifyTree.alterELem(oldElem, newRegion);
-
-        if (oldElem.leaf.tree == innerTree){
-            innerTree.alterELem(oldElem, newRegion);
-        }else {
-            outerTree.alterELem(oldElem, newRegion);
-        }
-    }
-
-    public static <T extends RectElem> void shrinkOSR(Rectangle OSR, T elem) {
-        double olehX = OSR.low.data[0] - elem.rect.high.data[0];
-        double elohX = elem.rect.low.data[0] - OSR.high.data[0];
-        double olehY = OSR.low.data[1] - elem.rect.high.data[1];
-        double elohY = elem.rect.low.data[1] - OSR.high.data[1];
-        if (olehX <= Constants.zero && elohX <= Constants.zero &&
-                olehY <= Constants.zero && elohY <= Constants.zero){
-            double max = Math.max(Math.max(Math.max(olehX, elohX), olehY), elohY);
-            if (max == olehX){
-                OSR.low.data[0] -= olehX;
-            }else if (max == elohX){
-                OSR.high.data[0] += elohX;
-            }else if (max == olehY){
-                OSR.low.data[1] -= olehY;
-            }else {
-                OSR.high.data[1] += elohY;
-            }
-        }
     }
 
     /**
@@ -136,44 +61,17 @@ public class DualRootTree<T extends RectElem> implements Index<T>{
      */
     @Override
     public Set<Integer> getInternalNoIPTIDs(Rectangle region) {
-        Set<Integer> allTIDs = new HashSet<>();
-        Set<Integer> intersections = new HashSet<>();
-        innerTree.root.getRegionTIDs(region, allTIDs, intersections);
-        if (!OSR.isInternal(region)){
-            outerTree.root.getRegionTIDs(region, allTIDs, intersections);
-        }
-        allTIDs.removeAll(intersections);
-
-        Set<Integer> set = verifyTree.getInternalNoIPTIDs(region);
-        if (!Collections.collectionsEqual(set, allTIDs))
-            System.out.print("");
-        return allTIDs;
+        return verifyTree.getInternalNoIPTIDs(region);
     }
 
 
     @Override
     public Set<Integer> getInternalTIDs(Rectangle region){
-        Set<Integer> allTIDs = new HashSet<>();
-        innerTree.root.getRegionTIDs(region, allTIDs);
-        if (!innerRegion.isInternal(region)){
-            outerTree.root.getRegionTIDs(region, allTIDs);
-        }
-
-        if (!Collections.collectionsEqual(verifyTree.getInternalTIDs(region), allTIDs))
-            System.out.print("");
-        return allTIDs;
+        return verifyTree.getInternalTIDs(region);
     }
 
     @Override
     public List<Integer> trackInternal(Rectangle MBR) {
-        List<Integer> TIDs = new ArrayList<>();
-        innerTree.root.trackInternal(MBR, TIDs);
-        if (!OSR.isIntersection(MBR)) {
-            outerTree.root.trackInternal(MBR, TIDs);
-        }
-
-        if (!Collections.collectionsEqual(verifyTree.trackInternal(MBR), TIDs))
-            System.out.print("");
-        return TIDs;
+        return verifyTree.trackInternal(MBR);
     }
 }

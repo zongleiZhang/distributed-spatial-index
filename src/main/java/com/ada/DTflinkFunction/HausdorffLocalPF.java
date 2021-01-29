@@ -326,26 +326,13 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         topKTrackMap.values().forEach(TrackHauOne::clear);
         tIDsMap.values().forEach(TwoTIDs::clear);
 
-        List<Segment> innerElms = new ArrayList<>((int)(passTrackMap.size()*((Constants.windowSize*Constants.logicWindow/1000)/6)));
-        List<Segment> outerElms = new ArrayList<>();
-        Rectangle innerRegion = newRegion.clone().extendMultiple(0.075);
-        Rectangle outerRegion = newRegion.clone().extendMultiple(0.35);
-        Rectangle OSR = newRegion.clone().shrinkMultiple(0.1);
+        List<Segment> elms = new ArrayList<>();
         for (TrackHauOne track : passTrackMap.values()) {
             int TID = track.trajectory.TID;
+            elms.addAll(track.trajectory.elms);
             for (Segment segment : track.trajectory.elms) {
                 Long mapKey = ((int) (segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
                 tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).passTIDs.add(TID);
-                if (innerRegion.isInternal(segment.rect)) {
-                    innerElms.add(segment);
-                }else {
-                    outerElms.add(segment);
-                    if (!outerRegion.isInternal(segment.rect)){
-                        outerRegion.getUnionRectangle(segment.rect);
-                        outerRegion.extendMultiple(0.05);
-                    }
-                    DualRootTree.shrinkOSR(OSR, segment);
-                }
             }
         }
         for (TrackHauOne track : topKTrackMap.values()) {
@@ -355,7 +342,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
                 tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).topKTIDs.add(TID);
             }
         }
-        segmentIndex.rebuildRoot(innerElms, outerElms, innerRegion, outerRegion, OSR);
+        segmentIndex.rebuildRoot(elms, newRegion);
 
         for (TrackHauOne track : passTrackMap.values()) {
             Rectangle MBR = track.rect.clone();
