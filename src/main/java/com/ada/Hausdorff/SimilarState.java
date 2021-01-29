@@ -52,17 +52,12 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         for (NOAndDistance nd : col) distance = Math.max(distance, nd.distance);
     }
 
-    public void printDisSite(){
-        StringBuilder str = new StringBuilder();
-        for (int i = 0; i < row.size(); i++) {
-            if (row.get(i).distance == distance)
-                str.append("row [").append(i).append("]\t");
+    public int getStateAnoTID(int TID){
+        if (comparingTID == TID) {
+            return comparedTID;
+        }else {
+            return comparedTID;
         }
-        for (int i = 0; i < col.size(); i++) {
-            if (col.get(i).distance == distance)
-                str.append("col [").append(i).append("]\t");
-        }
-        System.out.println(str.toString());
     }
 
 

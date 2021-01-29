@@ -44,7 +44,7 @@ public class Segment extends RectElem implements TrackInfo, Serializable {
     public static List<Segment> pointsToSegments(List<TrackPoint> points){
         if (points.size() < 2)
             throw new IllegalArgumentException("points are too small.");
-        List<Segment> segments = new ArrayList<>();
+        List<Segment> segments = new ArrayList<>((int)(points.size()*1.1));
         TrackPoint p0 = points.get(0);
         for (int i = 1; i < points.size(); i++) {
             TrackPoint p1 = points.get(i);

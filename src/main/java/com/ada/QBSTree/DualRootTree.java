@@ -1,35 +1,86 @@
 package com.ada.QBSTree;
 
-import com.ada.common.collections.Collections;
+import com.ada.common.Constants;
 import com.ada.geometry.Rectangle;
-import com.ada.geometry.TrackInfo;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class DualRootTree<T extends RectElem> {
-    public RCtree<T> innerTree;
-    public RCtree<T> outerTree;
-    public Rectangle innerRegion;
-    public Rectangle outerRegion;
+public class DualRootTree<T extends RectElem> implements Index<T>{
+    private RCtree<T> innerTree;
+    private RCtree<T> outerTree;
+    private Rectangle innerRegion;
+    private Rectangle outerRegion;
+    private Rectangle OSR;
 
-    public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle innerRegion, Rectangle outerRegion, boolean hasTIDs) {
-        this.innerTree = new RCtree<>(lowBound, balanceFactor, precision, innerRegion, 0, hasTIDs);
-        this.outerTree = new RCtree<>(lowBound, balanceFactor, precision, outerRegion, 0, hasTIDs);
-        this.innerRegion = innerRegion;
-        this.outerRegion = outerRegion;
+    public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle region, boolean hasTIDs) {
+        this.innerRegion = region.clone().extendMultiple(0.075);
+        this.outerRegion = region.clone().extendMultiple(0.35);
+        this.OSR = region.clone().shrinkMultiple(0.1);
+        this.innerTree = new RCtree<>(lowBound, balanceFactor, precision, innerRegion.clone(), 0, hasTIDs);
+        this.outerTree = new RCtree<>(lowBound, balanceFactor, precision, outerRegion.clone(), 0, hasTIDs);
     }
 
+    public void rebuildRoot(List<T> innerElms,
+                            List<T> outerElms,
+                            Rectangle innerRegion,
+                            Rectangle outerRegion,
+                            Rectangle OSR) {
+        for (T innerElm : innerElms) {
+            if (!innerRegion.isInternal(innerElm.rect))
+                throw new IllegalArgumentException();
+        }
+        for (T outerElm : outerElms) {
+            if (!(outerRegion.isInternal(outerElm.rect) && !OSR.isIntersection(outerElm.rect)))
+                throw new IllegalArgumentException();
+        }
+        if (outerRegion.isInternal(OSR))
+            throw new IllegalArgumentException();
+        this.innerRegion = innerRegion;
+        this.outerRegion = outerRegion;
+        this.OSR = OSR;
+        innerTree = new RCtree<>(innerTree.lowBound, innerTree.balanceFactor, innerTree.precision, innerRegion, 0, innerTree.hasTIDs, innerElms);
+        outerTree = new RCtree<>(outerTree.lowBound, outerTree.balanceFactor, outerTree.precision, outerRegion, 0, outerTree.hasTIDs, outerElms);
+    }
+
+    @Override
     public RCDataNode<T> insert(T elem) {
         if (innerRegion.isInternal(elem.rect)) {
             return innerTree.insert(elem);
         }else {
+            if (!outerRegion.isInternal(elem)){
+                outerRegion.getUnionRectangle(elem);
+                outerRegion.extendMultiple(0.05);
+                outerTree.rebuildRoot(outerRegion);
+            }
+            shrinkOSR(OSR, elem);
             return outerTree.insert(elem);
         }
     }
 
+    public static <T extends RectElem> void shrinkOSR(Rectangle OSR, T elem) {
+        double olehX = OSR.low.data[0] - elem.rect.high.data[0];
+        double elohX = elem.rect.low.data[0] - OSR.high.data[0];
+        double olehY = OSR.low.data[1] - elem.rect.high.data[1];
+        double elohY = elem.rect.low.data[1] - OSR.high.data[1];
+        if (olehX <= Constants.zero && elohX <= Constants.zero &&
+                olehY <= Constants.zero && elohY <= Constants.zero){
+            double max = Math.max(Math.max(Math.max(olehX, elohX), olehY), elohY);
+            if (max == olehX){
+                OSR.low.data[0] -= olehX;
+            }else if (max == elohX){
+                OSR.high.data[0] += elohX;
+            }else if (max == olehY){
+                OSR.low.data[1] -= olehY;
+            }else {
+                OSR.high.data[1] += elohY;
+            }
+        }
+    }
+
+    @Override
     public boolean delete(T elem) {
         @SuppressWarnings("unchecked")
         RCDataNode<T> leafNode = elem.leaf;
@@ -45,45 +96,45 @@ public class DualRootTree<T extends RectElem> {
      * 获取指定区域region内部的轨迹ID集，不包括与边界相交的轨迹ID
      * @param region 指定的区域
      */
-    public Set<Integer> getRegionInternalTIDs(Rectangle region) {
+    @Override
+    public Set<Integer> getInternalNoIPTIDs(Rectangle region) {
         Set<Integer> allTIDs = new HashSet<>();
-        try {
-            Set<Integer> intersections = new HashSet<>();
-            if (innerRegion.isIntersection(region)){ //region和内tree负责的区域有交集
-                innerTree.root.getRegionTIDs(region, allTIDs, intersections);
-            }
+        Set<Integer> intersections = new HashSet<>();
+        innerTree.root.getRegionTIDs(region, allTIDs, intersections);
+        if (!OSR.isInternal(region)){
             outerTree.root.getRegionTIDs(region, allTIDs, intersections);
-            allTIDs.removeAll(intersections);
-        }catch (Exception e){
-            e.printStackTrace();
+        }
+        allTIDs.removeAll(intersections);
+        return allTIDs;
+    }
+
+
+    @Override
+    public Set<Integer> getInternalTIDs(Rectangle region){
+        Set<Integer> allTIDs = new HashSet<>();
+        innerTree.root.getRegionTIDs(region, allTIDs);
+        if (!innerRegion.isInternal(region)){
+            outerTree.root.getRegionTIDs(region, allTIDs);
         }
         return allTIDs;
     }
 
-    public void rebuildRoot(Rectangle newRectangle, List<T> innerElms, List<T> outerElms, Rectangle innerMBR, Rectangle outerMBR) {
-        this.innerRegion = innerMBR;
-        this.outerRegion = outerMBR;
-        this.innerTree = new RCtree<>();
-        this.outerTree = new RCtree<>();
+    @Override
+    public List<Integer> trackInternal(Rectangle MBR) {
+        List<Integer> TIDs = new ArrayList<>();
+        innerTree.root.trackInternal(MBR, TIDs);
+        if (!OSR.isIntersection(MBR)) {
+            outerTree.root.trackInternal(MBR, TIDs);
+        }
+        return TIDs;
+    }
 
-        RCDataNode<T> innerLeaf = new RCDataNode<>(0,null,-1, newRectangle, innerMBR, new ArrayList<>()
-                , innerElms.size(),this, innerElms);
-        root = innerLeaf.recursionSplit();
-        RCDataNode<T> outerLeaf = new RCDataNode<>(0,null,-1, outerRoot.centerRegion, outerMBR, new ArrayList<>()
-                , outerElms.size(),this, outerElms);
-        outerRoot = outerLeaf.recursionSplit();
-        if (flag){
-            hasTIDs = true;
-            List<RCDataNode<T>> leaves = new ArrayList<>();
-            root.getLeafNodes(leaves);
-            for (RCDataNode<T> leaf : leaves) {
-                leaf.TIDs = new HashSet<>(Collections.changeCollectionElem(leaf.elms, t -> ((TrackInfo) t).obtainTID()));
-            }
-            leaves.clear();
-            outerRoot.getLeafNodes(leaves);
-            for (RCDataNode<T> leaf : leaves) {
-                leaf.TIDs = new HashSet<>(Collections.changeCollectionElem(leaf.elms, t -> ((TrackInfo) t).obtainTID()));
-            }
+    @Override
+    public <M extends RectElem> void alterELem(M oldElem, Rectangle newRegion) {
+        if (oldElem.leaf.tree == innerTree){
+            innerTree.alterELem(oldElem, newRegion);
+        }else {
+            outerTree.alterELem(oldElem, newRegion);
         }
     }
 }

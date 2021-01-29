@@ -28,6 +28,19 @@ public class Trajectory implements Serializable, TrackInfo {
         elms.addAll(value);
     }
 
+    public List<Segment> addTrackPoints(List<TrackPoint> points) {
+        List<Segment> list = new ArrayList<>(points.size()-1);
+        Segment segment = new Segment(elms.getLast().p2, points.get(0));
+        list.add(segment);
+        elms.add(segment);
+        for (int i = 1; i < points.size(); i++) {
+            segment = new Segment(points.get(i-1), points.get(i));
+            elms.add(segment);
+            list.add(segment);
+        }
+        return list;
+    }
+
     /**
      * 移除过时采样点
      * @param time 时间标准

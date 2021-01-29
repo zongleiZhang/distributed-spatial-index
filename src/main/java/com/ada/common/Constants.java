@@ -138,24 +138,6 @@ public class Constants implements Serializable {
     }
 
     /**
-     * 用指定的阈值threshold计算轨迹的裁剪域。
-     */
-    public static Rectangle getPruningRegion(Trajectory track, double threshold){
-        Rectangle rectangle = null;
-        boolean flag = true;
-        for (Segment s : track.elms) {
-            if (flag){
-                flag = false;
-                rectangle = s.rect.clone();
-            }else {
-                rectangle = rectangle.getUnionRectangle(s.rect);
-            }
-        }
-        assert rectangle != null;
-        return rectangle.extendLength(threshold);
-    }
-
-    /**
      * 缩减轨迹ID集合的元素数到 Constants.k*Constants.c 大小
      * @param selectedTIDs 被缩减的集合
      */
@@ -291,14 +273,5 @@ public class Constants implements Serializable {
             ins.add( r0_high[i] - r1_high[i] );
         }
         return Collections.min(ins)/10000.0;
-    }
-
-    public static int getStateAnoTID(SimilarState state, int TID){
-        int comparedTID;
-        if (state.comparingTID == TID)
-            comparedTID = state.comparedTID;
-        else
-            comparedTID = state.comparingTID;
-        return comparedTID;
     }
 }

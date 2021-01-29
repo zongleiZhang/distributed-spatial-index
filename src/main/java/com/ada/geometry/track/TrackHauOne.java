@@ -114,6 +114,41 @@ public class TrackHauOne extends RectElem implements Serializable {
     }
 
     /**
+     * 用指定的阈值threshold计算轨迹的裁剪域。
+     */
+    public Rectangle getPruningRegion(double threshold){
+        Rectangle rectangle = null;
+        boolean flag = true;
+        for (Segment s : trajectory.elms) {
+            if (flag){
+                flag = false;
+                rectangle = s.rect.clone();
+            }else {
+                rectangle = rectangle.getUnionRectangle(s.rect);
+            }
+        }
+        return rectangle.extendLength(threshold);
+    }
+
+    /**
+     * 轨迹track添加一些候选轨迹newCandidate
+     */
+    public <T extends TrackHauOne> void trackAddCandidates(Set<Integer> newCandidate,
+                                                           Map<Integer, T> trackMap) {
+        for (Integer comparedTid : newCandidate) {
+            SimilarState state = getSimilarState(comparedTid);
+            if (state == null) {
+                TrackHauOne comparedTrack = trackMap.get(comparedTid);
+                state = Hausdorff.getHausdorff(trajectory, comparedTrack.trajectory);
+                state = comparedTrack.putRelatedInfo(state);
+                putRelatedInfo(state);
+            }
+            candidateInfo.add(comparedTid);
+            updateCandidateInfo(comparedTid);
+        }
+    }
+
+    /**
      * 移除第i个候选轨迹，i从1计。
      * 待优化
      */

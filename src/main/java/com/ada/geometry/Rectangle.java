@@ -136,6 +136,23 @@ public class Rectangle implements Cloneable, Serializable, Global2LocalValue {
 	}
 
 	/**
+	 * 将矩形长和宽增加times倍
+	 */
+	public Rectangle shrinkMultiple(double times) {
+		if (times >= 1)
+			throw new IllegalArgumentException();
+		double[] length = new double[low.data.length];
+		for(int i = 0; i< length.length; i++) {
+			length[i] = (int) ((high.data[i] - low.data[i]) * times);
+		}
+		for(int i = 0; i< length.length; i++) {
+			low.data[i] = low.data[i] + length[i] ;
+			high.data[i] = high.data[i] - length[i] ;
+		}
+		return this;
+	}
+
+	/**
 	 * 将矩形长和宽增加length
 	 */
 	public Rectangle extendLength(double length) {

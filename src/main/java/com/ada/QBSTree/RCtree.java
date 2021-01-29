@@ -1,6 +1,7 @@
 package com.ada.QBSTree;
 
 import com.ada.common.Path;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.*;
 import com.ada.geometry.track.TrackKeyTID;
 import lombok.Getter;
@@ -11,7 +12,7 @@ import java.util.*;
 
 @Setter
 @Getter
-public class RCtree<T extends ElemRoot> implements Serializable {
+public class RCtree<T extends ElemRoot> implements Serializable, Index<T> {
 
 	public RCNode<T> root;
 
@@ -30,7 +31,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	/**
 	 * 处理轨迹数据时要在叶节点存储TID集合
 	 */
-	public boolean hasTIDs = false;
+	public boolean hasTIDs;
 
 	public  RCtree(){}
 
@@ -48,6 +49,33 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		this.cacheSize = cacheSize;
 		this.hasTIDs = hasTIDs;
 		root = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), 0, this, new ArrayList<>());
+	}
+
+	public RCtree(int lowBound, int balanceFactor, int precision, Rectangle centerRegion, int cacheSize, boolean hasTIDs, List<T> elms) {
+		this.lowBound = lowBound;
+		this.balanceFactor = balanceFactor;
+		this.upBound = 5*lowBound;
+		this.precision = precision;
+		cache = new ArrayList<>();
+		this.cacheSize = cacheSize;
+		this.hasTIDs = hasTIDs;
+		RCDataNode<T> dataNode = new RCDataNode<>(0, null, -1, centerRegion, null, new ArrayList<>(), elms.size(), this, elms);
+		if (elms.isEmpty()){
+			root = dataNode;
+		}else{
+			Rectangle rect;
+			if (elms.get(0) instanceof RectElem){
+				rect = Rectangle.getUnionRectangle(elms.stream().map(t -> ((RectElem) t).rect).toArray(Rectangle[]::new));
+			}else {
+				rect = Rectangle.pointsMBR(elms.toArray(new Point[0]));
+			}
+			dataNode.setRegion(rect);
+			if (dataNode.elemNum > upBound){
+				root = dataNode.recursionSplit();
+			}else {
+				root = dataNode;
+			}
+		}
 	}
 
 	private void addToCache(CacheElem elem) {
@@ -103,6 +131,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	}
 
 
+	@Override
 	public RCDataNode<T> insert(T elem) {
 		if (cacheSize == 0) {
 			RCDataNode<T> leafNode = root.chooseLeafNode(elem);
@@ -124,7 +153,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 
 
 
-
+	@Override
 	public boolean delete(T elem) {
 		try {
 			if (cacheSize == 0) {
@@ -232,7 +261,7 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	 * 获取指定区域region相交的轨迹ID集，包括与边界相交的轨迹ID
 	 * @param region 指定的区域
 	 */
-	public Set<Integer> getIntersectTIDs(Rectangle region) {
+	public Set<Integer> getInternalTIDs(Rectangle region) {
 		Set<Integer> allTIDs = new HashSet<>();
 		root.getRegionTIDs(region, allTIDs);
 		return allTIDs;
@@ -242,7 +271,8 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	 * 获取指定区域region内部的轨迹ID集，不包括与边界相交的轨迹ID
 	 * @param region 指定的区域
 	 */
-	public Set<Integer> getRegionInternalTIDs(Rectangle region) {
+	@Override
+	public Set<Integer> getInternalNoIPTIDs(Rectangle region) {
 		Set<Integer> allTIDs = new HashSet<>();
 		Set<Integer> intersections = new HashSet<>();
 		root.getRegionTIDs(region, allTIDs, intersections);
@@ -265,23 +295,13 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 	public void rebuildRoot(Rectangle roodCenterRegion) {
 		root.centerRegion = roodCenterRegion;
 		cache.clear();
-		if (root instanceof  RCDataNode){
-			RCDataNode<T> dataNode = (RCDataNode<T>) root;
-			if (dataNode.elemNum > upBound)
-				root = dataNode.recursionSplit();
-		}else{
+		if (root instanceof  RCDirNode){
 			RCDirNode<T> dirNode = (RCDirNode<T>) root;
-			if (dirNode.elemNum > upBound){
-				root = dirNode.redistribution();
-			}else{
-				List<T> elms = new ArrayList<>();
-				dirNode.getAllElement(elms);
-				root = new RCDataNode<>(0,null,-1, dirNode.centerRegion, dirNode.region, new ArrayList<>()
-						,dirNode.elemNum,dirNode.tree, elms);
-			}
+			root = dirNode.redistribution();
 		}
 	}
 
+	@Override
     public List<Integer> trackInternal(Rectangle MBR) {
         List<Integer> TIDs = new ArrayList<>();
         root.trackInternal(MBR, TIDs);

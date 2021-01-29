@@ -2,11 +2,12 @@ package com.ada.DTflinkFunction;
 
 import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
+import com.ada.QBSTree.Index;
+import com.ada.common.collections.Judge;
 import com.ada.geometry.track.TrackHauOne;
 import com.ada.geometry.track.TrackKeyTID;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
-import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.geometry.*;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -18,85 +19,140 @@ import java.util.*;
 public class DTConstants implements Serializable {
 
     static <T extends TrackHauOne> Rectangle tightenThresholdCommon(T track,
-                                                                    int notRemove,
-                                                                    List<Integer> removeRI,
                                                                     Map<Integer, T> trackMap) {
         double newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
         Rectangle pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
-        if (DTConstants.cacheTighten(track, pruneArea, notRemove, trackMap))
-            removeRI.add(track.trajectory.TID);
+        cacheTighten(track, trackMap, t -> !pruneArea.isInternal(t.rect.clone().extendLength(-newThreshold)));
         track.threshold = newThreshold;
         return pruneArea;
     }
 
+    public static <T extends TrackHauOne> void supplyCandidate(T track,
+                                                               Rectangle MBR,
+                                                               Map<Integer, T> passTrackMap,
+                                                               Map<Integer, T> topKTrackMap,
+                                                               Index<Segment> segmentIndex,
+                                                               boolean isPass){
+        Integer TID = track.trajectory.TID;
+        if (isPass) {
+            List<SimilarState> list = new ArrayList<>(track.getRelatedInfo().keySet());
+            if (topKTrackMap != null)
+                list.removeIf(state -> topKTrackMap.containsKey(state.getStateAnoTID(TID)));
+            java.util.Collections.sort(list);
+            List<Integer> newCanDi = new ArrayList<>();
+            for (int i = 0; i < Constants.topK + Constants.t && i < list.size(); i++) {
+                newCanDi.add(list.get(i).getStateAnoTID(TID));
+            }
+            track.candidateInfo.removeAll(newCanDi);
+            while (!track.candidateInfo.isEmpty()) track.removeICandidate(track.candidateInfo.size(), passTrackMap);
+            track.candidateInfo = newCanDi;
+        }
+        if (track.candidateInfo.size() < Constants.topK + Constants.t){ //没有足够的候选轨迹
+            Rectangle pruneArea = MBR.clone().extendLength(track.getKCanDistance(Constants.topK + Constants.t).distance);
+            //筛选出计算阈值的轨迹集合，得出裁剪域
+            Set<Integer> selectedTIDs = new HashSet<>();  //阈值计算轨迹集
+            while (selectedTIDs.size() < Constants.topK + Constants.t) { //阈值计算轨迹集的元素数要大于Constants.k*Constants.cDTW。
+                selectedTIDs = segmentIndex.getInternalTIDs(pruneArea);
+                pruneArea.extendMultiple(0.3);   //查询轨迹MBR扩展
+            }
+            selectedTIDs.remove(TID);
+            selectedTIDs.removeAll(track.candidateInfo);
+            for (Integer selectedTID : selectedTIDs)
+                track.addTrackCandidate(passTrackMap.get(selectedTID));
+            track.sortCandidateInfo();
+        }
+    }
+
     /**
      * 轨迹trajectory的裁剪域变小了，删除一些缓存的中间结果
-     * @param pruneArea 新的裁剪与大小
-     * @return track作为noRemove轨迹的related track是否可以在relatedInfo中删除，true可以，false不可以
      */
-    static <T extends TrackHauOne> boolean cacheTighten(T track,
-                                                        Rectangle pruneArea,
-                                                        Integer noRemove,
-                                                        Map<Integer, T> trackMap) {
-        boolean res = false;
+    static <T extends TrackHauOne> void cacheTighten(T track,
+                                                     Map<Integer, T> trackMap,
+                                                     Judge<T> outPruneArea) {
         for (int i = Constants.topK + Constants.t; i < track.candidateInfo.size(); i++) {
             Integer comparedTID = track.candidateInfo.get(i);
             T comparedTrack = trackMap.get(comparedTID);
-            if (comparedTrack.outSideRectangle(pruneArea)){
-                if (noRemove.equals(comparedTID)){
-                    res = true;
-                    track.candidateInfo.remove(noRemove);
-                    T noRemoveTrack = trackMap.get(noRemove);
-                    if (noRemoveTrack.candidateInfo.contains(track.trajectory.TID))
-                        res = false;
-                    else
-                        track.removeRelatedInfo(noRemove);
-                }else {
-                    track.removeTIDCandidate(comparedTrack);
-                }
+            if (outPruneArea.action(comparedTrack)){
+                track.removeTIDCandidate(comparedTrack);
                 i--;
             }
         }
-        return res;
     }
 
     static <T extends TrackHauOne> Rectangle newTrackCalculate(TrackHauOne track,
                                                                Rectangle MBR,
                                                                Rectangle pruneArea,
-                                                               RCtree<Segment> segmentIndex,
-                                                               Map<Integer, T> trackMap) {
+                                                               Index<Segment> segmentIndex,
+                                                               Map<Integer, T> trackMap,
+                                                               boolean hasComparedState,
+                                                               boolean hasAlter) {
         Integer TID = track.trajectory.TID;
         //筛选出计算阈值的轨迹集合，得出裁剪域
         Set<Integer> selectedTIDs = new HashSet<>();  //阈值计算轨迹集
         while (selectedTIDs.size() < Constants.topK * Constants.KNum) { //阈值计算轨迹集的元素数要大于Constants.k*Constants.cDTW。
-            selectedTIDs = segmentIndex.getIntersectTIDs(pruneArea);
+            selectedTIDs = segmentIndex.getInternalTIDs(pruneArea);
             pruneArea.extendMultiple(0.3);   //查询轨迹MBR扩展
         }
         selectedTIDs.remove(TID);
         Constants.cutTIDs(selectedTIDs);
         List<SimilarState> result = new ArrayList<>();
-        for (Integer comparedTid : selectedTIDs) {
-            TrackHauOne comparedTrack = trackMap.get(comparedTid);
-            SimilarState state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
-            result.add(state);
+        if (hasComparedState){
+            for (Integer comparedTid : selectedTIDs) {
+                TrackHauOne comparedTrack = trackMap.get(comparedTid);
+                SimilarState state = comparedTrack.getSimilarState(TID);
+                if (state == null)
+                    state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                result.add(state);
+            }
+        }else {
+            for (Integer comparedTid : selectedTIDs) {
+                TrackHauOne comparedTrack = trackMap.get(comparedTid);
+                SimilarState state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                result.add(state);
+            }
         }
+
         Collections.sort(result);
         SimilarState thresholdState = result.get(Constants.topK + Constants.t - 1);
         double threshold = thresholdState.distance;
         pruneArea = MBR.clone().extendLength(threshold);
 
         //用裁剪域筛选出候选轨迹集，计算距离并排序
-        Set<Integer> needCompareTIDS = segmentIndex.getRegionInternalTIDs(pruneArea);
+        Set<Integer> needCompareTIDS = segmentIndex.getInternalNoIPTIDs(pruneArea);
         needCompareTIDS.remove(TID);
         List<SimilarState> needCompareState = new ArrayList<>();
-        for (Integer compareTid : needCompareTIDS) {
-            int index = result.indexOf(new SimilarState(TID, compareTid, null, null));
-            SimilarState state;
-            if (index == -1)
-                state = Hausdorff.getHausdorff(track.trajectory, trackMap.get(compareTid).trajectory);
-            else
-                state = result.get(index);
-            needCompareState.add(state);
+        SimilarState tmpState = new SimilarState(TID, -1, null, null);
+        if (hasComparedState){
+            for (Integer compareTid : needCompareTIDS) {
+                T comparedTrack = trackMap.get(compareTid);
+                SimilarState state = comparedTrack.getSimilarState(TID);
+                if (state == null){
+                    tmpState.setComparedTID(compareTid);
+                    int index = result.indexOf(tmpState);
+                    if (index == -1){
+                        tmpState.convert();
+                        index = result.indexOf(tmpState);
+                        if (index == -1)
+                            state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
+                        else
+                            state = result.get(index);
+                    }else {
+                        state = result.get(index);
+                    }
+                }
+                needCompareState.add(state);
+            }
+        }else {
+            for (Integer compareTid : needCompareTIDS) {
+                tmpState.setComparedTID(compareTid);
+                int index = result.indexOf(tmpState);
+                SimilarState state;
+                if (index == -1)
+                    state = Hausdorff.getHausdorff(track.trajectory, trackMap.get(compareTid).trajectory);
+                else
+                    state = result.get(index);
+                needCompareState.add(state);
+            }
         }
         Collections.sort(needCompareState);
 
@@ -110,10 +166,17 @@ public class DTConstants implements Serializable {
                 state = trackMap.get(state.comparedTID).putRelatedInfo(state);
                 track.putRelatedInfo(state);
             }
+            Judge<T> inPruneArea;
+            Rectangle finalPruneArea = pruneArea;
+            if (hasAlter){
+                inPruneArea = t -> !t.outSideRectangle(finalPruneArea);
+            }else {
+                inPruneArea = t -> finalPruneArea.isInternal(t.rect.clone().extendLength(-t.threshold));
+            }
             for (int i = Constants.topK + Constants.t; i < needCompareState.size(); i++) {
                 SimilarState state = needCompareState.get(i);
-                TrackHauOne comparedTrack = trackMap.get(state.comparedTID);
-                if (!comparedTrack.outSideRectangle(pruneArea)){
+                T comparedTrack = trackMap.get(state.comparedTID);
+                if (inPruneArea.action(comparedTrack)){
                     track.candidateInfo.add(state.comparedTID);
                     state = trackMap.get(state.comparedTID).putRelatedInfo(state);
                     track.putRelatedInfo(state);
@@ -135,45 +198,25 @@ public class DTConstants implements Serializable {
     /**
      * 轨迹track的裁剪域变大，topK结果变得不安全了，需要重新计算track的topK结果
      */
-    static <T extends TrackHauOne> Tuple2<Boolean, Rectangle> enlargePrune(T track,
-                                                                          double newThreshold,
-                                                                          int notRemove,
-                                                                          RCtree<Segment> segmentIndex,
-                                                                          Map<Integer, T> trackMap) {
-        boolean res = false;
+    static <T extends TrackHauOne> Rectangle enlargePrune(T track,
+                                                          double newThreshold,
+                                                          Index<Segment> segmentIndex,
+                                                          Map<Integer, T> trackMap) {
         Rectangle pruneArea;
         pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
-        Set<Integer> newCandidate = segmentIndex.getRegionInternalTIDs(pruneArea);
+        Set<Integer> newCandidate = segmentIndex.getInternalNoIPTIDs(pruneArea);
         newCandidate.remove(track.trajectory.TID);
         for (Integer id : track.candidateInfo) newCandidate.remove(id);
-        trackAddCandidate(track, newCandidate, trackMap);
+        track.trackAddCandidates(newCandidate, trackMap);
         //紧缩裁剪区以查找需要保留相似度计算中间结果的轨迹
         if (track.getKCanDistance(Constants.topK + Constants.t*2).distance < newThreshold) {
             newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
             pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
-            res = cacheTighten(track, pruneArea, notRemove,trackMap);
+            Rectangle finalPruneArea = pruneArea;
+            cacheTighten(track, trackMap, t -> !finalPruneArea.isInternal(t.rect.clone().extendLength(-t.threshold)));
         }
         track.threshold = newThreshold;
-        return new Tuple2<>(res, pruneArea);
-    }
-
-    /**
-     * 轨迹track添加一些候选轨迹newCandidate
-     */
-    private static <T extends TrackHauOne> void trackAddCandidate(T track,
-                                                                  Set<Integer> newCandidate,
-                                                                  Map<Integer, T> trackMap) {
-        for (Integer comparedTid : newCandidate) {
-            SimilarState state = track.getSimilarState(comparedTid);
-            if (state == null) {
-                TrackHauOne comparedTrack = trackMap.get(comparedTid);
-                state = Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory);
-                state = comparedTrack.putRelatedInfo(state);
-                track.putRelatedInfo(state);
-            }
-            track.candidateInfo.add(comparedTid);
-            track.updateCandidateInfo(comparedTid);
-        }
+        return pruneArea;
     }
 
 
@@ -184,33 +227,34 @@ public class DTConstants implements Serializable {
      */
     static <T extends TrackHauOne> Rectangle recalculateTrackTopK(T track,
                                                                   Rectangle MBR,
-                                                                  RCtree<Segment> pointIndex,
-                                                                  Map<Integer, T> trackMap) {
+                                                                  Index<Segment> segmentIndex,
+                                                                  Map<Integer, T> trackMap,
+                                                                  boolean hasAlter) {
         //使用缓存的中间状态得出裁剪域添加新的topK候选轨迹
         Integer TID = track.trajectory.TID;
         double newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
         Rectangle pruneArea = MBR.clone().extendLength(newThreshold);
-        Set<Integer> newCandidate = pointIndex.getRegionInternalTIDs(pruneArea);
+        Set<Integer> newCandidate = segmentIndex.getInternalNoIPTIDs(pruneArea);
         newCandidate.remove(TID);
         Set<Integer> oldCandidate = new HashSet<>(track.candidateInfo);
-        for (Integer candidate : newCandidate) oldCandidate.remove(candidate);
-        for (Integer candidate : track.candidateInfo) newCandidate.remove(candidate);
+        oldCandidate.removeAll(newCandidate);
+        newCandidate.removeAll(track.candidateInfo);
         for (Integer tid : oldCandidate)
             track.removeTIDCandidate(tid, trackMap);
-        trackAddCandidate(track, newCandidate, trackMap);
+        track.trackAddCandidates(newCandidate, trackMap);
         //计算新的裁剪区域，用裁剪裁剪区域计算候选轨迹集。除去老的候选轨迹集中
         //不会再被用到的相似度计算中间状态
         if (track.getKCanDistance(Constants.topK + Constants.t*2).distance < newThreshold){
             newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
             pruneArea = MBR.clone().extendLength(newThreshold);
-            for (int i = Constants.topK + Constants.t; i < track.candidateInfo.size(); i++) {
-                Integer comparedTID = track.candidateInfo.get(i);
-                T comparedTrack = trackMap.get(comparedTID);
-                if (comparedTrack.outSideRectangle(pruneArea)) {
-                    track.removeTIDCandidate(comparedTrack);
-                    i--;
-                }
+            Judge<T> outPruneArea;
+            Rectangle finalPruneArea = pruneArea;
+            if (hasAlter){
+                outPruneArea = t -> t.outSideRectangle(finalPruneArea);
+            }else {
+                outPruneArea = t -> !finalPruneArea.isInternal(t.rect.clone().extendLength(-t.threshold));
             }
+            cacheTighten(track, trackMap, outPruneArea);
         }
         track.threshold = newThreshold;
         //更新裁剪域索引信息
@@ -225,7 +269,7 @@ public class DTConstants implements Serializable {
                                                        RoaringBitmap inAndOutTIDs,
                                                        long startWindow,
                                                        Set<Integer> emptyTIDs,
-                                                       RCtree<Segment> segmentIndex,
+                                                       Index<Segment> segmentIndex,
                                                        Map<Integer, T> trackMap) {
         for (Integer tid : outTIDs) {
             T track = trackMap.get(tid);
@@ -245,179 +289,6 @@ public class DTConstants implements Serializable {
                     for (Segment segment : timeElms) segmentIndex.delete(segment);
                 }
             }
-        }
-    }
-
-
-    /**
-     * 轨迹集emptyElemMap的所有采样点都滑出窗口，删除相关数据。
-     * @param pruneChangeTracks 记录由于删除track而导致其裁剪域发生变化的轨迹。不包括在hasSlideTrackIds中的轨迹
-     */
-    static <T extends TrackHauOne> void dealAllSlideOutTracks(T track,
-                                                              RoaringBitmap inTIDs,
-                                                              RoaringBitmap outTIDs,
-                                                              RoaringBitmap inAndOutTIDs,
-                                                              Set<T> pruneChangeTracks,
-                                                              Set<Integer> emptyTIDs,
-                                                              Set<T> canSmallTracks,
-                                                              Map<Integer, T> passTrackMap,
-                                                              Map<Integer, T> topKTrackMap,
-                                                              RCtree<T> pruneIndex) {
-        Integer tid = track.trajectory.TID;
-        pruneIndex.delete(track);
-        for (SimilarState state : track.getRelatedInfo().values()) {
-            int comparedTid = Constants.getStateAnoTID(state, tid);
-            T comparedTrack = passTrackMap.get(comparedTid);
-            if (comparedTrack == null) comparedTrack = topKTrackMap.get(comparedTid);
-            if (emptyTIDs.contains(comparedTid))
-                continue;
-            int index = comparedTrack.candidateInfo.indexOf(tid);
-            comparedTrack.candidateInfo.remove(tid);
-            comparedTrack.removeRelatedInfo(state);
-            if (index != -1) {
-                if (!inAndOutTIDs.contains(comparedTid) && !outTIDs.contains(comparedTid) && !inTIDs.contains(comparedTid)){
-                    pruneChangeTracks.add(comparedTrack);
-                    //comparedTrack的候选轨迹集太少了
-                    if (comparedTrack.candidateInfo.size() < Constants.topK) canSmallTracks.add(comparedTrack);
-                }
-            }
-        }
-    }
-
-    static <T> void addOnePointQueue(LinkedList<T> queue,
-                                    T t,
-                                    Comparator<T> comparator){
-        int index = 0;
-        for (T q : queue) {
-            if ( comparator.compare(q,t) <= 0 )
-                index++;
-            else
-                break;
-        }
-        queue.add(index, t);
-    }
-
-    /**
-     * 轨迹track可能成为其它轨迹的topK结果
-     */
-    static void mayBeAnotherTopK(TrackHauOne track,
-                                 RCtree<TrackHauOne> pruneIndex,
-                                 Map<Integer, TrackHauOne> passTrackMap,
-                                 Map<Integer, TrackHauOne> topKTrackMap) {
-        Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
-        List<Integer> list = pruneIndex.trackInternal(MBR);
-        Integer TID = track.trajectory.TID;
-        list.remove(TID);
-        for (Integer comparedTid : list) {
-            TrackHauOne comparedTrack = passTrackMap.get(comparedTid);
-            if (comparedTrack == null)
-                comparedTrack = topKTrackMap.get(comparedTid);
-            if (!comparedTrack.candidateInfo.contains(TID)){
-                comparedTrack.addTrackCandidate(track);
-                comparedTrack.updateCandidateInfo(TID);
-                if (comparedTrack.getKCanDistance(Constants.topK + Constants.t*2).distance < comparedTrack.threshold) {
-                    double newThreshold = comparedTrack.getKCanDistance(Constants.topK + Constants.t).distance;
-                    Rectangle pruneArea = comparedTrack.rect.clone().extendLength(newThreshold - comparedTrack.threshold);
-                    DTConstants.cacheTighten(comparedTrack, pruneArea, -1, passTrackMap);
-                    comparedTrack.threshold = newThreshold;
-                    pruneIndex.alterELem(comparedTrack, pruneArea);
-                }
-            }
-        }
-    }
-
-    /**
-     * 轨迹的阈值可能发生变化时，调用该函数，进行修改阈值的一系列操作
-     * @param notRemove 修改阈值时，可能删除缓存中的某个中间状态。但notRemoveTid状态不能现在删除，将其添加到removeRI，后续再删除
-     */
-    static <T extends RCtree<Segment>> void changeThreshold(TrackHauOne track,
-                                                            int notRemove,
-                                                            List<Integer> removeRI,
-                                                            RCtree<TrackHauOne> pruneIndex,
-                                                            T pointIndex,
-                                                            Map<Integer, TrackHauOne> trackMap) {
-        double dis = track.getKCanDistance(Constants.topK).distance;
-        if (dis > track.threshold){
-            //裁剪域变大，topK结果变得不安全了，需要重新计算comparedTrack的topK结果。
-            dis = track.getKCanDistance(Constants.topK + Constants.t).distance;
-            Tuple2<Boolean, Rectangle> tuple2 = DTConstants.enlargePrune(track, dis, notRemove, pointIndex, trackMap);
-            if ( tuple2.f0 )
-                removeRI.add(track.trajectory.TID);
-            pruneIndex.alterELem(track, tuple2.f1);
-            return;
-        }
-        dis = track.getKCanDistance(Constants.topK + Constants.t*2).distance;
-        if (dis < track.threshold){
-            //有更近的topK结果更新裁剪区域即可,为了避免频繁更新，要求threshold的变动超过20
-            Rectangle pruneArea = DTConstants.tightenThresholdCommon(track,notRemove,removeRI,trackMap);
-            pruneIndex.alterELem(track, pruneArea);
-        }
-    }
-
-
-
-    static <T extends RCtree<Segment>> void dealCandidateSmall(Map<Integer, List<Segment>> removeElemMap,
-                                                               Integer TID,
-                                                               TrackHauOne track,
-                                                               Map<Integer,TrackHauOne> passTrackMap,
-                                                               Map<Integer,TrackHauOne> topKTrackMap,
-                                                               RCtree<TrackHauOne> pruneIndex,
-                                                               T pointIndex) {
-        try {
-            if (track == null) {
-                track = passTrackMap.get(TID);
-                if (track == null)
-                    topKTrackMap.get(TID);
-            }
-            assert track != null;
-            List<SimilarState> list = new ArrayList<>(track.getRelatedInfo().keySet());
-            Collections.sort(list);
-            List<Integer> newCanDi = new ArrayList<>();
-            int i = 0;
-            while (i < Constants.topK * Constants.KNum && i < list.size()) {
-                SimilarState s = list.get(i);
-                int id = Constants.getStateAnoTID(s, TID);
-                newCanDi.add(id);
-                i++;
-            }
-            if (newCanDi.size() < Constants.topK) {
-                TrackHauOne tmpTrack = new TrackHauOne(null, null, null, track.trajectory.elms, TID, new ArrayList<>(), new HashMap<>());
-                double threshold = track.getKCanDistance(Constants.topK).distance;
-                Rectangle MBR = Constants.getPruningRegion(track.trajectory, 0.0);
-                Rectangle pruneArea = MBR.clone().extendLength(threshold);
-                tmpTrack.rect = DTConstants.newTrackCalculate(tmpTrack, MBR, pruneArea, pointIndex, passTrackMap);
-                Set<SimilarState> stateSet = tmpTrack.getRelatedInfo().keySet();
-                for (SimilarState state : track.getRelatedInfo().values()) {
-                    if (!stateSet.contains(state)) {
-                        int comparedTID = Constants.getStateAnoTID(state, TID);
-                        TrackHauOne comparedTrack = passTrackMap.get(comparedTID);
-                        if (comparedTrack == null)
-                            comparedTrack = topKTrackMap.get(comparedTID);
-                        if (comparedTrack.candidateInfo.contains(TID))
-                            tmpTrack.putRelatedInfo(state);
-                        else
-                            comparedTrack.removeRelatedInfo(state);
-                    }
-                }
-                track.setRelatedInfo(tmpTrack.getRelatedInfo());
-                track.candidateInfo = tmpTrack.candidateInfo;
-                track.threshold = tmpTrack.threshold;
-                pruneIndex.alterELem(track, tmpTrack.rect);
-            } else {
-                track.candidateInfo.removeAll(newCanDi);
-                while (!track.candidateInfo.isEmpty())
-                    track.removeICandidate(1, passTrackMap);
-                track.candidateInfo = newCanDi;
-                if (removeElemMap.get(TID) != null) {
-                    Rectangle MBR = Constants.getPruningRegion(track.trajectory, 0.0);
-                    Rectangle pruneArea = DTConstants.recalculateTrackTopK(track, MBR, pointIndex, passTrackMap);
-                    pruneIndex.alterELem(track, pruneArea);
-                } else {
-                    DTConstants.changeThreshold(track, -1, null, pruneIndex, pointIndex, passTrackMap);
-                }
-            }
-        }catch (Exception e){
-            e.printStackTrace();
         }
     }
 
