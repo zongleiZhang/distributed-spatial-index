@@ -197,6 +197,8 @@ public class Hausdorff {
         for (int i = 0; i < state.row.size(); i++) {
             NOAndDistance nd = state.row.get(i);
             for (int j = 0; j < inPoints2.size(); j++) {
+                if (t1 == null || t1.getPoint(i) == null)
+                    System.out.print("");
                 double dis = t1.getPoint(i).distancePoint(inPoints2.get(j));
                 pdsCol[i][j] = dis;
                 if (dis < nd.distance) {
@@ -358,6 +360,8 @@ public class Hausdorff {
             System.out.print("");
         int removeColSize = state.col.size() - (t2.elms.size() + 1);
         state.col.removeFirstN(removeColSize);
+        if (inPoints1 == null)
+            System.out.print("");
         double[][] pdsRow = new double[inPoints1.size()][t2.elms.size()+1];
         for (int i = 0; i < state.row.size(); i++) {
             if ((state.row.get(i).NO -= removeColSize) < 0){

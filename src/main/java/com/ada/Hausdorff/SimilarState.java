@@ -5,10 +5,8 @@ import com.ada.common.ArrayQueue;
 import com.ada.common.Constants;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -34,9 +32,6 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
 
     public double distance;
 
-    public SimilarState() {
-    }
-
     public SimilarState(int comparingTID, int comparedTID, ArrayQueue<NOAndDistance> row, ArrayQueue<NOAndDistance> col) {
         this.comparingTID = comparingTID;
         this.comparedTID = comparedTID;
@@ -56,7 +51,7 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
         if (comparingTID == TID) {
             return comparedTID;
         }else {
-            return comparedTID;
+            return comparingTID;
         }
     }
 

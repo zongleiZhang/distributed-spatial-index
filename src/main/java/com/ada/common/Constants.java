@@ -156,53 +156,9 @@ public class Constants implements Serializable {
         }
     }
 
-    public static String appendSegment(Segment queryElem) {
-        DecimalFormat df = new DecimalFormat("#.0000");
-        return queryElem.getTID() + " " +
-                queryElem.p2.timestamp + " " +
-                df.format(queryElem.rect.low.data[0]) + " " +
-                df.format(queryElem.rect.low.data[1]) + " " +
-                df.format(queryElem.rect.high.data[0]) + " " +
-                df.format(queryElem.rect.high.data[1]);
-    }
-
 
     public static boolean isEqual(double a, double b){
         return Math.abs(a - b) < zero;
-    }
-
-
-    public static boolean rectangleEqual(Rectangle curRectangle, Rectangle orgRectangle) {
-        if (curRectangle == null && orgRectangle == null)
-            return true;
-        else if (curRectangle == null || orgRectangle == null)
-            return false;
-        else
-            return curRectangle.low.equals(orgRectangle.low) &&
-                    curRectangle.high.equals(orgRectangle.high);
-    }
-
-    public static boolean gridRectangleEquals(GridRectangle curRectangle, GridRectangle orgRectangle) {
-        if (curRectangle == null && orgRectangle == null)
-            return true;
-        else if (curRectangle == null || orgRectangle == null)
-            return false;
-        else
-            return curRectangle.equals(orgRectangle);
-    }
-
-
-
-    public static <T extends Comparable<? super T>> List<T> collectDis(List<T> list) {
-        List<T> res = new ArrayList<>();
-        Collections.sort(list);
-        int size = list.size()-1;
-        res.add(list.get(0));
-        res.add(list.get(size/10));
-        res.add(list.get(size/2));
-        res.add(list.get(9*size/10));
-        res.add(list.get(size));
-        return res;
     }
 
     public static void rectangleToInts(Rectangle rectangle, int[] low, int[] high){

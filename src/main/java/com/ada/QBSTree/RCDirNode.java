@@ -292,7 +292,7 @@ public class RCDirNode<T extends ElemRoot> extends RCNode<T> {
 	 * @return 重建后的子树根节点
 	 */
 	RCDirNode<T> redistribution () {
-		List<T> elms = new ArrayList<>();
+		List<T> elms = new ArrayList<>(elemNum);
 		getAllElement(elms);
 		RCDirNode<T> res;
 		boolean flag = false;

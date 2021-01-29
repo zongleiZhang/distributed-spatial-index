@@ -22,7 +22,7 @@ public class DTConstants implements Serializable {
                                                                     Map<Integer, T> trackMap) {
         double newThreshold = track.getKCanDistance(Constants.topK + Constants.t).distance;
         Rectangle pruneArea = track.rect.clone().extendLength(newThreshold - track.threshold);
-        cacheTighten(track, trackMap, t -> !pruneArea.isInternal(t.rect.clone().extendLength(-newThreshold)));
+        cacheTighten(track, trackMap, t -> !pruneArea.isInternal(t.rect.clone().extendLength(-t.threshold)));
         track.threshold = newThreshold;
         return pruneArea;
     }
@@ -162,8 +162,9 @@ public class DTConstants implements Serializable {
             pruneArea = MBR.clone().extendLength(threshold);
             for (int i = 0; i < Constants.topK + Constants.t; i++) {
                 SimilarState state = needCompareState.get(i);
-                track.candidateInfo.add(state.comparedTID);
-                state = trackMap.get(state.comparedTID).putRelatedInfo(state);
+                Integer comparedTID = state.getStateAnoTID(TID);
+                track.candidateInfo.add(comparedTID);
+                state = trackMap.get(comparedTID).putRelatedInfo(state);
                 track.putRelatedInfo(state);
             }
             Judge<T> inPruneArea;
@@ -175,17 +176,19 @@ public class DTConstants implements Serializable {
             }
             for (int i = Constants.topK + Constants.t; i < needCompareState.size(); i++) {
                 SimilarState state = needCompareState.get(i);
-                T comparedTrack = trackMap.get(state.comparedTID);
+                Integer comparedTID = state.getStateAnoTID(TID);
+                T comparedTrack = trackMap.get(comparedTID);
                 if (inPruneArea.action(comparedTrack)){
-                    track.candidateInfo.add(state.comparedTID);
-                    state = trackMap.get(state.comparedTID).putRelatedInfo(state);
+                    track.candidateInfo.add(comparedTID);
+                    state = trackMap.get(comparedTID).putRelatedInfo(state);
                     track.putRelatedInfo(state);
                 }
             }
         } else {
             for (SimilarState state : needCompareState) {
-                track.candidateInfo.add(state.comparedTID);
-                state = trackMap.get(state.comparedTID).putRelatedInfo(state);
+                Integer comparedTID = state.getStateAnoTID(TID);
+                track.candidateInfo.add(comparedTID);
+                state = trackMap.get(comparedTID).putRelatedInfo(state);
                 track.putRelatedInfo(state);
             }
         }

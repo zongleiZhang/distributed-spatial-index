@@ -5,6 +5,7 @@ import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
 import com.ada.QBSTree.DualRootTree;
 import com.ada.common.Constants;
+import com.ada.common.collections.Collections;
 import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
@@ -28,6 +29,7 @@ import java.util.*;
 public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, QueryResult, Integer, TimeWindow> {
     private int subTask;
     private boolean hasInit;
+    private int count = 11;
 
     private Map<Long, TwoTIDs> tIDsMap;
     private Map<Integer, TrackHauOne> passTrackMap;
@@ -45,6 +47,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     private List<Integer> convertTopKTIDs;  //7
     private List<Global2LocalElem> adjustInfo; //8-13
     private Global2LocalElem newRegion;    //14
+    private List<Global2LocalPoints> verifyPass;
+    private List<Global2LocalPoints> verifyTopK;
     private Collector<QueryResult> out;
     private long winStart;
 
@@ -56,56 +60,187 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
                         Context context,
                         Iterable<Global2LocalElem> elements,
                         Collector<QueryResult> out) throws Exception {
-        this.out = out;
-        this.winStart = context.window().getStart();
-        classifyElements(elements);
-        if(!hasInit)
-            startUseSubTask();
-        //记录无采样点滑出，但其topK结果可能发生变化的轨迹
-        Set<TrackHauOne> pruneChangeTracks = new HashSet<>();
-        preElements(pruneChangeTracks);
-        long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
-        countTIDs(pruneChangeTracks, logicWinStart);
-        //移除滑出的点
-        Set<Integer> passEmptyTIDs = new HashSet<>();
-        Set<Integer> topKEmptyTIDs = new HashSet<>();
-        removeSegment(logicWinStart, passEmptyTIDs, topKEmptyTIDs);
+        if (subTask == 0) {
+            this.out = out;
+            this.winStart = context.window().getStart();
+            if (count == 15)
+                System.out.print("");
 
-        dealAllSlideOutTracks(pruneChangeTracks, passEmptyTIDs, topKEmptyTIDs);
-        processUpdatedTrack(pruneChangeTracks);
-        for (TrackHauOne track : pruneChangeTracks) {
-            if (track.candidateInfo.size() < Constants.topK + Constants.t){
-                dealCandidateSmall(track);
-            }else {
-                changeThreshold(track);
+            classifyElements(elements);
+            if (!hasInit)
+                startUseSubTask();
+            //记录无采样点滑出，但其topK结果可能发生变化的轨迹
+            Set<TrackHauOne> pruneChangeTracks = new HashSet<>();
+            preElements(pruneChangeTracks);
+            long logicWinStart = context.window().getEnd() - Constants.windowSize * Constants.logicWindow;
+            countTIDs(pruneChangeTracks, logicWinStart);
+            //移除滑出的点
+            Set<Integer> passEmptyTIDs = new HashSet<>();
+            Set<Integer> topKEmptyTIDs = new HashSet<>();
+            removeSegment(logicWinStart, passEmptyTIDs, topKEmptyTIDs);
+
+            dealAllSlideOutTracks(pruneChangeTracks, passEmptyTIDs, topKEmptyTIDs);
+            processUpdatedTrack(pruneChangeTracks);
+            for (TrackHauOne track : pruneChangeTracks) {
+                if (track.candidateInfo.size() < Constants.topK + Constants.t) {
+                    dealCandidateSmall(track);
+                } else {
+                    changeThreshold(track);
+                }
             }
-        }
-        for (Global2LocalPoints glPoints : addPassTracks) {
-            TrackHauOne track = passTrackMap.get(glPoints.TID);
-            Rectangle MBR = track.rect.clone();
-            track.rect = DTConstants.newTrackCalculate(track, MBR, MBR.clone().extendLength(Constants.extend), segmentIndex, passTrackMap, true, false);
-            pruneIndex.insert(track);
-            mayBeAnotherTopK(track);
-        }
-        for (Global2LocalPoints glPoints : addTopKTracks) {
-            TrackHauOne track = passTrackMap.get(glPoints.TID);
-            Rectangle MBR = track.rect.clone();
-            track.rect = DTConstants.newTrackCalculate(track, MBR, MBR.clone().extendLength(Constants.extend), segmentIndex, passTrackMap, false, false);
-            pruneIndex.insert(track);
-        }
-        for (Integer TID : outTwoTIDs.passTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
-        for (Integer TID : inAndOutTwoTIDs.passTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
-        for (Integer TID : convertTopKTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
+            for (Global2LocalPoints glPoints : addPassTracks) {
+                TrackHauOne track = passTrackMap.get(glPoints.TID);
+                Rectangle MBR = track.rect.clone();
+                track.rect = DTConstants.newTrackCalculate(track, MBR, MBR.clone().extendLength(Constants.extend), segmentIndex, passTrackMap, true, false);
+                pruneIndex.insert(track);
+                mayBeAnotherTopK(track);
+            }
+            for (Global2LocalPoints glPoints : addTopKTracks) {
+                TrackHauOne track = topKTrackMap.get(glPoints.TID);
+                Rectangle MBR = track.rect.clone();
+                track.rect = DTConstants.newTrackCalculate(track, MBR, MBR.clone().extendLength(Constants.extend), segmentIndex, passTrackMap, false, false);
+                pruneIndex.insert(track);
+            }
+            for (Integer TID : outTwoTIDs.passTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
+            for (Integer TID : inAndOutTwoTIDs.passTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
+            for (Integer TID : convertTopKTIDs) mayBeAnotherTopK(passTrackMap.get(TID));
 
-        if(newRegion != null){
-            if (newRegion.value == null){
-                discardSubTask();
-            }else {
-                adjustRegion();
+            if (hasInit && newRegion != null) {
+                if (newRegion.value == null) {
+                    discardSubTask();
+                } else {
+                    adjustRegion();
+                }
                 newRegion = null;
                 adjustInfo = null;
+            }else {
+                hasInit = true;
+            }
+            check();
+            System.out.println("\t\t" + count);
+            count++;
+        }
+    }
+
+    private boolean check() {
+        for (Integer TID : topKTrackMap.keySet()) {
+            if (passTrackMap.containsKey(TID))
+                return false;
+        }
+        if (passTrackMap.size() != verifyPass.size())
+            return false;
+        if (topKTrackMap.size() != verifyTopK.size())
+            return false;
+        if (!verifyTrack(verifyPass, passTrackMap))
+            return false;
+        if (!verifyTrack(verifyTopK, topKTrackMap))
+            return false;
+        if (!checkPruneIndex())
+            return false;
+        if (!checkSegmentIndex())
+            return false;
+        for (TrackHauOne track : passTrackMap.values()) {
+            if (!checkTrack(track, true))
+                return false;
+        }
+        for (TrackHauOne track : topKTrackMap.values()) {
+            if (!checkTrack(track, false))
+                return false;
+        }
+        return true;
+    }
+
+    private boolean verifyTrack(List<Global2LocalPoints> verifyTopK, Map<Integer, TrackHauOne> topKTrackMap) {
+        for (Global2LocalPoints glTrack : verifyTopK) {
+            TrackHauOne track = topKTrackMap.get(glTrack.TID);
+            List<TrackPoint> list = Segment.segmentsToPoints(track.trajectory.elms);
+            if (list.size() != glTrack.points.size())
+                return false;
+            for (int i = 0; i < list.size(); i++) {
+                if (!list.get(i).equals(glTrack.points.get(i)))
+                    return false;
             }
         }
+        return true;
+    }
+
+    private boolean checkTrack(TrackHauOne track, boolean isPass) {
+        Integer TID = track.trajectory.TID;
+        //RelatedInfo 检查
+        for (SimilarState key : track.getRelatedInfo().keySet()) {
+            SimilarState state = track.getRelatedInfo().get(key);
+            int comparedTID = state.getStateAnoTID(TID);
+            TrackHauOne comparedTrack = passTrackMap.get(comparedTID);
+            if (isPass && comparedTrack == null) comparedTrack = topKTrackMap.get(comparedTID);
+            if (comparedTrack == null)
+                return false;
+            if (key != state)
+                return false;
+            if (comparedTrack.getSimilarState(TID) != state)
+                return false;
+            if (!SimilarState.isEquals(state, Hausdorff.getHausdorff(track.trajectory, comparedTrack.trajectory)))
+                return false;
+            if (!comparedTrack.candidateInfo.contains(TID) && !track.candidateInfo.contains(comparedTID))
+                return false;
+        }
+
+        //candidateInfo 检查
+        if (track.candidateInfo.size() < Constants.topK)
+            return false;
+        for (Integer comparedTID : track.candidateInfo) {
+            if(track.getSimilarState(comparedTID) == null)
+                return false;
+        }
+        for (int i = 0; i < track.candidateInfo.size()-1; i++) {
+            SimilarState state1 = track.getSimilarState(track.candidateInfo.get(i));
+            SimilarState state2 = track.getSimilarState(track.candidateInfo.get(i+1));
+            if (Double.compare(state1.distance, state2.distance) > 0)
+                return false;
+        }
+
+        Rectangle MBR = track.getPruningRegion(0.0);
+        Rectangle pruneArea = MBR.clone().extendLength(track.threshold);
+        double dis0 = track.getKCanDistance(Constants.topK).distance;
+        double dis1 = track.getKCanDistance(Constants.topK + Constants.t*2).distance;
+        if (track.threshold > dis1 || track.threshold < dis0)
+            return false;
+
+        //rect 检查
+        if (!pruneArea.equals(track.rect))
+            return false;
+        Set<Integer> selectedTIDs = segmentIndex.getInternalNoIPTIDs(pruneArea);
+        selectedTIDs.remove(TID);
+        if (!Collections.collectionsEqual(selectedTIDs, track.candidateInfo))
+            return false;
+        return true;
+    }
+
+    private boolean checkSegmentIndex() {
+        List<Segment> list = segmentIndex.getAllElement();
+        int total = 0;
+        for (TrackHauOne track : passTrackMap.values())
+            total += track.trajectory.elms.size();
+        if (total != list.size())
+            return false;
+        for (Segment segment : list) {
+            if (!passTrackMap.get(segment.getTID()).trajectory.elms.contains(segment))
+                return false;
+        }
+        return true;
+    }
+
+    private boolean checkPruneIndex() {
+        List<TrackHauOne> tracks = pruneIndex.getAllElement();
+        if (tracks.size() != passTrackMap.size()+topKTrackMap.size())
+            return false;
+        for (TrackHauOne track : tracks) {
+            TrackHauOne compareTrack = passTrackMap.get(track.trajectory.TID);
+            if (compareTrack == null)
+                compareTrack = topKTrackMap.get(track.trajectory.TID);
+            if (compareTrack != track)
+                return false;
+        }
+        return true;
     }
 
     private void adjustRegion() {
@@ -200,7 +335,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             int TID = track.trajectory.TID;
             for (Segment segment : track.trajectory.elms) {
                 Long mapKey = ((int) (segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
-                tIDsMap.get(mapKey).passTIDs.add(TID);
+                tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).passTIDs.add(TID);
                 if (innerRegion.isInternal(segment.rect)) {
                     innerElms.add(segment);
                 }else {
@@ -217,7 +352,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             int TID = track.trajectory.TID;
             for (Segment segment : track.trajectory.elms) {
                 Long mapKey = ((int) (segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
-                tIDsMap.get(mapKey).topKTIDs.add(TID);
+                tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).topKTIDs.add(TID);
             }
         }
         segmentIndex.rebuildRoot(innerElms, outerElms, innerRegion, outerRegion, OSR);
@@ -283,9 +418,11 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
 
     private void countTIDs(Set<TrackHauOne> pruneChangeTracks, long logicWinStart) throws CloneNotSupportedException {
         inTwoTIDs = tIDsMap.get(winStart).clone();
+        addPassTracks.forEach(glPoints -> inTwoTIDs.passTIDs.remove(glPoints.TID));
+        addTopKTracks.forEach(glPoints -> inTwoTIDs.topKTIDs.remove(glPoints.TID));
         outTwoTIDs = tIDsMap.remove(logicWinStart - Constants.windowSize);
         if (outTwoTIDs == null)
-            outTwoTIDs = new TwoTIDs(new RoaringBitmap(), new RoaringBitmap());
+            outTwoTIDs = new TwoTIDs();
         allAlterTIDs = RoaringBitmap.or(inTwoTIDs.passTIDs, inTwoTIDs.topKTIDs,
                 outTwoTIDs.passTIDs, outTwoTIDs.topKTIDs);
         pruneChangeTracks.removeIf(track -> allAlterTIDs.contains(track.trajectory.TID));
@@ -407,6 +544,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         for (Integer TID : inTIDs) {
             TrackHauOne track = trackMap.get(TID);
             List<TrackPoint> inPoints = inPointsMap.get(TID);
+            if (inPoints == null)
+                System.out.print("");
             Rectangle pointsMBR = Rectangle.pointsMBR(inPoints.toArray(new Point[0]));
             pointsMBR.getUnionRectangle(track.trajectory.elms.getLast());
             for (Iterator<Map.Entry<SimilarState, SimilarState>> ite = track.getRelatedInfo().entrySet().iterator(); ite.hasNext();){
@@ -588,7 +727,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     }
 
     private void preElements(Set<TrackHauOne> pruneChangeTracks) {
-        TwoTIDs inTwoTIDs = new TwoTIDs(new RoaringBitmap(), new RoaringBitmap());
+        TwoTIDs inTwoTIDs = new TwoTIDs();
         tIDsMap.put(winStart, inTwoTIDs);
         //0:  添加经过点
         for (Map.Entry<Integer, List<TrackPoint>> entry : addPassPoints.entrySet()) {
@@ -621,7 +760,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         TrackHauOne track = glPoints.toTrackHauOne();
         for (Segment segment : track.trajectory.elms) {
             Long mapKey = ((segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
-            tIDsMap.get(mapKey).passTIDs.add(glPoints.TID);
+            tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).passTIDs.add(glPoints.TID);
             segmentIndex.insert(segment);
         }
         passTrackMap.put(glPoints.TID, track);
@@ -631,7 +770,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         TrackHauOne track = glPoints.toTrackHauOne();
         for (Segment segment : track.trajectory.elms) {
             Long mapKey = ((segment.getSecondTime()/ Constants.windowSize)) * Constants.windowSize;
-            tIDsMap.get(mapKey).topKTIDs.add(segment.getTID());
+            tIDsMap.computeIfAbsent(mapKey, aLong -> new TwoTIDs()).topKTIDs.add(segment.getTID());
         }
         topKTrackMap.put(glPoints.TID, track);
     }
@@ -675,6 +814,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     }
 
     private void convertPassTrack(Set<TrackHauOne> pruneChangeTracks, Integer TID) {
+        if (count == 15 && TID == 12286)
+            System.out.print("");
         TrackHauOne track = passTrackMap.remove(TID);
         topKTrackMap.put(TID, track);
         for (Segment segment : track.trajectory.elms) {
@@ -684,6 +825,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             twoTIDs.passTIDs.remove(TID);
             twoTIDs.topKTIDs.add(TID);
         }
+        List<TrackPoint> points = addPassPoints.remove(TID);
+        if (points != null) addTopKPoints.put(TID, points);
         Iterator<Map.Entry<SimilarState, SimilarState>> ite = track.getRelatedInfo().entrySet().iterator();
         for (;ite.hasNext();) {
             SimilarState state = ite.next().getKey();
@@ -710,12 +853,13 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             twoTIDs.topKTIDs.remove(TID);
             twoTIDs.passTIDs.add(TID);
         }
+        List<TrackPoint> points = addTopKPoints.remove(TID);
+        if (points != null) addPassPoints.put(TID, points);
     }
 
     private void startUseSubTask() {
         if (newRegion == null)
             throw new NullPointerException("newRegion is null");
-        hasInit = true;
         tIDsMap = new HashMap<>();
         passTrackMap = new HashMap<>();
         topKTrackMap = new HashMap<>();
@@ -735,6 +879,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         convertTopKTIDs = new ArrayList<>((int)(convertTopKTIDs.size() * 1.1));
         adjustInfo = new ArrayList<>();
         newRegion = null;
+        verifyPass = new ArrayList<>();
+        verifyTopK = new ArrayList<>();
         Global2LocalPoints points;
         for (Global2LocalElem element : elements) {
             switch (element.flag){
@@ -767,6 +913,12 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
                 case 14:
                     newRegion = element;
                     break;
+                case 15:
+                    verifyPass.add((Global2LocalPoints) element.value);
+                    break;
+                case 16:
+                    verifyTopK.add((Global2LocalPoints) element.value);
+                    break;
                 default:
                     adjustInfo.add(element);
                     break;
@@ -788,6 +940,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         convertPassTIDs = new ArrayList<>();
         convertTopKTIDs = new ArrayList<>();
         adjustInfo = new ArrayList<>();
+        verifyPass = new ArrayList<>();
+        verifyTopK = new ArrayList<>();
     }
 
     @Getter
@@ -795,6 +949,11 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     static class TwoTIDs implements Cloneable{
         RoaringBitmap passTIDs;
         RoaringBitmap topKTIDs;
+
+        public TwoTIDs() {
+            this.passTIDs = new RoaringBitmap();
+            this.topKTIDs = new RoaringBitmap();
+        }
 
         public TwoTIDs(RoaringBitmap passTIDs, RoaringBitmap topKTIDs) {
             this.passTIDs = passTIDs;

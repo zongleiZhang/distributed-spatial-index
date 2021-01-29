@@ -208,7 +208,7 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 				newNode = UBNode.redistribution();
 			}else{  //父节点可以合并
 				if(parent.isRoot()) { //根节点合并成一个叶节点
-					List<T> elms = new ArrayList<>();
+					List<T> elms = new ArrayList<>(parent.elemNum);
 					parent.getAllElement(elms);
                     RCDataNode<T> newRoot = new RCDataNode<>(0, null, -1, parent.centerRegion, parent.region,
                             new ArrayList<>(), parent.elemNum, tree, elms);
@@ -220,7 +220,7 @@ public class RCDataNode<T extends ElemRoot> extends RCNode<T> {
 				parent.preDepths.add(0);
 				UBNode = parent.getMinReassignNode(false, position);
 				if(UBNode == parent) { //合并父节点就能达到平衡
-					List<T> sags = new ArrayList<>();
+					List<T> sags = new ArrayList<>(UBNode.elemNum);
 					UBNode.getAllElement(sags);
 					RCDataNode<T> dataNode = new RCDataNode<>(0, UBNode.parent, UBNode.position,
 							UBNode.centerRegion, UBNode.region, new ArrayList<>(), UBNode.elemNum, UBNode.tree, sags);

@@ -260,7 +260,7 @@ public abstract class RCNode<T extends ElemRoot> implements Serializable {
 		}else {
 			RCDirNode<T>  node = (RCDirNode <T>) this;
 			if(elemNum <= tree.upBound && elemNum >= tree.lowBound) { //多合一
-				List<T> elms = new ArrayList<>();
+				List<T> elms = new ArrayList<>(node.elemNum);
 				node.getAllElement(elms);
 				RCDataNode<T> dataNode = new RCDataNode<>(0,parent,position,this.centerRegion, this.region, new ArrayList<>()
 						,this.elemNum,this.tree, elms);

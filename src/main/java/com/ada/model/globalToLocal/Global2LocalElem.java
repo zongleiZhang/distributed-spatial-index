@@ -20,6 +20,8 @@ public class Global2LocalElem implements Serializable {
      * 12：(调整负责区域)新增经过轨迹   (Global2LocalPoints)
      * 13：(调整负责区域)新增topK轨迹   (Global2LocalPoints)
      * 14: 通知Local subTask其新的负责区域   （Rectangle）
+     * 15: 验证信息 pass
+     * 16: 验证信息 topK
      */
     public byte flag;
 

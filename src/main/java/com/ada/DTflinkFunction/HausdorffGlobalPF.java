@@ -55,7 +55,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Iterable<Density2GlobalElem> elements,
                         Collector<Global2LocalElem> out) {
         this.out = out;
-        if (count >= 238)
+        if (count >= 12)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
@@ -92,14 +92,18 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             processUpdatedTrack(inPointsMap, pruneChangeTracks, canSmallTracks);
             pruneChangeTracks.removeAll(canSmallTracks);
             for (TrackKeyTID canSmallTrack : canSmallTracks) pruneChangeTracks.remove(canSmallTrack);
-            for (TrackKeyTID track : pruneChangeTracks) changeThreshold(track);
+            for (TrackKeyTID track : pruneChangeTracks) {
+                if (count == 12 && track.trajectory.TID == 16604)
+                    System.out.print("");
+                changeThreshold(track);
+            }
             for (TrackKeyTID track : canSmallTracks) dealCandidateSmall(track);
             for (Integer tid : outTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
 
             System.out.println(count);
-            if (count%10 == 0)
+            if (count%10000 == 0)
                 check();
 
             if (density != null) {
@@ -116,12 +120,20 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         adjustLocalTasksRegion(nodeMap);
                     }
                     redispatchGNode(nodeMap);
+                    if (count >= 10000)
+                        check();
                 }
-
-//                if (count >= 238) {
-//                    check();
-//                    System.out.println("adjustGlobalTree success");
-//                }
+            }
+            for (TrackKeyTID track : trackMap.values()) {
+                Global2LocalPoints trackPs = Global2LocalPoints.toG2LPoints(track.trajectory);
+                for (GDataNode leaf : track.passP) {
+                    out.collect(new Global2LocalElem(leaf.leafID, (byte) 15, trackPs));
+                }
+                if (!track.topKP.isEmpty()) {
+                    for (GLeafAndBound gb : track.topKP.getList()) {
+                        out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 16, trackPs));
+                    }
+                }
             }
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
             forInitCode(density, logicWinStart);
@@ -158,46 +170,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     //comparedTrack的候选轨迹集太少了
                     if (comparedTrack.candidateInfo.size() < Constants.topK) canSmallTracks.add(comparedTrack);
                 }
-            }
-        }
-    }
-
-    private void forInitCode(int[][] density, long logicWinStart) {
-
-        if (density != null) {
-            densityQue.add(density);
-            Arrays.addArrsToArrs(globalTree.density, density, true);
-            globalTree.updateTree();
-        }
-        if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
-            if (tIDsQue.element().f0 < logicWinStart) {
-                for (Integer tid : tIDsQue.remove().f1) {
-                    for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
-                        segmentIndex.delete(segment);
-                    }
-                }
-            }
-            for (TrackKeyTID track : trackMap.values()) {
-                track.rect = track.getPruningRegion(0.0);
-                track.data = track.rect.getCenter().data;
-                for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
-                    leaf.bitmap.add(track.trajectory.TID);
-                }
-            }
-
-            // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
-            boolean canInit = true;
-            for (GDataNode leaf : globalTree.getAllLeafs()) {
-                if (leaf.bitmap.toArray().length <= Constants.topK * Constants.KNum){
-                    canInit = false;
-                    break;
-                }
-            }
-            if (canInit){
-                hasInit = true;
-                initCalculate();
-            }else {
-                for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
             }
         }
     }
@@ -563,13 +535,13 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         if (!globalTree.check(trackMap))
             return false;
         for (TrackKeyTID track : trackMap.values()) {
-            if (!trackCheck(track))
+            if (!checkTrack(track))
                 return false;
         }
         return true;
     }
 
-    private boolean trackCheck(TrackKeyTID track){
+    private boolean checkTrack(TrackKeyTID track){
         Integer TID = track.trajectory.TID;
 
         //trajectory.elms -- segmentIndex检查
@@ -624,7 +596,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         selectedTIDs.remove(TID);
         if (selectedTIDs.size() < Constants.topK)
             return false;
-        List<SimilarState> result = new  ArrayList<>();
+        List<SimilarState> result = new ArrayList<>(selectedTIDs.size());
         for (Integer comparedTid : selectedTIDs) {
             TrackKeyTID comparedTrack = trackMap.get(comparedTid);
             SimilarState state = track.getSimilarState(comparedTid);
@@ -719,7 +691,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
     private void dealCandidateSmall(TrackKeyTID track) {
         Integer TID = track.trajectory.TID;
-        if (count == 282 && TID == 34319)
+        if (count == 14 && TID == 22140)
             System.out.print("");
         if (track.enlargeTuple.f0 != track.passP.get(0)) track.enlargeTuple.f0.bitmap.remove(TID);
         List<SimilarState> list = new ArrayList<>(track.getRelatedInfo().keySet());
@@ -816,7 +788,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         RoaringBitmap calculatedTIDs = new RoaringBitmap();
         for (Integer tid : outTIDs) {
             TrackKeyTID track = trackMap.get(tid);
-            if (count == 238 && tid == 26618)
+            if (count == 12 && tid == 701)
                 System.out.print("");
             for (SimilarState state : track.getRelatedInfo().values()) {
                 int comparedTid = state.getStateAnoTID(tid);
@@ -1066,8 +1038,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                 List<GLeafAndBound> oldTopK = track.topKP.getList();
                 globalTree.countTopKAndEnlargeBound(track, track.passP, pruneAreaLeafs, MBR);
                 for (GLeafAndBound gb : track.topKP.getList()){
-                    if (oldTopK.remove(gb) && addPs != null) {
-                        out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 1, addPs));
+                    if (oldTopK.remove(gb)) {
+                        if (addPs != null)
+                            out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 1, addPs));
                     }else {
                         if (deleteLeafs.remove(gb.leaf)){
                             out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 6, new Global2LocalTID(TID)));
@@ -1317,6 +1290,56 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         });
     }
 
+    private void forInitCode(int[][] density, long logicWinStart) {
+        if (density != null) {
+            densityQue.add(density);
+            Arrays.addArrsToArrs(globalTree.density, density, true);
+            globalTree.updateTree();
+        }
+        if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
+            if (tIDsQue.element().f0 < logicWinStart) {
+                for (Integer tid : tIDsQue.remove().f1) {
+                    for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
+                        segmentIndex.delete(segment);
+                    }
+                }
+            }
+            for (TrackKeyTID track : trackMap.values()) {
+                track.rect = track.getPruningRegion(0.0);
+                track.data = track.rect.getCenter().data;
+                for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
+                    leaf.bitmap.add(track.trajectory.TID);
+                }
+            }
+
+            // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
+            boolean canInit = true;
+            for (GDataNode leaf : globalTree.getAllLeafs()) {
+                if (leaf.bitmap.toArray().length <= Constants.topK * Constants.KNum){
+                    canInit = false;
+                    break;
+                }
+            }
+            if (canInit){
+                hasInit = true;
+                initCalculate();
+                globalTree.getAllLeafs().forEach(leaf -> out.collect(new Global2LocalElem(leaf.leafID, (byte) 14, leaf.region)));
+                for (TrackKeyTID track : trackMap.values()) {
+                    Global2LocalPoints trackPs = Global2LocalPoints.toG2LPoints(track.trajectory);
+                    for (GDataNode leaf : track.passP) {
+                        out.collect(new Global2LocalElem(leaf.leafID, (byte) 15, trackPs));
+                    }
+                    if (!track.topKP.isEmpty()) {
+                        for (GLeafAndBound gb : track.topKP.getList()) {
+                            out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 16, trackPs));
+                        }
+                    }
+                }
+            }else {
+                for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
+            }
+        }
+    }
 
     private void initCalculate(){
         for (TrackKeyTID track : trackMap.values()) {
@@ -1340,7 +1363,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             }
             for (int i = Constants.t + Constants.topK; i < track.candidateInfo.size(); i++) {
                 TrackKeyTID comparedTrack = trackMap.get(track.candidateInfo.get(i));
-                if (comparedTrack.outSideRectangle(track.rect)){
+                if (!track.rect.isInternal(comparedTrack.rect.clone().extendLength(-comparedTrack.threshold))){
                     track.removeTIDCandidate(comparedTrack);
                     i--;
                 }
@@ -1390,17 +1413,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
         leafs.forEach(leaf -> {
             leaf.bitmap.remove(TID);
             out.collect(new Global2LocalElem(leaf.leafID, (byte) 4, p));
-        });
-    }
-
-    /**
-     * 通知removeList中的对应的divide节点删除topK轨迹comparedTid
-     */
-    private void outDeleteTopKPTrackGD(Integer TID, List<GDataNode> removeList) {
-        Global2LocalTID p = new Global2LocalTID(TID);
-        removeList.forEach(leaf -> {
-            leaf.bitmap.remove(TID);
-            out.collect(new Global2LocalElem(leaf.leafID, (byte) 5, p));
         });
     }
 

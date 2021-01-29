@@ -21,6 +21,8 @@ public class Global2LocalPoints implements Global2LocalValue, Serializable {
     public List<TrackPoint> points;
     public int TID;
 
+    public Global2LocalPoints() {}
+
     public Global2LocalPoints(List<TrackPoint> points) {
         this.points = points;
         this.TID = points.get(0).TID;

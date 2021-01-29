@@ -48,18 +48,19 @@ public class StreamingJob {
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new HausdorffGlobalPF())
 				.setParallelism(Constants.globalPartition)
-				.flatMap(new FlatMapFunction<Global2LocalElem, String>() {
-					@Override
-					public void flatMap(Global2LocalElem value, Collector<String> out) {
-						if (value.flag == 20){
-							out.collect("123");
-						}
-					}
-				})
+//				.flatMap(new FlatMapFunction<Global2LocalElem, String>() {
+//					@Override
+//					public void flatMap(Global2LocalElem value, Collector<String> out) {
+//						if (value.flag == 20){
+//							out.collect("123");
+//						}
+//					}
+//				})
 
-//				.partitionCustom((Partitioner<Integer>) (key, numPartitions) -> Constants.divideSubTaskKayMap.get(key), "key")
-//				.flatMap(new HausdorffDivideMF())
-//				.setParallelism(Constants.dividePartition)
+				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key))
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new HausdorffLocalPF())
+				.setParallelism(Constants.dividePartition)
 
 //				.flatMap(new HausdorffOneNodeMF())
 //				.setParallelism(1)
