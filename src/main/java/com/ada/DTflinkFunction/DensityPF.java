@@ -4,7 +4,7 @@ import com.ada.common.Arrays;
 import com.ada.common.Constants;
 import com.ada.geometry.TrackPoint;
 import com.ada.model.densityToGlobal.Density;
-import com.ada.model.densityToGlobal.Density2GlobalElem;
+import com.ada.model.densityToGlobal.D2GElem;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -12,7 +12,7 @@ import org.apache.flink.util.Collector;
 
 import java.util.*;
 
-public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalElem, Integer, TimeWindow> {
+public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Integer, TimeWindow> {
     private Map<Integer, TrackPoint> tidTPMap;
     private int[][] grids;
     private long count;
@@ -22,7 +22,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, Density2GlobalE
     public void process(Integer key,
                         Context context,
                         Iterable<TrackPoint> elements,
-                        Collector<Density2GlobalElem> out) {
+                        Collector<D2GElem> out) {
         for (TrackPoint tp : elements) {
             int row = (int) Math.floor(((tp.data[0] - Constants.globalRegion.low.data[0])/(Constants.globalRegion.high.data[0] - Constants.globalRegion.low.data[0]))*(Constants.gridDensity+1.0));
             int col = (int) Math.floor(((tp.data[1] - Constants.globalRegion.low.data[1])/(Constants.globalRegion.high.data[1] - Constants.globalRegion.low.data[1]))*(Constants.gridDensity+1.0));

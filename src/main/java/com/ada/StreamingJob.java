@@ -3,12 +3,9 @@ package com.ada;
 import com.ada.DTflinkFunction.*;
 import com.ada.common.Constants;
 import com.ada.geometry.TrackPoint;
-import com.ada.model.globalToLocal.Global2LocalElem;
-import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.util.Collector;
 
 
 public class StreamingJob {

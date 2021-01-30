@@ -17,13 +17,13 @@ import java.util.List;
 
 @Getter
 @Setter
-public class Global2LocalPoints implements Global2LocalValue, Serializable {
+public class G2LPoints implements G2LValue, Serializable {
     public List<TrackPoint> points;
     public int TID;
 
-    public Global2LocalPoints() {}
+    public G2LPoints() {}
 
-    public Global2LocalPoints(List<TrackPoint> points) {
+    public G2LPoints(List<TrackPoint> points) {
         this.points = points;
         this.TID = points.get(0).TID;
     }
@@ -40,7 +40,7 @@ public class Global2LocalPoints implements Global2LocalValue, Serializable {
                 new HashMap<>());
     }
 
-    public static Global2LocalPoints toG2LPoints(Trajectory track){
-        return new Global2LocalPoints(new ArrayList<>(Segment.segmentsToPoints(track.elms)));
+    public static G2LPoints toG2LPoints(Trajectory track){
+        return new G2LPoints(new ArrayList<>(Segment.segmentsToPoints(track.elms)));
     }
 }

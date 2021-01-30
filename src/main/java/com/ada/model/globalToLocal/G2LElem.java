@@ -2,7 +2,7 @@ package com.ada.model.globalToLocal;
 
 import java.io.Serializable;
 
-public class Global2LocalElem implements Serializable {
+public class G2LElem implements Serializable {
     public int key;
     /**
      * 0:  添加经过点         (Global2LocalPoints)
@@ -22,12 +22,13 @@ public class Global2LocalElem implements Serializable {
      * 14: 通知Local subTask其新的负责区域   （Rectangle）
      * 15: 验证信息 pass
      * 16: 验证信息 topK
+     * 17: count
      */
     public byte flag;
 
-    public Global2LocalValue value;
+    public G2LValue value;
 
-    public Global2LocalElem(int key, byte flag, Global2LocalValue value) {
+    public G2LElem(int key, byte flag, G2LValue value) {
         this.key = key;
         this.flag = flag;
         this.value = value;

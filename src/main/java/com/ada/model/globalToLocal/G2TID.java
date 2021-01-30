@@ -7,10 +7,10 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class Global2LocalTID implements Global2LocalValue, Serializable {
+public class G2TID implements G2LValue, Serializable {
     public int TID;
 
-    public Global2LocalTID(int TID){
+    public G2TID(int TID){
         this.TID = TID;
     }
 }
