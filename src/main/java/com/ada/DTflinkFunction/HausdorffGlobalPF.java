@@ -55,7 +55,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                         Iterable<Density2GlobalElem> elements,
                         Collector<Global2LocalElem> out) {
         this.out = out;
-        if (count >= 12)
+        if (count >= 17)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
@@ -264,7 +264,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
             delLeaves.remove(leaf);
         trackLeafsMap.forEach((TID, trackLeafs) -> {
             TrackKeyTID track = trackMap.get(TID);
-            if (count == 16 && TID == 2079)
+            if (count == 16 && TID == 6146)
                 System.out.print("");
             Rectangle MBR = track.rect.clone().extendLength(-track.threshold);
             Global2LocalPoints trackPs = Global2LocalPoints.toG2LPoints(track.trajectory);
@@ -506,6 +506,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
                     if (newLeaf != null) {
                         out.collect(new Global2LocalElem(newLeaf.leafID, (byte) 9, glTID));
                         track.passP.add(newLeaf);
+                    }else {
+                        out.collect(new Global2LocalElem(gb.leaf.leafID, (byte) 11, glTID));
                     }
                     ite.remove();
                 }
@@ -869,7 +871,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<Density2GlobalElem,
 
         for (Integer tid : inAndOutTIDs) {
             TrackKeyTID track = trackMap.get(tid);
-            if (tid == 6146 || tid == 11482)
+            if (count == 17 || tid == 18058)
                 System.out.print("");
             List<TrackPoint> inPoints = inPointsMap.get(tid);
             Rectangle pointsMBR = Rectangle.pointsMBR(inPoints.toArray(new Point[0]));

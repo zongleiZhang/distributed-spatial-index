@@ -63,7 +63,7 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         if (subTask == 0) {
             this.out = out;
             this.winStart = context.window().getStart();
-            if (count == 15)
+            if (count >= 16)
                 System.out.print("");
 
             classifyElements(elements);
@@ -127,10 +127,14 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             if (passTrackMap.containsKey(TID))
                 return false;
         }
-        if (passTrackMap.size() != verifyPass.size())
+        if (passTrackMap.size() != verifyPass.size()) {
+            difference(verifyPass, passTrackMap);
             return false;
-        if (topKTrackMap.size() != verifyTopK.size())
+        }
+        if (topKTrackMap.size() != verifyTopK.size()) {
+            difference(verifyTopK, topKTrackMap);
             return false;
+        }
         if (!verifyTrack(verifyPass, passTrackMap))
             return false;
         if (!verifyTrack(verifyTopK, topKTrackMap))
@@ -150,6 +154,15 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
         return true;
     }
 
+    private void difference(List<Global2LocalPoints> verifyPass, Map<Integer, TrackHauOne> passTrackMap) {
+        if (verifyPass.size() < passTrackMap.size()){
+            Set<Integer> TIDs = new HashSet<>(Collections.changeCollectionElem(verifyPass, gl -> gl.TID));
+            passTrackMap.entrySet().removeIf(entry -> TIDs.contains(entry.getKey()));
+        }else {
+            verifyPass.removeIf(gl -> passTrackMap.containsKey(gl.TID));
+        }
+    }
+
     private boolean verifyTrack(List<Global2LocalPoints> verifyTopK, Map<Integer, TrackHauOne> topKTrackMap) {
         for (Global2LocalPoints glTrack : verifyTopK) {
             TrackHauOne track = topKTrackMap.get(glTrack.TID);
@@ -166,6 +179,21 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
 
     private boolean checkTrack(TrackHauOne track, boolean isPass) {
         Integer TID = track.trajectory.TID;
+
+        if (isPass){
+            for (Segment segment : track.trajectory.elms) {
+                Long mapKey = ((segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
+                if (!tIDsMap.get(mapKey).passTIDs.contains(TID))
+                    return false;
+            }
+        }else {
+            for (Segment segment : track.trajectory.elms) {
+                Long mapKey = ((segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
+                if (!tIDsMap.get(mapKey).topKTIDs.contains(TID))
+                    return false;
+            }
+        }
+
         //RelatedInfo 检查
         for (SimilarState key : track.getRelatedInfo().keySet()) {
             SimilarState state = track.getRelatedInfo().get(key);
@@ -744,6 +772,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     }
 
     private void addPassTrack(Global2LocalPoints glPoints) {
+        if (passTrackMap.containsKey(glPoints.TID) || topKTrackMap.containsKey(glPoints.TID))
+            throw new IllegalArgumentException();
         TrackHauOne track = glPoints.toTrackHauOne();
         for (Segment segment : track.trajectory.elms) {
             Long mapKey = ((segment.getSecondTime()/Constants.windowSize)) * Constants.windowSize;
@@ -754,6 +784,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     }
 
     private void addTopKTrack(Global2LocalPoints glPoints) {
+        if (passTrackMap.containsKey(glPoints.TID) || topKTrackMap.containsKey(glPoints.TID))
+            throw new IllegalArgumentException();
         TrackHauOne track = glPoints.toTrackHauOne();
         for (Segment segment : track.trajectory.elms) {
             Long mapKey = ((segment.getSecondTime()/ Constants.windowSize)) * Constants.windowSize;
@@ -789,6 +821,8 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
             TrackHauOne comparedTrack = passTrackMap.get(comparedTid);
             if (comparedTrack == null)
                 comparedTrack = topKTrackMap.get(comparedTid);
+            if (count == 16 && comparedTid == 14852)
+                System.out.print("");
             if (comparedTrack != null){
                 int index = comparedTrack.candidateInfo.indexOf(TID);
                 comparedTrack.removeRelatedInfo(state);
@@ -801,8 +835,6 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
     }
 
     private void convertPassTrack(Set<TrackHauOne> pruneChangeTracks, Integer TID) {
-        if (count == 15 && TID == 12286)
-            System.out.print("");
         TrackHauOne track = passTrackMap.remove(TID);
         topKTrackMap.put(TID, track);
         for (Segment segment : track.trajectory.elms) {
@@ -825,9 +857,21 @@ public class HausdorffLocalPF extends ProcessWindowFunction<Global2LocalElem, Qu
                 comparedTrack.removeRelatedInfo(state);
                 if (comparedTrack.candidateInfo.remove(TID))
                     pruneChangeTracks.add(comparedTrack);
+                else
+                    throw new IllegalArgumentException("");
                 ite.remove();
             }
+            if (comparedTrack.candidateInfo.remove(TID))
+                pruneChangeTracks.add(comparedTrack);
         }
+//        TrackHauOne t1 = passTrackMap.get(12286);
+//        if (t1 == null) t1 = topKTrackMap.get(12286);
+//        TrackHauOne t2 = passTrackMap.get(3974);
+//        if (t2 == null) t2 = topKTrackMap.get(3974);
+//        if (t1 == null || t2 == null)
+//            System.out.print("");
+//        if (!SimilarState.isEquals(t1.getSimilarState(3974), t2.getSimilarState(12286)))
+//            System.out.print("");
     }
 
     private void convertTopKTrack(Integer TID) {

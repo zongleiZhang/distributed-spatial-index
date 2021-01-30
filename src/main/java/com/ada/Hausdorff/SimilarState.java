@@ -66,6 +66,7 @@ public class SimilarState implements Comparable<SimilarState>, Cloneable, Serial
     public static boolean isEquals(SimilarState state0, SimilarState state1){
         if (state0 == null && state1 == null) return true;
         if (state0 == null || state1 == null) return false;
+        if (state0 == state1) return true;
         if (state0.comparingTID == state1.comparedTID && state0.comparedTID == state1.comparingTID){
             return state0.row.equals(state1.col) &&
                     state0.col.equals(state1.row) &&

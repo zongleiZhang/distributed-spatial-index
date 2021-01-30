@@ -48,7 +48,12 @@ public class DTConstants implements Serializable {
             track.candidateInfo = newCanDi;
         }
         if (track.candidateInfo.size() < Constants.topK + Constants.t){ //没有足够的候选轨迹
-            Rectangle pruneArea = MBR.clone().extendLength(track.getKCanDistance(Constants.topK + Constants.t).distance);
+            Rectangle pruneArea;
+            if (track.candidateInfo.size() == 0){
+                pruneArea = MBR.clone().extendLength(Constants.extend);
+            }else {
+                pruneArea = MBR.clone().extendLength(track.getKCanDistance(Constants.topK + Constants.t).distance);
+            }
             //筛选出计算阈值的轨迹集合，得出裁剪域
             Set<Integer> selectedTIDs = new HashSet<>();  //阈值计算轨迹集
             while (selectedTIDs.size() < Constants.topK + Constants.t) { //阈值计算轨迹集的元素数要大于Constants.k*Constants.cDTW。
