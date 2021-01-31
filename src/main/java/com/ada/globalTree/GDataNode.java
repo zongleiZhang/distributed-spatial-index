@@ -176,8 +176,11 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         GDataNode dataNode = (GDataNode) o;
-        return leafID == dataNode.leafID;
+        if (leafID != dataNode.leafID)
+            return false;
+        return true;
     }
 
     @Override

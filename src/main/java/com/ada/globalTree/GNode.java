@@ -25,7 +25,7 @@ public abstract class GNode implements Serializable {
 
     public Rectangle region;
 
-    public RoaringBitmap bitmap;
+    transient public RoaringBitmap bitmap;
 
     transient public GTree tree;
 

@@ -14,12 +14,14 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import java.io.Serializable;
 import java.util.*;
 
-public class GTree {
+public class GTree implements Serializable {
 
     /**
      * 根节点
      */
     public GDirNode root;
+
+    public int subTask;
 
     /**
      * 全局索引叶节点索引项数量的下届
@@ -29,7 +31,7 @@ public class GTree {
     /**
      * 密度网格
      */
-    public transient int[][] density;
+    public int[][] density;
 
     /**
      * 分配叶节点ID的功能成员
@@ -59,10 +61,10 @@ public class GTree {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GTree gTree = (GTree) o;
+        if (!Arrays.deepEquals(density, gTree.density))
+            return false;
         if (!Objects.equals(root, gTree.root))
             return false;
-//        if (!com.ada.common.Arrays.arrsEqual(density, gTree.density))
-//            return false;
         if (!Objects.equals(dispatchLeafID, gTree.dispatchLeafID))
             return false;
         return true;

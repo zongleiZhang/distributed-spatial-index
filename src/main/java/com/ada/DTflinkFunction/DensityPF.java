@@ -20,6 +20,8 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
     private int factor;
     private int parallelism;
 
+    private int subTask;
+
     @Override
     public void process(Integer key,
                         Context context,
@@ -44,7 +46,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
         }
         if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0 || count == 0){
             for (int i = 0; i < Constants.globalPartition; i++) {
-                out.collect(new Density(grids, i));
+                out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
             }
             grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
             //删除不活跃的轨迹
@@ -63,5 +65,6 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
         count = 0;
         factor = 0;
         parallelism = Constants.globalPartition-1;
+        subTask = getRuntimeContext().getIndexOfThisSubtask();
     }
 }

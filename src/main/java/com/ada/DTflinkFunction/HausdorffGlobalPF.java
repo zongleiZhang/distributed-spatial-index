@@ -29,6 +29,7 @@ import org.apache.flink.util.Collector;
 import org.roaringbitmap.RoaringBitmap;
 import redis.clients.jedis.Jedis;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 
@@ -58,6 +59,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                         Iterable<D2GElem> elements,
                         Collector<G2LElem> out) {
         this.out = out;
+        globalTree.subTask = subTask;
         if (count >= 27)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
@@ -117,6 +119,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                 //调整Global Index
                 Map<GNode, GNode> nodeMap = globalTree.updateTree();
 
+                testEqualByRedis(context.window().getStart());
+
                 //Global Index发生了调整，通知Local Index迁移数据，重建索引。
                 if (!nodeMap.isEmpty()){
                     if (subTask == 0) {
@@ -147,6 +151,26 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
             forInitCode(density, logicWinStart);
         }
         count++;
+    }
+
+    private void testEqualByRedis(long winStart) {
+        byte[] redisKey = (winStart + "|" + "globalTree").getBytes(StandardCharsets.UTF_8);
+        long size = jedis.llen(redisKey);
+        if (size < Constants.globalPartition-1) {
+            jedis.rpush(redisKey, Arrays.toByteArray(globalTree));
+        }else if (size == 3){
+            List<byte[]> list = jedis.lrange(redisKey,0, -1);
+            jedis.ltrim(redisKey, 1,0);
+            GTree[] gTrees = new GTree[list.size()];
+            for (int i = 0; i < list.size(); i++)
+                gTrees[i] = (GTree) Arrays.toObject(list.get(i));
+            for (GTree gTree : gTrees) {
+                if (!globalTree.equals(gTree))
+                    System.out.print("");
+            }
+        }else {
+            throw new IllegalArgumentException("redisKey too large");
+        }
     }
 
     /**
