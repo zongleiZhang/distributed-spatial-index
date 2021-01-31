@@ -27,6 +27,7 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 import org.roaringbitmap.RoaringBitmap;
+import redis.clients.jedis.Jedis;
 
 import java.util.*;
 
@@ -38,6 +39,7 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
     private GTree globalTree;
     private Queue<int[][]> densityQue;
     private Queue<Tuple2<Long, RoaringBitmap>> tIDsQue;
+    private Jedis jedis;
 
     private Map<Integer, TrackKeyTID> trackMap;
     private Map<Integer, TrackPoint> singlePointMap;
@@ -55,8 +57,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                         Context context,
                         Iterable<D2GElem> elements,
                         Collector<G2LElem> out) {
-        if (subTask != 0)
-            return;
         this.out = out;
         if (count >= 27)
             System.out.print("");
@@ -1495,5 +1495,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
         segmentIndex = new RCtree<>(4,1,11, Constants.globalRegion,0, true);
         pruneIndex = new RCtree<>(4,1,11, Constants.globalRegion,0, false);
         count = 0;
+        jedis = new Jedis("localhost");
     }
 }

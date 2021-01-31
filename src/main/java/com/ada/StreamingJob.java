@@ -1,27 +1,27 @@
 package com.ada;
 
-import com.ada.DTflinkFunction.*;
+import com.ada.DTflinkFunction.DensityPF;
+import com.ada.DTflinkFunction.HausdorffGlobalPF;
+import com.ada.DTflinkFunction.MapToTrackPoint;
+import com.ada.DTflinkFunction.TrackPointTAndW;
 import com.ada.common.Constants;
-import com.ada.geometry.TrackPoint;
-import com.ada.model.densityToGlobal.D2GElem;
 import com.ada.model.globalToLocal.G2LElem;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
-import org.roaringbitmap.RoaringBitmap;
-
-import java.util.ArrayList;
-import java.util.List;
+import redis.clients.jedis.Jedis;
 
 
 public class StreamingJob {
 
 	public static void main(String[] args) throws Exception {
+		Jedis jedis = new Jedis("localhost");
+		jedis.flushDB();
+		jedis.flushAll();
+		jedis.close();
+
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		env.setParallelism(1);
