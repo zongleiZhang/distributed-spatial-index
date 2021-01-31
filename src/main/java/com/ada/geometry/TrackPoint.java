@@ -13,9 +13,10 @@ import java.util.*;
 
 @Getter
 @Setter
-public class TrackPoint extends Point implements TrackInfo, Cloneable, Comparable<TrackPoint>, Serializable, D2GElem {
+public class TrackPoint extends Point implements TrackInfo, D2GElem, Cloneable, Comparable<TrackPoint>, Serializable {
 	public long timestamp;
 	public int TID;
+	public int key;
 
 	public TrackPoint(){}
 
@@ -87,7 +88,7 @@ public class TrackPoint extends Point implements TrackInfo, Cloneable, Comparabl
 
 	@Override
 	public int getD2GKey() {
-		return TID;
+		return key;
 	}
 }
 

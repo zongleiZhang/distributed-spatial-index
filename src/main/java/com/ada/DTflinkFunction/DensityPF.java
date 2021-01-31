@@ -17,6 +17,8 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
     private int[][] grids;
     private long count;
     private static long biggestInterval = Constants.logicWindow * Constants.windowSize;
+    private int factor;
+    private int parallelism;
 
     @Override
     public void process(Integer key,
@@ -29,9 +31,11 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
             grids[row][col]++;
             TrackPoint preTp = tidTPMap.get(tp.TID);
             if (preTp == null){
+                tp.key = factor = (factor + 1) & parallelism;
                 tidTPMap.put(tp.TID, tp);
                 out.collect(tp);
             }else {
+                tp.key = preTp.key;
                 tidTPMap.replace(tp.TID, tp);
                 if (!(Constants.isEqual(tp.data[0], preTp.data[0]) && Constants.isEqual(tp.data[1], preTp.data[1]))){
                     out.collect(tp);
@@ -40,7 +44,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
         }
         if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0 || count == 0){
             for (int i = 0; i < Constants.globalPartition; i++) {
-                out.collect(new Density(Arrays.cloneIntMatrix(grids), i));
+                out.collect(new Density(grids, i));
             }
             grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
             //删除不活跃的轨迹
@@ -57,5 +61,7 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
         tidTPMap = new HashMap<>();
         grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         count = 0;
+        factor = 0;
+        parallelism = Constants.globalPartition-1;
     }
 }

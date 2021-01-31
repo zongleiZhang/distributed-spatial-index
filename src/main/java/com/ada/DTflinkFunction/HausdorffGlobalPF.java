@@ -55,8 +55,10 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                         Context context,
                         Iterable<D2GElem> elements,
                         Collector<G2LElem> out) {
+        if (subTask != 0)
+            return;
         this.out = out;
-        if (count >= 16)
+        if (count >= 27)
             System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
@@ -103,7 +105,8 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
             for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
 
-            System.out.println(count);
+            if (subTask == 0)
+                System.out.println(count);
             if (count%10000 == 0)
                 check();
 
@@ -136,8 +139,10 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                     }
                 }
             }
-            for (GDataNode leaf : globalTree.getAllLeafs())
-                out.collect(new G2LElem(leaf.leafID, (byte) 17, new G2LCount(count)));
+            if (subTask == 0) {
+                for (GDataNode leaf : globalTree.getAllLeafs())
+                    out.collect(new G2LElem(leaf.leafID, (byte) 17, new G2LCount(count)));
+            }
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
             forInitCode(density, logicWinStart);
         }

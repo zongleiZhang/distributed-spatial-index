@@ -1,26 +1,17 @@
 package com.ada.QBSTree;
 
-import com.ada.common.Constants;
-import com.ada.common.collections.Collections;
 import com.ada.geometry.Rectangle;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class DualRootTree<T extends RectElem> implements Index<T>{
-//    private RCtree<T> innerTree;
-//    private RCtree<T> outerTree;
-//    private Rectangle innerRegion;
-//    private Rectangle outerRegion;
-//    private Rectangle OSR;
-
+public class LocalTree<T extends RectElem> implements Index<T>{
     private RCtree<T> verifyTree;
     private Rectangle verifyRegion;
 
-    public DualRootTree(int lowBound, int balanceFactor, int precision, Rectangle region, boolean hasTIDs) {
-        verifyRegion = region.clone().extendMultiple(1.0);
+    public LocalTree(int lowBound, int balanceFactor, int precision, Rectangle region, boolean hasTIDs) {
+        verifyRegion = region.clone().extendMultiple(0.2);
         verifyTree = new RCtree<>(lowBound, balanceFactor, precision, verifyRegion.clone(), 0, hasTIDs);
     }
 

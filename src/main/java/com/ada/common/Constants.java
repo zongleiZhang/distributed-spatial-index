@@ -1,11 +1,7 @@
 package com.ada.common;
 
-import com.ada.Hausdorff.Hausdorff;
-import com.ada.Hausdorff.SimilarState;
-import com.ada.geometry.*;
-import com.ada.geometry.track.TrackHauOne;
-import com.ada.geometry.track.Trajectory;
-import com.ada.globalTree.GDataNode;
+import com.ada.geometry.Point;
+import com.ada.geometry.Rectangle;
 import com.ada.globalTree.GTree;
 
 import java.io.FileInputStream;
@@ -45,6 +41,12 @@ public class Constants implements Serializable {
      * subTask: globalSubTask
      * value: key
      */
+    public static Map<Integer,Integer> densitySubTaskKeyMap = new HashMap<>();
+
+    /**
+     * subTask: globalSubTask
+     * value: key
+     */
     public static Map<Integer,Integer> globalSubTaskKeyMap = new HashMap<>();
 
     /**
@@ -57,11 +59,6 @@ public class Constants implements Serializable {
      * 密度统计的频度
      */
     public static int densityFre;
-
-    /**
-     * 全局索引做动态负载均衡的频度
-     */
-    public static int balanceFre;
 
     /**
      * 网格密度
@@ -93,8 +90,14 @@ public class Constants implements Serializable {
 
             inputPartition = Integer.parseInt(pro.getProperty("inputPartition"));
             densityPartition = Integer.parseInt(pro.getProperty("densityPartition"));
+            if (densityPartition <= 0 || (densityPartition & (densityPartition - 1)) != 0)
+                throw new IllegalArgumentException();
             globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
+            if (globalPartition <= 0 || (globalPartition & (globalPartition - 1)) != 0)
+                throw new IllegalArgumentException();
             dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
+            if (dividePartition <= 0 || (dividePartition & (dividePartition - 1)) != 0)
+                throw new IllegalArgumentException();
             keyTIDPartition = Integer.parseInt(pro.getProperty("keyTIDPartition"));
             densityFre = Integer.parseInt(pro.getProperty("densityFre"));
             GTree.globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
@@ -107,31 +110,53 @@ public class Constants implements Serializable {
         }catch (Exception e){
             e.printStackTrace();
         }
-        int maxParallelism = 128;
-//        int maxParallelism = 256;
-        Set<Integer> usedSubtask = new HashSet<>();
-        for (int i = 0; i < 1000000; i++) {
-            Integer subTask = assignKeyToParallelOperator(i, maxParallelism, globalPartition);
-            if (!usedSubtask.contains(subTask)) {
-                usedSubtask.add(subTask);
-                globalSubTaskKeyMap.put(subTask, i);
-                if (usedSubtask.size() == globalPartition)
-                    break;
-            }
-        }
-        usedSubtask.clear();
 
         /*
          * 86-- 128是 256
          */
-        maxParallelism = 128;
-//        maxParallelism = 256;
+        int maxParallelism;
+        if (globalPartition < 86)
+            maxParallelism= 128;
+        else
+            maxParallelism = 256;
+        Set<Integer> usedSubTask = new HashSet<>();
+        for (int i = 0; i < 1000000; i++) {
+            Integer subTask = assignKeyToParallelOperator(i, maxParallelism, globalPartition);
+            if (!usedSubTask.contains(subTask)) {
+                usedSubTask.add(subTask);
+                globalSubTaskKeyMap.put(subTask, i);
+                if (usedSubTask.size() == globalPartition)
+                    break;
+            }
+        }
+        usedSubTask.clear();
+
+        if (densityPartition < 86)
+            maxParallelism= 128;
+        else
+            maxParallelism = 256;
+        for (int i = 0; i < 1000000; i++) {
+            Integer subTask = assignKeyToParallelOperator(i, maxParallelism, densityPartition);
+            if (!usedSubTask.contains(subTask)) {
+                usedSubTask.add(subTask);
+                densitySubTaskKeyMap.put(subTask, i);
+                if (usedSubTask.size() == densityPartition)
+                    break;
+            }
+        }
+        usedSubTask.clear();
+
+
+        if (dividePartition < 86)
+            maxParallelism= 128;
+        else
+            maxParallelism = 256;
         for (int i = 0; i < 1000000; i++) {
             Integer subTask = assignKeyToParallelOperator(i, maxParallelism, dividePartition);
-            if (!usedSubtask.contains(subTask)) {
-                usedSubtask.add(subTask);
+            if (!usedSubTask.contains(subTask)) {
+                usedSubTask.add(subTask);
                 divideSubTaskKeyMap.put(subTask, i);
-                if (usedSubtask.size() == dividePartition)
+                if (usedSubTask.size() == dividePartition)
                     break;
             }
         }

@@ -3,9 +3,20 @@ package com.ada;
 import com.ada.DTflinkFunction.*;
 import com.ada.common.Constants;
 import com.ada.geometry.TrackPoint;
+import com.ada.model.densityToGlobal.D2GElem;
+import com.ada.model.globalToLocal.G2LElem;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.util.Collector;
+import org.roaringbitmap.RoaringBitmap;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class StreamingJob {
@@ -33,31 +44,38 @@ public class StreamingJob {
 
 
 		env.readTextFile("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_20161101")
-				.map(TrackPoint::new)
+				.map(new MapToTrackPoint())
 				.assignTimestampsAndWatermarks(new TrackPointTAndW())
 
-				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getD2GKey()%Constants.globalPartition))
+				.keyBy(value -> Constants.densitySubTaskKeyMap.get(value.key))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new DensityPF())
-				.setParallelism(Constants.globalPartition)
-
-				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getD2GKey()%Constants.globalPartition))
-				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new HausdorffGlobalPF())
-				.setParallelism(Constants.globalPartition)
-//				.flatMap(new FlatMapFunction<Global2LocalElem, String>() {
+				.setParallelism(Constants.densityPartition)
+//				.flatMap(new FlatMapFunction<D2GElem, String >() {
 //					@Override
-//					public void flatMap(Global2LocalElem value, Collector<String> out) {
-//						if (value.flag == 20){
+//					public void flatMap(D2GElem value, Collector<String> out) throws Exception {
+//						if (value.getD2GKey() == -1)
 //							out.collect("123");
-//						}
 //					}
 //				})
 
-				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key))
+				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getD2GKey()))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new HausdorffLocalPF())
-				.setParallelism(Constants.dividePartition)
+				.process(new HausdorffGlobalPF())
+				.setParallelism(Constants.globalPartition)
+				.flatMap(new FlatMapFunction<G2LElem, String>() {
+					@Override
+					public void flatMap(G2LElem value, Collector<String> out) {
+						if (value.flag == -1){
+							out.collect("123");
+						}
+					}
+				})
+
+//				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key))
+//				.timeWindow(Time.milliseconds(Constants.windowSize))
+//				.process(new HausdorffLocalPF())
+//				.setParallelism(Constants.dividePartition)
 
 //				.flatMap(new HausdorffOneNodeMF())
 //				.setParallelism(1)
