@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction;
 
 
 import com.ada.Hausdorff.Hausdorff;
@@ -60,7 +60,9 @@ public class HausdorffLocalPF extends ProcessWindowFunction<G2LElem, QueryResult
         this.out = out;
         this.winStart = context.window().getStart();
         classifyElements(elements);
-        if (subTask == 4 && count >= 21)
+//        if (subTask != 3)
+//            return;
+        if (subTask == 3 && count >= 8)
             System.out.print("");
 
         //记录无采样点滑出，但其topK结果可能发生变化的轨迹
@@ -106,19 +108,16 @@ public class HausdorffLocalPF extends ProcessWindowFunction<G2LElem, QueryResult
                 discardSubTask();
             } else {
                 adjustRegion();
-                check();
             }
             newRegion = null;
-        }else {
-            check();
         }
+        check();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i <= subTask; i++) {
             sb.append("\t\t");
         }
         sb.append(subTask).append(":").append(count);
         System.out.println(sb.toString());
-
         closeWindows();
     }
 

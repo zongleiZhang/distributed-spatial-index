@@ -7,7 +7,7 @@ public class Arrays {
     public static int[][] cloneIntMatrix (int[][] a){
         int[][] result = new int[a.length][a[0].length];
         for (int i = 0; i < a.length; i++) {
-            result[i] = a[i].clone();
+            System.arraycopy(a[i], 0, result[i], 0, a[0].length);
         }
         return result;
     }

@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction;
 
 import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;

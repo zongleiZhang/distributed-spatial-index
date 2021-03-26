@@ -1,9 +1,6 @@
 package com.ada;
 
-import com.ada.DTflinkFunction.DensityPF;
-import com.ada.DTflinkFunction.HausdorffGlobalPF;
-import com.ada.DTflinkFunction.MapToTrackPoint;
-import com.ada.DTflinkFunction.TrackPointTAndW;
+import com.ada.flinkFunction.*;
 import com.ada.common.Constants;
 import com.ada.model.globalToLocal.G2LElem;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -63,19 +60,19 @@ public class StreamingJob {
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new HausdorffGlobalPF())
 				.setParallelism(Constants.globalPartition)
-				.flatMap(new FlatMapFunction<G2LElem, String>() {
-					@Override
-					public void flatMap(G2LElem value, Collector<String> out) {
-						if (value.flag == -1){
-							out.collect("123");
-						}
-					}
-				})
+//				.flatMap(new FlatMapFunction<G2LElem, String>() {
+//					@Override
+//					public void flatMap(G2LElem value, Collector<String> out) {
+//						if (value.flag == -1){
+//							out.collect("123");
+//						}
+//					}
+//				})
 
-//				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key))
-//				.timeWindow(Time.milliseconds(Constants.windowSize))
-//				.process(new HausdorffLocalPF())
-//				.setParallelism(Constants.dividePartition)
+				.keyBy(value -> Constants.divideSubTaskKeyMap.get(value.key))
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new HausdorffLocalPF())
+				.setParallelism(Constants.dividePartition)
 
 //				.flatMap(new HausdorffOneNodeMF())
 //				.setParallelism(1)

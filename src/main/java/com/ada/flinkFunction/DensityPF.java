@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction;
 
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
@@ -44,9 +44,14 @@ public class DensityPF extends ProcessWindowFunction<TrackPoint, D2GElem, Intege
                 }
             }
         }
-        if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0 || count == 0){
+        if (context.window().getStart()%(Constants.densityFre*Constants.windowSize) == 0){
+//            StringBuilder sb = new StringBuilder();
+//            for (int i = 0; i < subTask; i++)
+//                sb.append("\t\t\t");
+//            sb.append(subTask).append(":").append(context.window().getStart());
+//            System.out.println(sb.toString());
             for (int i = 0; i < Constants.globalPartition; i++) {
-                out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
+                out.collect(new Density(grids, i, subTask));
             }
             grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
             //删除不活跃的轨迹

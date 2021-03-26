@@ -1,4 +1,4 @@
-package com.ada.DTflinkFunction;
+package com.ada.flinkFunction;
 
 import com.ada.Hausdorff.Hausdorff;
 import com.ada.Hausdorff.SimilarState;
@@ -34,11 +34,11 @@ import java.util.*;
 
 
 public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, Integer, TimeWindow> {
-
-    private boolean hasInit;
     private int subTask;
+    private int count;
+    private long winStart;
     private GTree globalTree;
-    private Queue<int[][]> densityQue;
+    private Queue<Tuple2<Long, int[][]>> densityQue;
     private Queue<Tuple2<Long, RoaringBitmap>> tIDsQue;
     private Jedis jedis;
 
@@ -47,7 +47,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
     private RCtree<Segment> segmentIndex;
     private RCtree<TrackKeyTID> pruneIndex;
     private Collector<G2LElem> out;
-    private int count;
 
     private RoaringBitmap outTIDs;
     private RoaringBitmap inTIDs;
@@ -58,10 +57,11 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                         Context context,
                         Iterable<D2GElem> elements,
                         Collector<G2LElem> out) {
+//        if (subTask != 0)
+//            return;
         this.out = out;
+        winStart = context.window().getStart();
         globalTree.subTask = subTask;
-        if (count >= 27)
-            System.out.print("");
         List<TrackKeyTID> newTracks = new ArrayList<>();
         Map<Integer, List<TrackPoint>> inPointsMap = new HashMap<>();
         int[][] density = preElements(elements, newTracks, inPointsMap);
@@ -69,18 +69,9 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
         inputIDs.add(inPointsMap.keySet().stream().mapToInt(Integer::valueOf).toArray());
         tIDsQue.add(new Tuple2<>(context.window().getStart(), inputIDs));
 
-        long logicWinStart = context.window().getEnd() - Constants.windowSize*Constants.logicWindow;
-        if (hasInit){
-            if (tIDsQue.element().f0 < logicWinStart) {
-                outTIDs = tIDsQue.remove().f1;
-            }else {
-                outTIDs = new RoaringBitmap();
-            }
-            inAndOutTIDs = inputIDs.clone();
-            inTIDs = inputIDs.clone();
-            inAndOutTIDs.and(outTIDs);
-            inTIDs.andNot(inAndOutTIDs);
-            outTIDs.andNot(inAndOutTIDs);
+        if (count != 0){
+            long logicWinStart = winStart + Constants.windowSize - Constants.windowSize*Constants.logicWindow;
+            countThreeTIDs(inputIDs, logicWinStart);
             Set<Integer> emptyTracks = new HashSet<>();
             DTConstants.removeSegment(outTIDs, inAndOutTIDs, logicWinStart, emptyTracks, segmentIndex, trackMap);
             for (Integer TID : emptyTracks) outTIDs.remove(TID);
@@ -97,29 +88,28 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
             processUpdatedTrack(inPointsMap, pruneChangeTracks, canSmallTracks);
             pruneChangeTracks.removeAll(canSmallTracks);
             for (TrackKeyTID canSmallTrack : canSmallTracks) pruneChangeTracks.remove(canSmallTrack);
-            for (TrackKeyTID track : pruneChangeTracks) {
-                if (count == 12 && track.trajectory.TID == 16604)
-                    System.out.print("");
+            for (TrackKeyTID track : pruneChangeTracks)
                 changeThreshold(track);
-            }
+
             for (TrackKeyTID track : canSmallTracks) dealCandidateSmall(track);
             for (Integer tid : outTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (Integer tid : inAndOutTIDs) mayBeAnotherTopK(trackMap.get(tid));
             for (TrackKeyTID track : newTracks) mayBeAnotherTopK(track);
 
-            if (subTask == 0)
-                System.out.println(count);
             if (count%10000 == 0)
                 check();
 
             if (density != null) {
-                densityQue.add(density);
+                if (count == 8)
+                    System.out.print("");
+                densityQue.add(new Tuple2<>(winStart,density));
                 Arrays.addArrsToArrs(globalTree.density, density, true);
-                Arrays.addArrsToArrs(globalTree.density, densityQue.remove(), false);
+                if (densityQue.element().f0 < logicWinStart)
+                    Arrays.addArrsToArrs(globalTree.density, densityQue.remove().f1, false);
                 //调整Global Index
                 Map<GNode, GNode> nodeMap = globalTree.updateTree();
 
-                testEqualByRedis(context.window().getStart());
+//                testEqualByRedis(context.window().getStart());
 
                 //Global Index发生了调整，通知Local Index迁移数据，重建索引。
                 if (!nodeMap.isEmpty()){
@@ -128,8 +118,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                         adjustLocalTasksRegion(nodeMap);
                     }
                     redispatchGNode(nodeMap);
-                    if (count >= 10000)
-                        check();
                 }
             }
             for (TrackKeyTID track : trackMap.values()) {
@@ -144,13 +132,65 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                 }
             }
             if (subTask == 0) {
+                System.out.println(count);
                 for (GDataNode leaf : globalTree.getAllLeafs())
                     out.collect(new G2LElem(leaf.leafID, (byte) 17, new G2LCount(count)));
             }
+            count++;
         }else { //轨迹足够多时，才开始计算，计算之间进行初始化
-            forInitCode(density, logicWinStart);
+            forInitCode(density);
         }
-        count++;
+    }
+
+    private void countThreeTIDs(RoaringBitmap inputIDs, long logicWinStart) {
+        if (tIDsQue.element().f0 < logicWinStart) {
+            outTIDs = tIDsQue.remove().f1;
+        }else {
+            outTIDs = new RoaringBitmap();
+        }
+        inAndOutTIDs = inputIDs.clone();
+        inTIDs = inputIDs.clone();
+        inAndOutTIDs.and(outTIDs);
+        inTIDs.andNot(inAndOutTIDs);
+        outTIDs.andNot(inAndOutTIDs);
+    }
+
+    private void forInitCode(int[][] density) {
+        if (density != null) {
+            densityQue.add(new Tuple2<>(winStart, density));
+            Arrays.addArrsToArrs(globalTree.density, density, true);
+        }
+        if (densityQue.size() >= Constants.logicWindow/Constants.densityFre){
+            long logicWinStart = winStart + Constants.windowSize - Constants.windowSize*Constants.logicWindow;
+            while (densityQue.element().f0 < logicWinStart)
+                Arrays.addArrsToArrs(globalTree.density, densityQue.remove().f1, false);
+            globalTree.updateTree();
+            while (tIDsQue.element().f0 < logicWinStart) {
+                for (Integer TID : tIDsQue.remove().f1) {
+                    TrackHauOne track = trackMap.get(TID);
+                    for (Segment segment : track.trajectory.removeElem(logicWinStart))
+                        segmentIndex.delete(segment);
+                    if (track.trajectory.elms.isEmpty())
+                        trackMap.remove(TID);
+                }
+            }
+            initCalculate();
+            globalTree.getAllLeafs().forEach(leaf -> out.collect(new G2LElem(leaf.leafID, (byte) 14, leaf.region)));
+            for (TrackKeyTID track : trackMap.values()) {
+                G2LPoints trackPs = G2LPoints.toG2LPoints(track.trajectory);
+                for (GDataNode leaf : track.passP) {
+                    out.collect(new G2LElem(leaf.leafID, (byte) 15, trackPs));
+                }
+                if (!track.topKP.isEmpty()) {
+                    for (GLeafAndBound gb : track.topKP.getList()) {
+                        out.collect(new G2LElem(gb.leaf.leafID, (byte) 16, trackPs));
+                    }
+                }
+            }
+            count++;
+            if (!check())
+                System.out.print("");
+        }
     }
 
     private void testEqualByRedis(long winStart) {
@@ -1332,58 +1372,11 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
         });
     }
 
-    private void forInitCode(int[][] density, long logicWinStart) {
-        if (density != null) {
-            densityQue.add(density);
-            Arrays.addArrsToArrs(globalTree.density, density, true);
-            globalTree.updateTree();
-        }
-        if (tIDsQue.size() > Constants.logicWindow){ //窗口完整后才能进行初始化计算
-            if (tIDsQue.element().f0 < logicWinStart) {
-                for (Integer tid : tIDsQue.remove().f1) {
-                    for (Segment segment : trackMap.get(tid).trajectory.removeElem(logicWinStart)) {
-                        segmentIndex.delete(segment);
-                    }
-                }
-            }
-            for (TrackKeyTID track : trackMap.values()) {
-                track.rect = track.getPruningRegion(0.0);
-                track.data = track.rect.getCenter().data;
-                for (GDataNode leaf : globalTree.getIntersectLeafNodes(track.rect)) {
-                    leaf.bitmap.add(track.trajectory.TID);
-                }
-            }
-
-            // globalTree中的每个叶节点中的轨迹数量超过Constants.topK才能进行初始化计算
-            boolean canInit = true;
-            for (GDataNode leaf : globalTree.getAllLeafs()) {
-                if (leaf.bitmap.toArray().length <= Constants.topK * Constants.KNum){
-                    canInit = false;
-                    break;
-                }
-            }
-            if (canInit){
-                hasInit = true;
-                initCalculate();
-                globalTree.getAllLeafs().forEach(leaf -> out.collect(new G2LElem(leaf.leafID, (byte) 14, leaf.region)));
-                for (TrackKeyTID track : trackMap.values()) {
-                    G2LPoints trackPs = G2LPoints.toG2LPoints(track.trajectory);
-                    for (GDataNode leaf : track.passP) {
-                        out.collect(new G2LElem(leaf.leafID, (byte) 15, trackPs));
-                    }
-                    if (!track.topKP.isEmpty()) {
-                        for (GLeafAndBound gb : track.topKP.getList()) {
-                            out.collect(new G2LElem(gb.leaf.leafID, (byte) 16, trackPs));
-                        }
-                    }
-                }
-            }else {
-                for (GDataNode leaf : globalTree.getAllLeafs()) leaf.bitmap.clear();
-            }
-        }
-    }
-
     private void initCalculate(){
+        for (TrackKeyTID track : trackMap.values()) {
+            track.rect = track.getPruningRegion(0.0);
+            track.data = track.rect.getCenter().data;
+        }
         for (TrackKeyTID track : trackMap.values()) {
             int TID = track.trajectory.TID;
             List<TrackKeyTID> list = new ArrayList<>(trackMap.values());
@@ -1394,6 +1387,14 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
             track.threshold = track.getKCanDistance(Constants.t + Constants.topK).distance;
             Rectangle MBR = track.rect.clone();
             track.rect = MBR.clone().extendLength(track.threshold);
+            for (int i = Constants.t + Constants.topK; i < track.candidateInfo.size(); i++) {
+                TrackKeyTID comparedTrack = trackMap.get(track.candidateInfo.get(i));
+                if (!track.rect.isInternal(comparedTrack.rect.clone().extendLength(-comparedTrack.threshold))){
+                    track.removeTIDCandidate(comparedTrack);
+                    i--;
+                }
+            }
+
             globalTree.countPartitions(MBR, track);
             track.enlargeTuple.f0.bitmap.add(TID);
             G2LPoints trackPs = G2LPoints.toG2LPoints(track.trajectory);
@@ -1405,13 +1406,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
                     gB.leaf.bitmap.add(TID);
                 });
                 pruneIndex.insert(track);
-            }
-            for (int i = Constants.t + Constants.topK; i < track.candidateInfo.size(); i++) {
-                TrackKeyTID comparedTrack = trackMap.get(track.candidateInfo.get(i));
-                if (!track.rect.isInternal(comparedTrack.rect.clone().extendLength(-comparedTrack.threshold))){
-                    track.removeTIDCandidate(comparedTrack);
-                    i--;
-                }
             }
             track.passP.forEach(dataNode -> {
                 out.collect(new G2LElem(dataNode.leafID, (byte) 12, trackPs));
@@ -1512,7 +1506,6 @@ public class HausdorffGlobalPF extends ProcessWindowFunction<D2GElem, G2LElem, I
         subTask = getRuntimeContext().getIndexOfThisSubtask();
         densityQue = new ArrayDeque<>();
         globalTree = new GTree();
-        hasInit = false;
         tIDsQue = new ArrayDeque<>();
         trackMap = new HashMap<>();
         singlePointMap = new HashMap<>();

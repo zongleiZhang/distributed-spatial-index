@@ -1,6 +1,6 @@
 package com.ada.globalTree;
 
-import com.ada.DTflinkFunction.DTConstants;
+import com.ada.flinkFunction.DTConstants;
 import com.ada.Hungarian.Hungary;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.GridPoint;
@@ -31,7 +31,7 @@ public class GTree implements Serializable {
     /**
      * 密度网格
      */
-    public int[][] density;
+    public transient int[][] density;
 
     /**
      * 分配叶节点ID的功能成员
@@ -61,8 +61,8 @@ public class GTree implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GTree gTree = (GTree) o;
-        if (!Arrays.deepEquals(density, gTree.density))
-            return false;
+//        if (!Arrays.deepEquals(density, gTree.density))
+//            return false;
         if (!Objects.equals(root, gTree.root))
             return false;
         if (!Objects.equals(dispatchLeafID, gTree.dispatchLeafID))
