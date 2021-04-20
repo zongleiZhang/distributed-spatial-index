@@ -1,4 +1,4 @@
-package com.ada.flinkFunction;
+package com.ada.GQ_QBS_Function;
 
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;

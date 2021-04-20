@@ -66,16 +66,30 @@ public class Test {
     }
 
     private static void readInputFile() throws Exception {
-        File inF = new File("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_20161101");
-        File outF = new File("D:\\研究生资料\\track_data\\成都滴滴\\XY_20161101_mn");
-        BufferedReader br = new BufferedReader(new FileReader(inF));
-        BufferedWriter bw = new BufferedWriter(new FileWriter(outF));
-        for (int i = 0; i < 5055517; i++) {
-            bw.write(br.readLine());
-            bw.newLine();
+        int ins = 1;
+        int outs = 4;
+        for (int i = 1; i <= ins; i++) {
+            File inF = new File("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_2016110"+i);
+            BufferedReader br = new BufferedReader(new FileReader(inF));
+            BufferedWriter[] bws = new BufferedWriter[outs];
+            for (int j = 0; j < outs; j++) {
+                File outF = new File("D:\\研究生资料\\track_data\\成都滴滴\\Parallelism\\part"+j);
+                if (!outF.exists()) outF.createNewFile();
+                bws[j] = new BufferedWriter(new FileWriter(outF, true));
+            }
+            String str;
+            int index = 0;
+            while ((str = br.readLine()) != null){
+                bws[index].write(str);
+                bws[index].newLine();
+                index++;
+                index %= outs;
+            }
+            br.close();
+            for (int j = 0; j < outs; j++) {
+                bws[j].close();
+            }
         }
-        br.close();
-        bw.close();
     }
 
     private static void testRedis() throws Exception {

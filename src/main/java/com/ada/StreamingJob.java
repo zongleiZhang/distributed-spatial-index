@@ -1,39 +1,79 @@
 package com.ada;
 
-import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
-import com.ada.flinkFunction.*;
+import com.ada.GQ_QBS_Function.*;
 import com.ada.geometry.Segment;
-import com.ada.model.densityToGlobal.DensityToGlobalElem;
-import com.ada.model.globalToLocal.GlobalToLocalElem;
+import com.ada.geometry.TrackPoint;
 import com.ada.model.inputItem.InputItem;
 import com.ada.model.result.QueryResult;
+import com.ada.random_function.IndexProcess;
+import com.ada.random_function.InputItemKey;
+import com.ada.random_function.SetKeyFlatMap;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 import redis.clients.jedis.Jedis;
 
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
-
 
 public class StreamingJob {
 
 	private static StreamExecutionEnvironment env;
-	private static DataStream<String> source;
+	private static DataStream<InputItem> source;
 
 
 	public static void main(String[] args) throws Exception {
+//		windowCount();
+
 		init();
-//		singleNodeIndex();
-		DisIndexProcess();
+
+//		DisIndexProcess();
+        randomParDisIndex();
+
+		env.execute("Distributed index");
+	}
+
+	private static void windowCount() throws Exception {
+		env = StreamExecutionEnvironment.getExecutionEnvironment();
+		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+		env.setParallelism(1);
+		env.readTextFile("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_20161101")
+				.map((MapFunction<String, TrackPoint>) TrackPoint::new)
+				.assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<TrackPoint>() {
+					private long currentMaxTimestamp = 0;
+					@Override
+					public Watermark getCurrentWatermark() {
+						return new Watermark(currentMaxTimestamp - 1);
+					}
+					@Override
+					public long extractTimestamp(TrackPoint element, long previousElementTimestamp) {
+						long timestamp = element.timestamp;
+						currentMaxTimestamp = Math.max(timestamp, currentMaxTimestamp);
+						return timestamp;
+					}
+				})
+				.timeWindowAll(Time.seconds(60L))
+				.process(new ProcessAllWindowFunction<TrackPoint, String, TimeWindow>() {
+					@Override
+					public void process(Context context, Iterable<TrackPoint> elements, Collector<String> out) throws Exception {
+						int i = 0;
+						for (TrackPoint ignored : elements) i++;
+						out.collect(i+ "");
+					}
+				})
+				.print()
+		;
+		env.execute();
 	}
 
 
@@ -41,35 +81,29 @@ public class StreamingJob {
 		env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		env.setParallelism(1);
-		source = env.readTextFile("D:\\研究生资料\\track_data\\成都滴滴\\XY_20161101_mn")
-				.setParallelism(Constants.inputPartition);
-
-//		Properties properties = new Properties();
-//		properties.setProperty("bootstrap.servers", bootstrap);
-//		FlinkKafkaConsumer011<TrackPoint> myConsumer =
-//				new FlinkKafkaConsumer011<>(topic,new AbstractDeserializationSchema<TrackPoint>() {
-//					@Override
-//					public TrackPoint deserialize(byte[] message) throws IOException {
-//						MyPoint.Point myPoint = MyPoint.Point.parseFrom(message);
-//						return new TrackPoint(new double[]{myPoint.getLon(), myPoint.getLat()}, myPoint.getTimeStamp(), myPoint.getTID()+1);
-//					}
-//				}, properties);
-//		myConsumer.setStartFromEarliest();
-////		myConsumer.setStartFromLatest();  //读最新的
-//		source = env.addSource(myConsumer)
-//				.setParallelism(Constants.topicPartition);
+		source = env.readTextFile("D:\\研究生资料\\track_data\\成都滴滴\\Parallelism\\")
+				.setParallelism(Constants.inputPartition)
+				.flatMap(new ToInputItemFlatMap())
+				.setParallelism(Constants.inputPartition)
+				.assignTimestampsAndWatermarks(new InputItemTimeAndWater())
+				.setParallelism(Constants.inputPartition)
+		;
 	}
 
-	private static void singleNodeIndex() throws Exception {
-		source.flatMap(new ToInputItemFlatMap())
-				.assignTimestampsAndWatermarks(new InputItemTimeAndWater())
-				.timeWindowAll(Time.milliseconds(Constants.windowSize))
-				.process(new SingleNodeIndexPF("D:\\研究生资料\\论文\\my paper\\MyPaper\\分布式空间索引\\投递期刊\\Data\\debug\\SSI_QBS",
+	private static void randomParDisIndex() throws Exception {
+		source.flatMap(new SetKeyFlatMap())
+				.keyBy("key")
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new IndexProcess())
+				.setParallelism(Constants.dividePartition)
+				.keyBy((KeySelector<QueryResult, Integer>) value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID() % Constants.globalPartition))
+				.timeWindow(Time.milliseconds(Constants.windowSize))
+				.process(new QueryResultPF("D:\\研究生资料\\track_data\\成都滴滴\\randomDSI_result\\",
 						"output"))
+				.setParallelism(Constants.globalPartition)
 				.print()
 		;
 		env.execute("single node index");
-
 	}
 
 	private static void DisIndexProcess() throws Exception {
@@ -78,10 +112,7 @@ public class StreamingJob {
         jedis.flushAll();
         jedis.close();
 
-		source.flatMap(new ToInputItemFlatMap())
-				.assignTimestampsAndWatermarks(new InputItemTimeAndWater())
-
-				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getInputKey()%Constants.globalPartition))
+		source.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getInputKey()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new DensityPF())
 				.setParallelism(Constants.globalPartition)
@@ -98,7 +129,7 @@ public class StreamingJob {
 
                 .keyBy(value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new QueryResultPF("D:\\研究生资料\\论文\\my paper\\MyPaper\\分布式空间索引\\投递期刊\\Data\\debug\\DSI\\",
+				.process(new QueryResultPF("D:\\研究生资料\\track_data\\成都滴滴\\DSI_result\\",
 						"output"))
 				.setParallelism(Constants.globalPartition)
 
@@ -107,6 +138,5 @@ public class StreamingJob {
 //						"output"))
 				.print()
 				;
-		env.execute("Distributed index");
 	}
 }

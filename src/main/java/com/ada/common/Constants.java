@@ -92,7 +92,7 @@ public class Constants implements Serializable {
         }catch (Exception e){
             e.printStackTrace();
         }
-        balanceFre = logicWindow/4;
+        balanceFre = logicWindow/6;
 
         int maxParallelism = 128;
 //        int maxParallelism = 256;

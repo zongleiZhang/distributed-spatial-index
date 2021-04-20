@@ -1,4 +1,4 @@
-package com.ada.flinkFunction;
+package com.ada.GQ_QBS_Function;
 
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
@@ -18,7 +18,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
-import redis.clients.jedis.Jedis;
 
 import java.util.*;
 

@@ -1,4 +1,4 @@
-package com.ada.flinkFunction;
+package com.ada.GQ_QBS_Function;
 
 import com.ada.geometry.Segment;
 import com.ada.model.result.QueryResult;
@@ -12,10 +12,8 @@ import org.apache.flink.util.Collector;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResult, Integer, TimeWindow> {
     private String path;
@@ -24,7 +22,8 @@ public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResul
     private MyResult.QueryResult.TrackPoint.Builder tpBuilder;
     private MyResult.QueryResult.Segment.Builder sBuilder;
     private MyResult.QueryResult.Builder qrBuilder;
-    private long count = 0;
+    private int subTask;
+    SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss");
 
     public QueryResultPF(String path, String prefix){
         File f = new File(path);
@@ -62,16 +61,18 @@ public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResul
             }
             MyResult.QueryResult result = qrBuilder.build();
             result.writeDelimitedTo(fos);
-            count++;
         }
         fos.flush();
+        if (subTask == 0 && (context.window().getEnd() - 1477929780000L)%600000 == 0)
+            System.out.println(ft.format(new Date(context.window().getEnd())));
         if (map.size() == 0) out.collect(null);
     }
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
-        File f = new File(path, prefix + "_" +getRuntimeContext().getIndexOfThisSubtask());
+        subTask = getRuntimeContext().getIndexOfThisSubtask();
+        File f = new File(path, prefix + "_" + subTask);
         if (!f.exists()) f.createNewFile();
         fos = new FileOutputStream(f);
         tpBuilder = MyResult.QueryResult.TrackPoint.newBuilder();

@@ -1,4 +1,4 @@
-package com.ada.flinkFunction;
+package com.ada.GQ_QBS_Function;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
