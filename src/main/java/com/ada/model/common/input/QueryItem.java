@@ -1,6 +1,7 @@
-package com.ada.model.inputItem;
+package com.ada.model.common.input;
 
 import com.ada.geometry.Rectangle;
+import com.ada.model.common.input.InputItem;
 import lombok.Getter;
 import lombok.Setter;
 

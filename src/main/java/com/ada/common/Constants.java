@@ -23,6 +23,12 @@ public class Constants implements Serializable {
      */
     public final static double maxSegment = 400.0;
 
+    public static String dataPathSingle;
+
+    public static String dataPathParallel;
+
+    public static String outPutPath;
+
     /**
      * 全局索引的并行度
      */
@@ -37,6 +43,11 @@ public class Constants implements Serializable {
      * kafka的topic的并行度
      */
     public static int inputPartition;
+
+    /**
+     * 不同数据集的第一个窗口的开始时间
+     */
+    public static long winStartTime;
 
     /**
      * subTask: globalSubTask
@@ -89,6 +100,27 @@ public class Constants implements Serializable {
             gridDensity = Integer.parseInt(pro.getProperty("gridDensity"));
             radius = Double.parseDouble(pro.getProperty("radius"));
             ratio = Integer.parseInt(pro.getProperty("ratio"));
+            if ("DIDI-CD".equals(pro.getProperty("dataSet"))){
+                Calendar calendar = Calendar.getInstance();
+                calendar.set(2016, Calendar.NOVEMBER, 1, 0, 0, 0);
+                winStartTime = calendar.getTimeInMillis();
+            }else if ("TAXI-BJ".equals(pro.getProperty("dataSet"))){
+                Calendar calendar = Calendar.getInstance();
+                calendar.set(2008, Calendar.FEBRUARY, 2, 14, 0, 0);
+                winStartTime = calendar.getTimeInMillis();
+            }else {
+                throw new IllegalArgumentException("config error.");
+            }
+            winStartTime = Long.parseLong(pro.getProperty("winStartTime"));
+            if ("Windows 10".equals(System.getProperty("os.name"))){
+                dataPathSingle = "D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\";
+                dataPathParallel = "D:\\研究生资料\\track_data\\成都滴滴\\Parallel\\";
+                outPutPath = "D:\\研究生资料\\track_data\\成都滴滴\\";
+            }else {
+                dataPathSingle = null;
+                dataPathParallel = null;
+                outPutPath = null;
+            }
         }catch (Exception e){
             e.printStackTrace();
         }

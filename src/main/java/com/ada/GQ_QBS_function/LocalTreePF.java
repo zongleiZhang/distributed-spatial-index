@@ -1,4 +1,4 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Arrays;
@@ -7,10 +7,10 @@ import com.ada.geometry.GridPoint;
 import com.ada.geometry.GridRectangle;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
-import com.ada.model.globalToLocal.GlobalToLocalElem;
-import com.ada.model.globalToLocal.LocalRegionAdjustInfo;
-import com.ada.model.inputItem.QueryItem;
-import com.ada.model.result.QueryResult;
+import com.ada.model.GQ_QBS.globalToLocal.GlobalToLocalElem;
+import com.ada.model.GQ_QBS.globalToLocal.LocalRegionAdjustInfo;
+import com.ada.model.common.input.QueryItem;
+import com.ada.model.common.result.QueryResult;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;

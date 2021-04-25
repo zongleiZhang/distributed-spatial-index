@@ -1,4 +1,4 @@
-package com.ada.model.result;
+package com.ada.model.common.result;
 
 import com.ada.geometry.Segment;
 import lombok.Getter;

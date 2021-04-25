@@ -1,4 +1,4 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 import com.ada.common.Arrays;
 import com.ada.common.Constants;
@@ -8,11 +8,11 @@ import com.ada.geometry.Segment;
 import com.ada.globalTree.GDataNode;
 import com.ada.globalTree.GNode;
 import com.ada.globalTree.GTree;
-import com.ada.model.densityToGlobal.Density;
-import com.ada.model.densityToGlobal.DensityToGlobalElem;
-import com.ada.model.globalToLocal.GlobalToLocalElem;
-import com.ada.model.globalToLocal.LocalRegionAdjustInfo;
-import com.ada.model.inputItem.QueryItem;
+import com.ada.model.GQ_QBS.densityToGlobal.Density;
+import com.ada.model.GQ_QBS.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.GQ_QBS.globalToLocal.GlobalToLocalElem;
+import com.ada.model.GQ_QBS.globalToLocal.LocalRegionAdjustInfo;
+import com.ada.model.common.input.QueryItem;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;

@@ -1,8 +1,9 @@
-package com.ada.random_function;
+package com.ada.Xie_function;
 
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.geometry.Segment;
+import com.ada.model.Xie.XieInputItem;
 import com.ada.model.common.input.QueryItem;
 import com.ada.model.common.result.QueryResult;
 import com.ada.model.random.InputItemKey;
@@ -12,20 +13,23 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
-public class IndexProcess extends ProcessWindowFunction<InputItemKey, QueryResult, Tuple, TimeWindow> {
+public class XieLocalPF extends ProcessWindowFunction<XieInputItem, QueryResult, Integer, TimeWindow> {
     private Deque<List<Segment>> queue;
     private RCtree<Segment> index;
 
     @Override
-    public void process(Tuple key,
+    public void process(Integer key,
                         Context context,
-                        Iterable<InputItemKey> elements,
+                        Iterable<XieInputItem> elements,
                         Collector<QueryResult> out) {
         List<QueryItem> queryItems = new ArrayList<>();
         List<Segment> indexItems = new ArrayList<>();
-        for (InputItemKey element : elements) {
+        for (XieInputItem element : elements) {
             if (element.item instanceof Segment){
                 Segment segment = (Segment) element.item;
                 indexItems.add(segment);
@@ -52,15 +56,6 @@ public class IndexProcess extends ProcessWindowFunction<InputItemKey, QueryResul
         index = new RCtree<>(4,1,11, Constants.globalRegion.clone(),0);
     }
 }
-
-
-
-
-
-
-
-
-
 
 
 

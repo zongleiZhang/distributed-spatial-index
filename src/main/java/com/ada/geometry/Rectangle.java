@@ -29,6 +29,16 @@ public class Rectangle implements Cloneable, Serializable {
 		high = p2;
 	}
 
+	/**
+	 * 构造矩形实例。
+	 */
+	public Rectangle(double upside, double bottom, double left, double right) {
+		if (upside < bottom || right < left) // 点对象不能为空
+			throw new IllegalArgumentException("Illegal Argument.");
+		low = new Point(left, bottom);
+		high = new Point(right, upside);
+	}
+
 	@Override
 	public Rectangle clone() {
 		Rectangle rectangle = null;

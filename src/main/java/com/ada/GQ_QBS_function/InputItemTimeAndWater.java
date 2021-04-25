@@ -1,7 +1,7 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 
-import com.ada.model.inputItem.InputItem;
+import com.ada.model.common.input.InputItem;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.watermark.Watermark;
 

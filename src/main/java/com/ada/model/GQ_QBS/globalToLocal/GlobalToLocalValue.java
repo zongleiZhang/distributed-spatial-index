@@ -1,4 +1,4 @@
-package com.ada.model.globalToLocal;
+package com.ada.model.GQ_QBS.globalToLocal;
 
 import java.io.Serializable;
 

@@ -1,14 +1,11 @@
 package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
-import com.ada.common.Constants;
-import com.ada.model.globalToLocal.GlobalToLocalValue;
-import com.ada.model.inputItem.InputItem;
+import com.ada.model.common.input.InputItem;
 import com.ada.proto.MyResult;
 
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Random;
 
 /**
  * 点无序

@@ -1,7 +1,7 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 import com.ada.geometry.Segment;
-import com.ada.model.result.QueryResult;
+import com.ada.model.common.result.QueryResult;
 import com.ada.proto.MyResult;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;

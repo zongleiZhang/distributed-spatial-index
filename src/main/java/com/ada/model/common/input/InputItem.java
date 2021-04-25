@@ -1,7 +1,7 @@
-package com.ada.model.inputItem;
+package com.ada.model.common.input;
 
-import com.ada.model.densityToGlobal.DensityToGlobalElem;
-import com.ada.model.globalToLocal.GlobalToLocalValue;
+import com.ada.model.GQ_QBS.densityToGlobal.DensityToGlobalElem;
+import com.ada.model.GQ_QBS.globalToLocal.GlobalToLocalValue;
 
 import java.io.Serializable;
 

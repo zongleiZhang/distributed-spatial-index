@@ -1,10 +1,10 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.geometry.Segment;
-import com.ada.model.inputItem.InputItem;
-import com.ada.model.inputItem.QueryItem;
+import com.ada.model.common.input.InputItem;
+import com.ada.model.common.input.QueryItem;
 import com.ada.proto.MyResult;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;

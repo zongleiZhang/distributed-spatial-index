@@ -2,7 +2,8 @@ package com.ada.random_function;
 
 import com.ada.common.Constants;
 import com.ada.geometry.Segment;
-import com.ada.model.inputItem.InputItem;
+import com.ada.model.common.input.InputItem;
+import com.ada.model.random.InputItemKey;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 

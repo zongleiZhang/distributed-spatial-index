@@ -1,12 +1,12 @@
-package com.ada.GQ_QBS_Function;
+package com.ada.GQ_QBS_function;
 
 import com.ada.common.Constants;
 import com.ada.geometry.Point;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
 import com.ada.geometry.TrackPoint;
-import com.ada.model.inputItem.InputItem;
-import com.ada.model.inputItem.QueryItem;
+import com.ada.model.common.input.InputItem;
+import com.ada.model.common.input.QueryItem;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;

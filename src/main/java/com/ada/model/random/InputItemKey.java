@@ -1,6 +1,6 @@
-package com.ada.random_function;
+package com.ada.model.random;
 
-import com.ada.model.inputItem.InputItem;
+import com.ada.model.common.input.InputItem;
 import lombok.Getter;
 import lombok.Setter;
 
