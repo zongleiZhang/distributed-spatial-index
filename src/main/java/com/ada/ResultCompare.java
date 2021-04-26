@@ -1,9 +1,10 @@
 package com.ada;
 
 import com.ada.geometry.Segment;
-import com.ada.proto.MyResult;
+import com.ada.model.common.result.QueryResult;
 
 import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 import java.util.*;
 
 public class ResultCompare {
@@ -29,17 +30,12 @@ public class ResultCompare {
     }
 
     private static void readFile(String path, Map<Long, List<Segment>> map) throws Exception {
-        FileInputStream fis = new FileInputStream(path);
-        MyResult.QueryResult queryResult;
-        while ((queryResult = MyResult.QueryResult.parseDelimitedFrom(fis)) != null){
-            List<Segment> list = new ArrayList<>(queryResult.getListList().size());
-            for (MyResult.QueryResult.Segment segment : queryResult.getListList()) {
-                if (segment.getP1().getTimeStamp() == segment.getP2().getTimeStamp())
-                    System.out.print("");
-                list.add(Segment.proSegment2Segment(segment));
-            }
-            map.put(queryResult.getQueryID(), list);
+        ObjectInputStream ois = new	ObjectInputStream(new FileInputStream(path));
+        QueryResult result = (QueryResult) ois.readObject();
+        while (result != null){
+            map.put(result.getQueryID(), result.list);
+            result = (QueryResult) ois.readObject();
         }
-        fis.close();
+        ois.close();
     }
 }

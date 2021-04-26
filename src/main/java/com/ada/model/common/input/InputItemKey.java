@@ -1,4 +1,4 @@
-package com.ada.model.Xie;
+package com.ada.model.common.input;
 
 import com.ada.model.common.input.InputItem;
 import lombok.Getter;
@@ -8,11 +8,14 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class XieInputItem implements Serializable {
-    public int key;
+public class InputItemKey implements Serializable {
+    public Integer key;
     public InputItem item;
 
-    public XieInputItem(int key, InputItem item) {
+    public InputItemKey() {
+    }
+
+    public InputItemKey(int key, InputItem item) {
         this.key = key;
         this.item = item;
     }

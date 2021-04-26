@@ -3,11 +3,11 @@ package com.ada.random_function;
 import com.ada.common.Constants;
 import com.ada.geometry.Segment;
 import com.ada.model.common.input.InputItem;
-import com.ada.model.random.InputItemKey;
+import com.ada.model.common.input.InputItemKey;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 
-public class SetKeyFlatMap implements FlatMapFunction<InputItem, InputItemKey> {
+public class RandomInputItemFMP implements FlatMapFunction<InputItem, InputItemKey> {
     int i = 0;
 
     @Override

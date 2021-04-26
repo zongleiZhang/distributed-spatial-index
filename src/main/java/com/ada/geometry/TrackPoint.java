@@ -1,7 +1,5 @@
 package com.ada.geometry;
 
-import com.ada.common.ClassMct;
-import com.ada.proto.MyResult;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,8 +7,6 @@ import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
-import static java.lang.Integer.parseInt;
 
 @Getter
 @Setter
@@ -34,10 +30,6 @@ public class TrackPoint extends Point implements Cloneable, Comparable<TrackPoin
 		data[0] = Double.parseDouble(dev[2]);
 		data[1] = Double.parseDouble(dev[3]);
 	}
-
-    public static TrackPoint proTrackPoint2TP(MyResult.QueryResult.TrackPoint p) {
-		return new TrackPoint(new double[]{p.getX(), p.getY()}, p.getTimeStamp(), p.getTID());
-    }
 
     public boolean isEmpty(){
 		return data == null;

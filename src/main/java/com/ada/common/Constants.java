@@ -23,9 +23,9 @@ public class Constants implements Serializable {
      */
     public final static double maxSegment = 400.0;
 
-    public static String dataPathSingle;
+    public static String dataSingleFileName;
 
-    public static String dataPathParallel;
+    public static String dataParallelPath;
 
     public static String outPutPath;
 
@@ -66,7 +66,7 @@ public class Constants implements Serializable {
      */
     public static int balanceFre;
 
-    private final static String confFileName = "conf.properties";
+    private static String confFileName;
 
     /**
      * 网格密度
@@ -83,10 +83,18 @@ public class Constants implements Serializable {
     //查询和更新的比例
     public static int ratio;
 
-    public final static Rectangle globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
+    public static Rectangle globalRegion;
+
+    public static String frame;
 
     static {
         try {
+            if ("Windows 10".equals(System.getProperty("os.name"))){
+                confFileName = "conf.properties";
+            }else {
+                confFileName = "/home/chenliang/data/zzl/conf.properties";
+            }
+
             Properties pro = new Properties();
             FileInputStream in = new FileInputStream(confFileName);
             pro.load(in);
@@ -100,26 +108,35 @@ public class Constants implements Serializable {
             gridDensity = Integer.parseInt(pro.getProperty("gridDensity"));
             radius = Double.parseDouble(pro.getProperty("radius"));
             ratio = Integer.parseInt(pro.getProperty("ratio"));
-            if ("DIDI-CD".equals(pro.getProperty("dataSet"))){
-                Calendar calendar = Calendar.getInstance();
-                calendar.set(2016, Calendar.NOVEMBER, 1, 0, 0, 0);
-                winStartTime = calendar.getTimeInMillis();
-            }else if ("TAXI-BJ".equals(pro.getProperty("dataSet"))){
+            frame = pro.getProperty("frame");
+            if ("TAXI-BJ".equals(pro.getProperty("dataSet"))){
+                globalRegion = new Rectangle(new Point(0.0,0.0), new Point(1929725.6050, 1828070.4620));
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(2008, Calendar.FEBRUARY, 2, 14, 0, 0);
                 winStartTime = calendar.getTimeInMillis();
+                if ("Windows 10".equals(System.getProperty("os.name"))){
+                    dataSingleFileName = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\convert";
+                    dataParallelPath = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\Parallel\\";
+                    outPutPath = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\Result\\";
+                }else {
+                    dataSingleFileName = "/home/chenliang/data/zzl/TAXI-BJ/convert";
+                    dataParallelPath = "/home/chenliang/data/zzl/TAXI-BJ/Parallel/";
+                    outPutPath = "/home/chenliang/data/zzl/TAXI-BJ/Result/";
+                }
             }else {
-                throw new IllegalArgumentException("config error.");
-            }
-            winStartTime = Long.parseLong(pro.getProperty("winStartTime"));
-            if ("Windows 10".equals(System.getProperty("os.name"))){
-                dataPathSingle = "D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\";
-                dataPathParallel = "D:\\研究生资料\\track_data\\成都滴滴\\Parallel\\";
-                outPutPath = "D:\\研究生资料\\track_data\\成都滴滴\\";
-            }else {
-                dataPathSingle = null;
-                dataPathParallel = null;
-                outPutPath = null;
+                globalRegion = new Rectangle(new Point(0.0,0.0), new Point(8626.0,8872.0));
+                Calendar calendar = Calendar.getInstance();
+                calendar.set(2016, Calendar.NOVEMBER, 1, 0, 0, 0);
+                winStartTime = calendar.getTimeInMillis();
+                if ("Windows 10".equals(System.getProperty("os.name"))){
+                    dataSingleFileName = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Single";
+                    dataParallelPath = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Parallel\\";
+                    outPutPath = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Result\\";
+                }else {
+                    dataSingleFileName = "/home/chenliang/data/zzl/DIDI-CD/Single";
+                    dataParallelPath = "/home/chenliang/data/zzl/DIDI-CD/Parallel/";
+                    outPutPath = "/home/chenliang/data/zzl/DIDI-CD/Result/";
+                }
             }
         }catch (Exception e){
             e.printStackTrace();

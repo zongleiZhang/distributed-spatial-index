@@ -1,94 +1,57 @@
 package com.ada;
 
 import com.ada.globalTree.GTree;
-import com.ada.proto.MyResult;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-        readInputFile();
+//        BufferedReader br = new BufferedReader(new FileReader(Constants.dataSingleFileName));
+//        BufferedWriter bw = new BufferedWriter(new FileWriter("D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Single"));
+//        String str = br.readLine();
+//        TrackPoint point;
+//        do{
+//            assert str != null;
+//            point = new TrackPoint(str);
+//            bw.write(str);
+//            bw.newLine();
+//            str = br.readLine();
+//        } while (point.timestamp < Constants.winStartTime + 1000*60*120 && str != null);
+//        bw.close();
+//        br.close();
+
+
+        readInputFile( "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\convert",
+                "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\Parallel\\", 4);
 
 //        testRedis();
 
 //        testProtoBuff();
     }
 
-    private static void testProtoBuff() throws Exception {
-        MyResult.QueryResult.TrackPoint.Builder tpBuilder = MyResult.QueryResult.TrackPoint.newBuilder();
-        MyResult.QueryResult.Segment.Builder sBuilder = MyResult.QueryResult.Segment.newBuilder();
-        MyResult.QueryResult.Builder qrBuilder = MyResult.QueryResult.newBuilder();
-
-        tpBuilder.setTID(0).setTimeStamp(0).setX(0.0).setY(0.0);
-        MyResult.QueryResult.TrackPoint tp0 =  tpBuilder.build();
-        tpBuilder.setTID(1).setTimeStamp(1).setX(1.0).setY(1.0);
-        MyResult.QueryResult.TrackPoint tp1 =  tpBuilder.build();
-        tpBuilder.setTID(2).setTimeStamp(2).setX(2.0).setY(2.0);
-        MyResult.QueryResult.TrackPoint tp2 =  tpBuilder.build();
-        tpBuilder.setTID(3).setTimeStamp(3).setX(3.0).setY(3.0);
-        MyResult.QueryResult.TrackPoint tp3 =  tpBuilder.build();
-
-        sBuilder.setP1(tp0).setP2(tp1);
-        MyResult.QueryResult.Segment s0 = sBuilder.build();
-        sBuilder.setP1(tp2).setP2(tp3);
-        MyResult.QueryResult.Segment s1= sBuilder.build();
-
-        OutputStream os = new FileOutputStream("D:\\研究生资料\\论文\\my paper\\MyPaper\\分布式空间索引\\投递期刊\\Data\\debug\\test");
-        BufferedOutputStream bw = new BufferedOutputStream(os);
-
-
-        ObjectOutputStream oos = new ObjectOutputStream(os);
-        qrBuilder.setQueryID(1L).setTimeStamp(1L);
-        qrBuilder.addList(s0);
-        qrBuilder.addList(s1);
-        MyResult.QueryResult qR0 = qrBuilder.build();
-
-        oos.write(qR0.toByteArray());
-        qrBuilder.clear();
-        qrBuilder.setQueryID(2L).setTimeStamp(2L);
-        qrBuilder.addList(s0);
-        qrBuilder.addList(s1);
-        MyResult.QueryResult qR1 = qrBuilder.build();
-        oos.write(qR1.toByteArray());
-        os.close();
-
-        InputStream is = new FileInputStream("D:\\研究生资料\\论文\\my paper\\MyPaper\\分布式空间索引\\投递期刊\\Data\\debug\\test");
-        ObjectInputStream ois = new ObjectInputStream(is);
-        ois.read();
-        BufferedInputStream bis = new BufferedInputStream(is);
-
-
-        MyResult.QueryResult qr2 = MyResult.QueryResult.parseDelimitedFrom(is);
-        MyResult.QueryResult qr3 = MyResult.QueryResult.parseDelimitedFrom(is);
-        is.close();
-        System.out.println(qr2 + " " + qr3);
-    }
-
-    private static void readInputFile() throws Exception {
-        int ins = 1;
-        int outs = 4;
-        for (int i = 1; i <= ins; i++) {
-            File inF = new File("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_2016110"+i);
-            BufferedReader br = new BufferedReader(new FileReader(inF));
-            BufferedWriter[] bws = new BufferedWriter[outs];
-            for (int j = 0; j < outs; j++) {
-                File outF = new File("D:\\研究生资料\\track_data\\成都滴滴\\Parallelism\\part"+j);
-                if (!outF.exists()) outF.createNewFile();
-                bws[j] = new BufferedWriter(new FileWriter(outF, true));
-            }
-            String str;
-            int index = 0;
-            while ((str = br.readLine()) != null){
-                bws[index].write(str);
-                bws[index].newLine();
-                index++;
-                index %= outs;
-            }
-            br.close();
-            for (int j = 0; j < outs; j++) {
-                bws[j].close();
-            }
+    private static void readInputFile(String inputFN, String outputFPN, int outs) throws Exception {
+        File inF = new File(inputFN);
+        BufferedReader br = new BufferedReader(new FileReader(inF));
+        BufferedWriter[] bws = new BufferedWriter[outs];
+        for (int j = 0; j < outs; j++) {
+            File outF = new File(outputFPN + "part" + j);
+            if (!outF.exists()) outF.createNewFile();
+            bws[j] = new BufferedWriter(new FileWriter(outF, true));
+        }
+        String str;
+        int index = 0;
+        while ((str = br.readLine()) != null){
+            bws[index].write(str);
+            bws[index].newLine();
+            index++;
+            index %= outs;
+        }
+        br.close();
+        for (int j = 0; j < outs; j++) {
+            bws[j].close();
         }
     }
 

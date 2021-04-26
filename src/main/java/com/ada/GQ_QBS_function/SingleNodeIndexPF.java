@@ -5,7 +5,7 @@ import com.ada.common.Constants;
 import com.ada.geometry.Segment;
 import com.ada.model.common.input.InputItem;
 import com.ada.model.common.input.QueryItem;
-import com.ada.proto.MyResult;
+import com.ada.model.common.result.QueryResult;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -14,6 +14,7 @@ import org.apache.flink.util.Collector;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.*;
 
 public class SingleNodeIndexPF  extends ProcessAllWindowFunction<InputItem, String, TimeWindow> {
@@ -22,10 +23,7 @@ public class SingleNodeIndexPF  extends ProcessAllWindowFunction<InputItem, Stri
 
     private String path;
     private String prefix;
-    private FileOutputStream fos;
-    private MyResult.QueryResult.TrackPoint.Builder tpBuilder;
-    private MyResult.QueryResult.Segment.Builder sBuilder;
-    private MyResult.QueryResult.Builder qrBuilder;
+    private ObjectOutputStream oos;
 
     private int count = 0;
 
@@ -73,20 +71,9 @@ public class SingleNodeIndexPF  extends ProcessAllWindowFunction<InputItem, Stri
         }
         segmentsMap.put(context.window().getStart(), indexItems);
         for (QueryItem queryItem : queryItems) {
-            qrBuilder.clear().setQueryID(queryItem.queryID).setTimeStamp(queryItem.timeStamp);
-            for (Segment seg : index.<Segment>rectQuery(queryItem.rect, false)) {
-                tpBuilder.clear().setTID(seg.p1.TID).setTimeStamp(seg.p1.timestamp).setX(seg.p1.data[0]).setY(seg.p1.data[1]);
-                MyResult.QueryResult.TrackPoint tp1 =  tpBuilder.build();
-                tpBuilder.clear().setTID(seg.p2.TID).setTimeStamp(seg.p2.timestamp).setX(seg.p2.data[0]).setY(seg.p2.data[1]);
-                MyResult.QueryResult.TrackPoint tp2 =  tpBuilder.build();
-                sBuilder.clear().setP1(tp1).setP2(tp2);
-                MyResult.QueryResult.Segment proSegment = sBuilder.build();
-                qrBuilder.addList(proSegment);
-            }
-            MyResult.QueryResult result = qrBuilder.build();
-            result.writeDelimitedTo(fos);
+            QueryResult result = new QueryResult(queryItem.queryID, queryItem.timeStamp, index.rectQuery(queryItem.rect, false));
+            oos.writeObject(result);
         }
-        fos.flush();
     }
 
     @Override
@@ -97,15 +84,12 @@ public class SingleNodeIndexPF  extends ProcessAllWindowFunction<InputItem, Stri
 
         File f = new File(path, prefix + "_" +getRuntimeContext().getIndexOfThisSubtask());
         if (!f.exists()) f.createNewFile();
-        fos = new FileOutputStream(f);
-        tpBuilder = MyResult.QueryResult.TrackPoint.newBuilder();
-        sBuilder = MyResult.QueryResult.Segment.newBuilder();
-        qrBuilder = MyResult.QueryResult.newBuilder();
+        oos = new ObjectOutputStream(new FileOutputStream(f));
     }
 
     @Override
     public void close() throws Exception {
         super.close();
-        fos.close();
+        oos.close();
     }
 }

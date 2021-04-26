@@ -69,11 +69,18 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, QueryR
         removeOutDate(context.window().getEnd() - Constants.logicWindow*Constants.windowSize);
 
         //插入和查询
-        for (Segment segment : indexItems) localIndex.insert(segment);
-        segmentsMap.put(startWindow, indexItems);
-        for (QueryItem queryItem : queryItems) {
-            List<Segment> result = localIndex.rectQuery(queryItem.rect, false);
-            out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+        if (!indexItems.isEmpty()) {
+            for (Segment segment : indexItems) {
+                localIndex.insert(segment);
+            }
+            segmentsMap.put(startWindow, indexItems);
+        }
+
+        if (!localIndex.isEmpty()) {
+            for (QueryItem queryItem : queryItems) {
+                List<Segment> result = localIndex.rectQuery(queryItem.rect, false);
+                out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+            }
         }
 
         //需要数据迁移

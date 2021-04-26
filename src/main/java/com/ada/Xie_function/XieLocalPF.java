@@ -3,10 +3,9 @@ package com.ada.Xie_function;
 import com.ada.QBSTree.RCtree;
 import com.ada.common.Constants;
 import com.ada.geometry.Segment;
-import com.ada.model.Xie.XieInputItem;
 import com.ada.model.common.input.QueryItem;
 import com.ada.model.common.result.QueryResult;
-import com.ada.model.random.InputItemKey;
+import com.ada.model.common.input.InputItemKey;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -18,18 +17,18 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-public class XieLocalPF extends ProcessWindowFunction<XieInputItem, QueryResult, Integer, TimeWindow> {
+public class XieLocalPF extends ProcessWindowFunction<InputItemKey, QueryResult, Tuple, TimeWindow> {
     private Deque<List<Segment>> queue;
     private RCtree<Segment> index;
 
     @Override
-    public void process(Integer key,
+    public void process(Tuple key,
                         Context context,
-                        Iterable<XieInputItem> elements,
+                        Iterable<InputItemKey> elements,
                         Collector<QueryResult> out) {
         List<QueryItem> queryItems = new ArrayList<>();
         List<Segment> indexItems = new ArrayList<>();
-        for (XieInputItem element : elements) {
+        for (InputItemKey element : elements) {
             if (element.item instanceof Segment){
                 Segment segment = (Segment) element.item;
                 indexItems.add(segment);
@@ -38,14 +37,20 @@ public class XieLocalPF extends ProcessWindowFunction<XieInputItem, QueryResult,
                 queryItems.add((QueryItem) element.item);
             }
         }
-        queue.offer(indexItems);
-        if (queue.getFirst().get(0).getTimeStamp() <
-                context.window().getEnd() - Constants.logicWindow*Constants.windowSize){
-            for (Segment segment : queue.poll()) index.delete(segment);
+        if (!indexItems.isEmpty()) {
+            queue.offer(indexItems);
         }
-        for (QueryItem queryItem : queryItems) {
-            List<Segment> result = index.rectQuery(queryItem.rect, false);
-            out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+        if (!queue.isEmpty() && queue.getFirst().get(0).getTimeStamp() <
+                context.window().getEnd() - Constants.logicWindow*Constants.windowSize){
+            for (Segment segment : queue.poll()) {
+                index.delete(segment);
+            }
+        }
+        if (!index.isEmpty()) {
+            for (QueryItem queryItem : queryItems) {
+                List<Segment> result = index.rectQuery(queryItem.rect, false);
+                out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+            }
         }
     }
 

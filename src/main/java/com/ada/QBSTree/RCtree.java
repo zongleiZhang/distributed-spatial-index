@@ -71,6 +71,10 @@ public class RCtree<T extends ElemRoot> implements Serializable {
 		}
 	}
 
+	public boolean isEmpty(){
+		return root instanceof RCDataNode && root.elemNum == 0;
+	}
+
 	private void addToCache(CacheElem elem) {
 		cache.add(elem);
 		if(cache.size() >= cacheSize)

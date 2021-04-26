@@ -2,7 +2,6 @@ package com.ada.geometry;
 
 import com.ada.QBSTree.RectElem;
 import com.ada.model.common.input.InputItem;
-import com.ada.proto.MyResult;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -27,10 +26,6 @@ public class Segment extends RectElem implements Serializable, InputItem {
             this.p2 = p2;
         }
         hashCode = Objects.hash(p1, p2);
-    }
-
-    public static Segment proSegment2Segment(MyResult.QueryResult.Segment segment) {
-        return new Segment(TrackPoint.proTrackPoint2TP(segment.getP1()), TrackPoint.proTrackPoint2TP(segment.getP2()));
     }
 
     @Override

@@ -6,23 +6,15 @@ import com.ada.Xie_function.XieInputItemMF;
 import com.ada.Xie_function.XieLocalPF;
 import com.ada.common.Constants;
 import com.ada.GQ_QBS_function.*;
-import com.ada.geometry.Point;
 import com.ada.geometry.Segment;
 import com.ada.geometry.TrackPoint;
-import com.ada.globalTree.GTree;
-import com.ada.model.Xie.XieInputItem;
 import com.ada.model.common.input.InputItem;
-import com.ada.model.common.result.QueryResult;
-import com.ada.random_function.IndexProcess;
-import com.ada.random_function.SetKeyFlatMap;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.functions.KeySelector;
+import com.ada.random_function.RandomIndexProcess;
+import com.ada.random_function.RandomInputItemFMP;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
-import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -32,7 +24,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -44,55 +35,83 @@ public class StreamingJob {
 
 
 	public static void main(String[] args) throws Exception {
-		init();
+//		windowCount();
 
-//		DisIndexProcess();
-//		randomParDisIndex();
-		XieIndexProcess();
+
+		init();
+        if ("DIP".equals(Constants.frame)){
+            DisIndexProcess();
+        }else if ("Xie".equals(Constants.frame)){
+            XieIndexProcess();
+        }else if ("random".equals(Constants.frame)){
+            randomParDisIndex();
+        }else {
+            throw new IllegalArgumentException("frame error.");
+        }
 
 		env.execute("Distributed index");
 	}
 
 	private static void windowCount(){
-		SimpleDateFormat format = new SimpleDateFormat("HH:mm");
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm");
 
-		env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-		env.setParallelism(1);
-		env.readTextFile("D:\\研究生资料\\track_data\\成都滴滴\\Sorted_2D\\XY_20161101")
-				.map((MapFunction<String, TrackPoint>) TrackPoint::new)
-				.assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<TrackPoint>() {
-					private long currentMaxTimestamp = 0;
+		init();
+		source.timeWindowAll(Time.minutes(10L))
+				.process(new ProcessAllWindowFunction<InputItem, String, TimeWindow>() {
 					@Override
-					public Watermark getCurrentWatermark() {
-						return new Watermark(currentMaxTimestamp - 1);
-					}
-					@Override
-					public long extractTimestamp(TrackPoint element, long previousElementTimestamp) {
-						long timestamp = element.timestamp;
-						currentMaxTimestamp = Math.max(timestamp, currentMaxTimestamp);
-						return timestamp;
-					}
-				})
-				.timeWindowAll(Time.minutes(30L), Time.minutes(10L))
-				.process(new ProcessAllWindowFunction<TrackPoint, String, TimeWindow>() {
-					@Override
-					public void process(Context context, Iterable<TrackPoint> elements, Collector<String> out) throws Exception {
-						int i = 0;
-						for (TrackPoint ignored : elements) i++;
-						out.collect(format.format(new Date(context.window().getStart())) + "\t" + i);
+					public void process(Context context, Iterable<InputItem> elements, Collector<String> out) throws Exception {
+						int indexItemNum = 0;
+						int queryItemNum = 0;
+						for (InputItem element: elements){
+							if (element instanceof Segment){
+								indexItemNum++;
+							}else {
+								queryItemNum++;
+							}
+						}
+						out.collect(format.format(new Date(context.window().getStart())) + "\t" + indexItemNum + "\t" + queryItemNum);
 					}
 				})
 				.print()
 		;
+
+//		env = StreamExecutionEnvironment.getExecutionEnvironment();
+//		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+//		env.setParallelism(1);
+//		env.readTextFile(Constants.dataSingleFileName)
+//				.map((MapFunction<String, TrackPoint>) TrackPoint::new)
+//				.assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<TrackPoint>() {
+//					private long currentMaxTimestamp = 0;
+//					@Override
+//					public Watermark getCurrentWatermark() {
+//						return new Watermark(currentMaxTimestamp - 1);
+//					}
+//					@Override
+//					public long extractTimestamp(TrackPoint element, long previousElementTimestamp) {
+//						long timestamp = element.timestamp;
+//						currentMaxTimestamp = Math.max(timestamp, currentMaxTimestamp);
+//						return timestamp;
+//					}
+//				})
+//				.timeWindowAll(Time.minutes(10L))
+//				.process(new ProcessAllWindowFunction<TrackPoint, String, TimeWindow>() {
+//					@Override
+//					public void process(Context context, Iterable<TrackPoint> elements, Collector<String> out) throws Exception {
+//						int i = 0;
+//						for (TrackPoint ignored : elements) i++;
+//						out.collect(format.format(new Date(context.window().getStart())) + "\t" + i);
+//					}
+//				})
+//				.print()
+//		;
 	}
 
 
 	private static void init(){
 		env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-		env.setParallelism(1);
-		source = env.readTextFile(Constants.dataPathParallel)
+		env.setParallelism(4);
+		source = env.readTextFile(Constants.dataParallelPath)
 				.setParallelism(Constants.inputPartition)
 				.flatMap(new ToInputItemFlatMap())
 				.setParallelism(Constants.inputPartition)
@@ -102,10 +121,11 @@ public class StreamingJob {
 	}
 
 	private static void randomParDisIndex() {
-		source.flatMap(new SetKeyFlatMap())
+		source.flatMap(new RandomInputItemFMP())
+				.setParallelism(Constants.inputPartition)
 				.keyBy("key")
 				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new IndexProcess())
+				.process(new RandomIndexProcess())
 				.setParallelism(Constants.dividePartition)
 				.keyBy(value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID() % Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
@@ -113,11 +133,12 @@ public class StreamingJob {
 						"output"))
 				.setParallelism(Constants.globalPartition)
 				.print()
+				.setParallelism(1)
 		;
 	}
 
 	private static void XieIndexProcess() throws Exception {
-		BufferedReader br = new BufferedReader(new FileReader(Constants.dataPathSingle + "XY_20161101"));
+		BufferedReader br = new BufferedReader(new FileReader(Constants.dataSingleFileName));
 		String str = br.readLine();
 		TrackPoint point;
 		List<TrackPoint> list = new ArrayList<>(150000);
@@ -129,22 +150,24 @@ public class StreamingJob {
 		} while (point.timestamp < Constants.winStartTime + Constants.windowSize*Constants.logicWindow && str != null);
 		STRTree tree = new STRTree(list);
 		source.map(new XieInputItemMF())
-				.keyBy(value -> value.key)
+				.setParallelism(Constants.inputPartition)
+				.keyBy("key")
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new XieGlobalPF(tree))
 				.setParallelism(Constants.globalPartition)
 
-				.keyBy(value -> value.key)
+				.keyBy("key")
 				.timeWindow(Time.milliseconds(Constants.windowSize))
 				.process(new XieLocalPF())
 				.setParallelism(Constants.dividePartition)
 
 				.keyBy(value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new QueryResultPF(Constants.outPutPath + "Xie_result\\",
+				.process(new QueryResultPF(Constants.outPutPath + "Xie_result",
 						"output"))
 				.setParallelism(Constants.globalPartition)
 				.print()
+				.setParallelism(1)
 		;
 
 	}
@@ -172,14 +195,12 @@ public class StreamingJob {
 
                 .keyBy(value -> Constants.globalSubTaskKeyMap.get((int) value.getQueryID()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))
-				.process(new QueryResultPF(Constants.outPutPath + "DSI_result\\",
+				.process(new QueryResultPF(Constants.outPutPath + "DSI_result",
 						"output"))
 				.setParallelism(Constants.globalPartition)
 
-//				.forward()
-//				.addSink(new WriteObjectSF<>("D:\\研究生资料\\论文\\my paper\\MyPaper\\分布式空间索引\\投递期刊\\Data\\debug\\DSI\\",
-//						"output"))
 				.print()
+				.setParallelism(1)
 				;
 	}
 }
