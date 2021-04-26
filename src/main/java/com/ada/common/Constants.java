@@ -25,9 +25,9 @@ public class Constants implements Serializable {
 
     public static String dataSingleFileName;
 
-    public static String dataParallelPath;
-
     public static String outPutPath;
+
+    public static String topic;
 
     /**
      * 全局索引的并行度
@@ -66,8 +66,6 @@ public class Constants implements Serializable {
      */
     public static int balanceFre;
 
-    private static String confFileName;
-
     /**
      * 网格密度
      */
@@ -89,6 +87,7 @@ public class Constants implements Serializable {
 
     static {
         try {
+            String confFileName;
             if ("Windows 10".equals(System.getProperty("os.name"))){
                 confFileName = "conf.properties";
             }else {
@@ -114,13 +113,12 @@ public class Constants implements Serializable {
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(2008, Calendar.FEBRUARY, 2, 14, 0, 0);
                 winStartTime = calendar.getTimeInMillis();
+                topic = "TAXI_BJ_static";
                 if ("Windows 10".equals(System.getProperty("os.name"))){
                     dataSingleFileName = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\convert";
-                    dataParallelPath = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\Parallel\\";
                     outPutPath = "D:\\研究生资料\\track_data\\北京出租车\\merge\\Experiment\\Result\\";
                 }else {
                     dataSingleFileName = "/home/chenliang/data/zzl/TAXI-BJ/convert";
-                    dataParallelPath = "/home/chenliang/data/zzl/TAXI-BJ/Parallel/";
                     outPutPath = "/home/chenliang/data/zzl/TAXI-BJ/Result/";
                 }
             }else {
@@ -128,13 +126,12 @@ public class Constants implements Serializable {
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(2016, Calendar.NOVEMBER, 1, 0, 0, 0);
                 winStartTime = calendar.getTimeInMillis();
+                topic = "DIDI_CD_static";
                 if ("Windows 10".equals(System.getProperty("os.name"))){
                     dataSingleFileName = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Single";
-                    dataParallelPath = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Parallel\\";
                     outPutPath = "D:\\研究生资料\\track_data\\成都滴滴\\Experiment\\Result\\";
                 }else {
                     dataSingleFileName = "/home/chenliang/data/zzl/DIDI-CD/Single";
-                    dataParallelPath = "/home/chenliang/data/zzl/DIDI-CD/Parallel/";
                     outPutPath = "/home/chenliang/data/zzl/DIDI-CD/Result/";
                 }
             }

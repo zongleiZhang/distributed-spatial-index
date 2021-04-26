@@ -1,22 +1,24 @@
 package com.ada;
 
+import com.ada.GQ_QBS_function.*;
 import com.ada.Xie_function.STRTree.STRTree;
 import com.ada.Xie_function.XieGlobalPF;
 import com.ada.Xie_function.XieInputItemMF;
 import com.ada.Xie_function.XieLocalPF;
 import com.ada.common.Constants;
-import com.ada.GQ_QBS_function.*;
 import com.ada.geometry.Segment;
 import com.ada.geometry.TrackPoint;
 import com.ada.model.common.input.InputItem;
 import com.ada.random_function.RandomIndexProcess;
 import com.ada.random_function.RandomInputItemFMP;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.util.Collector;
 import redis.clients.jedis.Jedis;
 
@@ -26,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 
 
 public class StreamingJob {
@@ -36,7 +39,6 @@ public class StreamingJob {
 
 	public static void main(String[] args) throws Exception {
 //		windowCount();
-
 
 		init();
         if ("DIP".equals(Constants.frame)){
@@ -59,7 +61,7 @@ public class StreamingJob {
 		source.timeWindowAll(Time.minutes(10L))
 				.process(new ProcessAllWindowFunction<InputItem, String, TimeWindow>() {
 					@Override
-					public void process(Context context, Iterable<InputItem> elements, Collector<String> out) throws Exception {
+					public void process(Context context, Iterable<InputItem> elements, Collector<String> out) {
 						int indexItemNum = 0;
 						int queryItemNum = 0;
 						for (InputItem element: elements){
@@ -111,7 +113,14 @@ public class StreamingJob {
 		env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		env.setParallelism(4);
-		source = env.readTextFile(Constants.dataParallelPath)
+
+		Properties properties = new Properties();
+		properties.setProperty("bootstrap.servers", "192.168.131.199:9092");
+		FlinkKafkaConsumer011<String> myConsumer =
+				new FlinkKafkaConsumer011<>(Constants.topic, new SimpleStringSchema(), properties);
+		myConsumer.setStartFromEarliest();
+//		myConsumer.setStartFromLatest();  //读最新的
+		source = env.addSource(myConsumer)
 				.setParallelism(Constants.inputPartition)
 				.flatMap(new ToInputItemFlatMap())
 				.setParallelism(Constants.inputPartition)

@@ -20,7 +20,7 @@ public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResul
     private String prefix;
     private ObjectOutputStream oos;
     private int subTask;
-    SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss");
+    private SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss");
 
     public QueryResultPF(String path, String prefix){
         File f = new File(path);
