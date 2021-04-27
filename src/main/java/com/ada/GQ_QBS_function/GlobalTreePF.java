@@ -49,8 +49,10 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
 
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
-            if (!nodeMap.isEmpty() && subTask == 0)
+            if (!nodeMap.isEmpty() && subTask == 0) {
                 adjustLocalTasksRegion(nodeMap, out);
+                System.out.println("leaf number: " + globalTree.getAllLeafs().size());
+            }
         }
     }
 

@@ -112,15 +112,16 @@ public class StreamingJob {
 	private static void init(){
 		env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-		env.setParallelism(4);
 
-		Properties properties = new Properties();
-		properties.setProperty("bootstrap.servers", "192.168.131.199:9092");
-		FlinkKafkaConsumer011<String> myConsumer =
-				new FlinkKafkaConsumer011<>(Constants.topic, new SimpleStringSchema(), properties);
-		myConsumer.setStartFromEarliest();
-//		myConsumer.setStartFromLatest();  //读最新的
-		source = env.addSource(myConsumer)
+//		Properties properties = new Properties();
+//		properties.setProperty("bootstrap.servers", "192.168.131.199:9092");
+//		FlinkKafkaConsumer011<String> myConsumer =
+//				new FlinkKafkaConsumer011<>(Constants.topic, new SimpleStringSchema(), properties);
+//		myConsumer.setStartFromEarliest();
+////		myConsumer.setStartFromLatest();  //读最新的
+//		source = env.addSource(myConsumer)
+
+		source = env.readTextFile(Constants.dataSingleFileName)
 				.setParallelism(Constants.inputPartition)
 				.flatMap(new ToInputItemFlatMap())
 				.setParallelism(Constants.inputPartition)

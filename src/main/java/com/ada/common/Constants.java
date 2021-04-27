@@ -108,6 +108,7 @@ public class Constants implements Serializable {
             radius = Double.parseDouble(pro.getProperty("radius"));
             ratio = Integer.parseInt(pro.getProperty("ratio"));
             frame = pro.getProperty("frame");
+            balanceFre = logicWindow/2;
             if ("TAXI-BJ".equals(pro.getProperty("dataSet"))){
                 globalRegion = new Rectangle(new Point(0.0,0.0), new Point(1929725.6050, 1828070.4620));
                 Calendar calendar = Calendar.getInstance();
@@ -138,7 +139,6 @@ public class Constants implements Serializable {
         }catch (Exception e){
             e.printStackTrace();
         }
-        balanceFre = logicWindow/6;
 
         int maxParallelism = 128;
 //        int maxParallelism = 256;

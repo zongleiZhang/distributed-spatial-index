@@ -51,8 +51,8 @@ public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResul
             oos.writeObject(result);
         }
         oos.flush();
-        if (subTask == 0 && context.window().getEnd()%(Constants.windowSize) == 0)
-            System.out.println(ft.format(new Date(context.window().getEnd())));
+//        if (subTask == 0 && context.window().getEnd()%(Constants.windowSize) == 0)
+//            System.out.println(ft.format(new Date(context.window().getEnd())));
         if (map.size() == 0) out.collect(null);
     }
 
