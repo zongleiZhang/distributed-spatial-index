@@ -11,15 +11,17 @@ import java.util.List;
 @Setter
 public class QueryResult implements Serializable {
     public long queryID;
-    public long timeStamp;
+    public long inputTime;
+    public long outputTime;
     public List<Segment> list;
 
     public QueryResult() {
     }
 
-    public QueryResult(long queryID, long timeStamp, List<Segment> list) {
+    public QueryResult(long queryID, long inputTime, long outputTime, List<Segment> list) {
         this.queryID = queryID;
-        this.timeStamp = timeStamp;
+        this.inputTime = inputTime;
+        this.outputTime = outputTime;
         this.list = list;
     }
 }

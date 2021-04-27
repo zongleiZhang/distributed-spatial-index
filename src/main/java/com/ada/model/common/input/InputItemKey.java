@@ -1,6 +1,5 @@
 package com.ada.model.common.input;
 
-import com.ada.model.common.input.InputItem;
 import lombok.Getter;
 import lombok.Setter;
 

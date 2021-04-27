@@ -1,5 +1,6 @@
 package com.ada.GQ_QBS_function;
 
+import com.ada.common.Constants;
 import com.ada.geometry.Segment;
 import com.ada.model.common.result.QueryResult;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -41,16 +42,16 @@ public class QueryResultPF extends ProcessWindowFunction<QueryResult, QueryResul
                         Iterable<QueryResult> elements,
                         Collector<QueryResult> out) throws IOException {
         Map<Long, Tuple2<Long, Set<Segment>>> map = new HashMap<>();
-        for (QueryResult element : elements) {
-            Tuple2<Long, Set<Segment>> tuple2 = map.computeIfAbsent(element.queryID, s -> new Tuple2<>(element.timeStamp, new HashSet<>()));
-            tuple2.f1.addAll(element.list);
+        for (QueryResult e : elements) {
+            Tuple2<Long, Set<Segment>> tuple2 = map.computeIfAbsent(e.queryID, s -> new Tuple2<>(e.inputTime, new HashSet<>()));
+            tuple2.f1.addAll(e.list);
         }
         for (Map.Entry<Long, Tuple2<Long, Set<Segment>>> entry : map.entrySet()) {
-            QueryResult result = new QueryResult(entry.getKey(), entry.getValue().f0, new ArrayList<>(entry.getValue().f1));
+            QueryResult result = new QueryResult(entry.getKey(), entry.getValue().f0, System.currentTimeMillis(), new ArrayList<>(entry.getValue().f1));
             oos.writeObject(result);
         }
         oos.flush();
-        if (subTask == 0 && (context.window().getEnd() - 1477929780000L)%600000 == 0)
+        if (subTask == 0 && context.window().getEnd()%(Constants.windowSize) == 0)
             System.out.println(ft.format(new Date(context.window().getEnd())));
         if (map.size() == 0) out.collect(null);
     }

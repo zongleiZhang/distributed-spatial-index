@@ -12,13 +12,15 @@ import java.io.Serializable;
 public class QueryItem implements InputItem, Serializable {
     public long queryID;
     public long timeStamp;
+    public long inputTime;
     public Rectangle rect;
 
     public QueryItem() {}
 
-    public QueryItem(long queryID, long timeStamp, Rectangle rect) {
+    public QueryItem(long queryID, long timeStamp, long inputTime, Rectangle rect) {
         this.rect = rect;
         this.timeStamp = timeStamp;
+        this.inputTime = inputTime;
         this.queryID = queryID;
     }
 

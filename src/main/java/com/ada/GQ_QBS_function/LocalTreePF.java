@@ -77,9 +77,9 @@ public class LocalTreePF extends ProcessWindowFunction<GlobalToLocalElem, QueryR
         }
 
         if (!localIndex.isEmpty()) {
-            for (QueryItem queryItem : queryItems) {
-                List<Segment> result = localIndex.rectQuery(queryItem.rect, false);
-                out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+            for (QueryItem qi : queryItems) {
+                QueryResult qr = new QueryResult(qi.queryID, qi.inputTime, 0L, localIndex.rectQuery(qi.rect, false));
+                out.collect(qr);
             }
         }
 

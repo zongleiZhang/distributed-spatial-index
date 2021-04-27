@@ -32,7 +32,7 @@ public class ToInputItemFlatMap extends RichFlatMapFunction<String, InputItem> {
                 if (queryCount%Constants.ratio == 0){
                     Point point = segment.p2;
                     Rectangle rect = new Rectangle(point.clone(), point.clone()).extendLength(Constants.radius);
-                    out.collect(new QueryItem((queryCount/Constants.ratio)*Constants.inputPartition + subTask, segment.p2.timestamp, rect));
+                    out.collect(new QueryItem((queryCount/Constants.ratio)*Constants.inputPartition + subTask, segment.p2.timestamp, System.currentTimeMillis(), rect));
                 }
                 queryCount++;
             }

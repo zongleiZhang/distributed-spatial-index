@@ -11,7 +11,6 @@ import com.ada.geometry.TrackPoint;
 import com.ada.model.common.input.InputItem;
 import com.ada.random_function.RandomIndexProcess;
 import com.ada.random_function.RandomInputItemFMP;
-import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -42,15 +41,15 @@ public class StreamingJob {
 //		windowCount();
 
 		init();
-//        if ("DIP".equals(Constants.frame)){
-//            DisIndexProcess();
-//        }else if ("Xie".equals(Constants.frame)){
-//            XieIndexProcess();
-//        }else if ("random".equals(Constants.frame)){
-//            randomParDisIndex();
-//        }else {
-//            throw new IllegalArgumentException("frame error.");
-//        }
+        if ("DIP".equals(Constants.frame)){
+            DisIndexProcess();
+        }else if ("Xie".equals(Constants.frame)){
+            XieIndexProcess();
+        }else if ("random".equals(Constants.frame)){
+            randomParDisIndex();
+        }else {
+            throw new IllegalArgumentException("frame error.");
+        }
 
 		env.execute("Distributed index");
 	}
@@ -121,26 +120,12 @@ public class StreamingJob {
 				new FlinkKafkaConsumer011<>(Constants.topic, new SimpleStringSchema(), properties);
 		myConsumer.setStartFromEarliest();
 //		myConsumer.setStartFromLatest();  //读最新的
-		/*source = */env.addSource(myConsumer)
+		source = env.addSource(myConsumer)
 				.setParallelism(Constants.inputPartition)
-				.flatMap(/*new ToInputItemFlatMap()*/
-						new FlatMapFunction<String, TrackPoint>() {
-							int num = 0;
-
-							@Override
-							public void flatMap(String value, Collector<TrackPoint> out) throws Exception {
-								if (num%200 == 0){
-									out.collect(new TrackPoint(value));
-								}
-								num++;
-							}
-						}
-				)
+				.flatMap(new ToInputItemFlatMap())
 				.setParallelism(Constants.inputPartition)
-//				.assignTimestampsAndWatermarks(new InputItemTimeAndWater())
-//				.setParallelism(Constants.inputPartition)
-				.print()
-				.setParallelism(1)
+				.assignTimestampsAndWatermarks(new InputItemTimeAndWater())
+				.setParallelism(Constants.inputPartition)
 		;
 	}
 

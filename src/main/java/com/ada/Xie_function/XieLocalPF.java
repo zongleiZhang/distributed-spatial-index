@@ -49,7 +49,7 @@ public class XieLocalPF extends ProcessWindowFunction<InputItemKey, QueryResult,
         if (!index.isEmpty()) {
             for (QueryItem queryItem : queryItems) {
                 List<Segment> result = index.rectQuery(queryItem.rect, false);
-                out.collect(new QueryResult(queryItem.queryID, queryItem.timeStamp, result));
+                out.collect(new QueryResult(queryItem.queryID, queryItem.inputTime, 0L, result));
             }
         }
     }

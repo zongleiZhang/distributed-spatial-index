@@ -71,7 +71,7 @@ public class SingleNodeIndexPF  extends ProcessAllWindowFunction<InputItem, Stri
         }
         segmentsMap.put(context.window().getStart(), indexItems);
         for (QueryItem queryItem : queryItems) {
-            QueryResult result = new QueryResult(queryItem.queryID, queryItem.timeStamp, index.rectQuery(queryItem.rect, false));
+            QueryResult result = new QueryResult(queryItem.queryID, queryItem.inputTime, 0L, index.rectQuery(queryItem.rect, false));
             oos.writeObject(result);
         }
     }
