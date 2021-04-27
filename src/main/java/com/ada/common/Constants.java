@@ -101,7 +101,6 @@ public class Constants implements Serializable {
             inputPartition = Integer.parseInt(pro.getProperty("inputPartition"));
             globalPartition = Integer.parseInt(pro.getProperty("globalPartition"));
             dividePartition = Integer.parseInt(pro.getProperty("dividePartition"));
-            GTree.globalLowBound = Integer.parseInt(pro.getProperty("globalLowBound"));
             windowSize = Integer.parseInt(pro.getProperty("windowSize"));
             logicWindow = Integer.parseInt(pro.getProperty("logicWindow"));
             gridDensity = Integer.parseInt(pro.getProperty("gridDensity"));

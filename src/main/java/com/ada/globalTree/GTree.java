@@ -22,12 +22,14 @@ public class GTree implements Serializable {
     /**
      * 全局索引叶节点索引项数量的下届
      */
-    public static int globalLowBound;
+    public int globalLowBound;
 
     /**
      * 密度网格
      */
     public transient int[][] density;
+
+    public int leafNum;
 
     /**
      * 分配叶节点ID的功能成员
@@ -50,6 +52,7 @@ public class GTree implements Serializable {
         gridRectangle = new GridRectangle(new GridPoint((gridDensity/2)+1,(gridDensity/2)+1), new GridPoint(gridDensity, gridDensity));
         root.child[3] = new GDataNode(root,3, gridRectangle,0,  this,dispatchLeafID.getLeafID());
         density = new int[gridDensity+1][gridDensity+1];
+        leafNum = 4;
     }
 
     @Override
@@ -161,13 +164,41 @@ public class GTree implements Serializable {
     public Map<GNode, GNode> updateTree(){
         //更新全局索引的每个节点上的elemNum信息
         root.updateElemNum();
+        int itemNum = getRangeEleNum(new GridRectangle(new GridPoint(0, 0), new GridPoint(Constants.gridDensity, Constants.gridDensity)));
+        double factor = 0.9;
+        globalLowBound = (int)((itemNum/Constants.dividePartition)*0.8);
+        Map<GNode, GNode> map = new HashMap<>();
+        int leafNum;
 
-        //获取需要调整结构的子树集合
-        List<GNode> list = new ArrayList<>();
-        getAdjustNode(list);
-
-        //更新dirNodes中的每个子树
-        return adjustNodes(list);
+        do {
+            factor += 0.1;
+            globalLowBound = (int) (factor * globalLowBound);
+            map.clear();
+            leafNum = this.leafNum;
+            List<GNode> list = new ArrayList<>();
+            getAdjustNode(list);
+            for (GNode node : list) {
+                GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
+                        node.elemNum, node.tree, -1);
+                GNode newNode = dataNode.adjustNode();
+                List<GDataNode> oldLeaves = new ArrayList<>();
+                List<GDataNode> newLeaves = new ArrayList<>();
+                newNode.getLeafs(newLeaves);
+                node.getLeafs(oldLeaves);
+                leafNum += newLeaves.size() - oldLeaves.size();
+                map.put(node, newNode);
+            }
+        }while (leafNum > Constants.dividePartition);
+        this.leafNum = leafNum;
+        map.forEach((oldNode, newNode) -> {
+            if (oldNode.isRoot()) {
+                root = (GDirNode) newNode;
+            }else {
+                oldNode.parent.child[oldNode.position] = newNode;
+            }
+            dispatchLeafID(oldNode, newNode);
+        });
+        return map;
     }
 
     /**
@@ -212,26 +243,6 @@ public class GTree implements Serializable {
                 if (!hasAncestor) nodes.add(addNode);
             }
         }
-    }
-
-    /**
-     * 更新dirNodes中的每个子树
-     */
-    private Map<GNode, GNode> adjustNodes(List<GNode> nodes) {
-        Map<GNode, GNode> map = new HashMap<>();
-        for (GNode node : nodes) {
-            GDataNode dataNode = new GDataNode(node.parent, node.position, node.gridRegion,
-                    node.elemNum, node.tree,-1);
-            GNode newNode = dataNode.adjustNode();
-            if (node.isRoot()) {
-                root = (GDirNode) newNode;
-            }else {
-                node.parent.child[node.position] = newNode;
-            }
-            dispatchLeafID(node, newNode);
-            map.put(node, newNode);
-        }
-        return map;
     }
 
     /**

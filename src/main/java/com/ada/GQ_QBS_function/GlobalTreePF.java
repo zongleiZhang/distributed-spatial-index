@@ -51,14 +51,14 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
             //Global Index发生了调整，通知Local Index迁移数据，重建索引。
             if (!nodeMap.isEmpty() && subTask == 0) {
                 adjustLocalTasksRegion(nodeMap, out);
-                System.out.println("leaf number: " + globalTree.getAllLeafs().size());
+                System.out.println("leaf number: " + globalTree.leafNum);
             }
         }
     }
 
     private int[][] processElemAndDensity(Iterable<DensityToGlobalElem> elements,
-                                          Collector<GlobalToLocalElem> out) throws Exception {
-        List<Density> densities = new ArrayList<>(Constants.globalPartition);
+                                          Collector<GlobalToLocalElem> out) {
+        int[][] result = null;
         for (DensityToGlobalElem element : elements) {
             if (element instanceof Segment){
                 Segment segment = (Segment) element;
@@ -73,13 +73,8 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
                     out.collect(new GlobalToLocalElem(leafID, 2, queryItem));
                 }
             }else {
-                densities.add((Density) element);
+                result = ((Density) element).grids;
             }
-        }
-        int[][] result = null;
-        if (!densities.isEmpty()){
-            result = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-            for (Density density : densities) Arrays.addArrsToArrs(result, density.grids, true);
         }
         return result;
     }

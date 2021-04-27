@@ -9,17 +9,15 @@ import com.ada.model.GQ_QBS.densityToGlobal.DensityToGlobalElem;
 import com.ada.model.common.input.InputItem;
 import com.ada.model.common.input.QueryItem;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-public class DensityPF extends ProcessWindowFunction<InputItem, DensityToGlobalElem, Integer, TimeWindow> {
+public class DensityPF extends ProcessAllWindowFunction<InputItem, DensityToGlobalElem, TimeWindow> {
     private int[][] grids;
-    private int subTask;
 
     @Override
-    public void process(Integer key,
-                        Context context,
+    public void process(Context context,
                         Iterable<InputItem> elements,
                         Collector<DensityToGlobalElem> out){
         for (InputItem element : elements) {
@@ -32,7 +30,8 @@ public class DensityPF extends ProcessWindowFunction<InputItem, DensityToGlobalE
             out.collect(element);
         }
         if (context.window().getStart()%(Constants.balanceFre*Constants.windowSize) == 0){
-          for (int i = 0; i < Constants.globalPartition; i++) out.collect(new Density(Arrays.cloneIntMatrix(grids), i, subTask));
+          for (int i = 0; i < Constants.globalPartition; i++)
+              out.collect(new Density(Arrays.cloneIntMatrix(grids), i));
           grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
         }
     }
@@ -41,6 +40,5 @@ public class DensityPF extends ProcessWindowFunction<InputItem, DensityToGlobalE
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
-        subTask = getRuntimeContext().getIndexOfThisSubtask();
     }
 }

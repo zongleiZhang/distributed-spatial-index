@@ -12,14 +12,12 @@ import java.util.Objects;
 public class Density implements DensityToGlobalElem, Serializable {
     public int[][] grids;
     public int key;
-    public int fromKey;
 
     public Density() {}
 
-    public Density(int[][] grids, int key, int fromKey) {
+    public Density(int[][] grids, int key) {
         this.grids = grids;
         this.key = key;
-        this.fromKey = fromKey;
     }
 
     @Override
@@ -32,14 +30,11 @@ public class Density implements DensityToGlobalElem, Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Density density = (Density) o;
-        return fromKey == density.fromKey &&
-                com.ada.common.Arrays.arrsEqual(grids, density.grids);
+        return com.ada.common.Arrays.arrsEqual(grids, density.grids);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(fromKey);
-        result = 31 * result + Arrays.hashCode(grids);
-        return result;
+        return Arrays.hashCode(grids);
     }
 }

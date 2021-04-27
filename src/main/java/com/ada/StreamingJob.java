@@ -188,10 +188,12 @@ public class StreamingJob {
         jedis.flushAll();
         jedis.close();
 
-		source.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getInputKey()%Constants.globalPartition))
-				.timeWindow(Time.milliseconds(Constants.windowSize))
+//		source.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getInputKey()%Constants.globalPartition))
+//				.timeWindow(Time.milliseconds(Constants.windowSize))
+//				.process(new DensityPF())
+//				.setParallelism(Constants.globalPartition)
+		source.timeWindowAll(Time.milliseconds(Constants.windowSize))
 				.process(new DensityPF())
-				.setParallelism(Constants.globalPartition)
 
 				.keyBy(value -> Constants.globalSubTaskKeyMap.get(value.getD2GKey()%Constants.globalPartition))
 				.timeWindow(Time.milliseconds(Constants.windowSize))

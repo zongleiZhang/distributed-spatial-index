@@ -41,20 +41,20 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
     }
 
     GNode adjustNode() {
-        int M = (int) (GTree.globalLowBound*1.5);
+        int M = (int) (tree.globalLowBound*1.5);
         GDirNode dirNode;
         if ( elemNum >= M*15 ){
             dirNode = fourSplit(elemNum/4, (int)(0.9*elemNum/4), elemNum/4);
             for (int i = 0; i < 4; i++)
                 dirNode.child[i] = ((GDataNode) dirNode.child[i]).adjustNode();
-        }else if (elemNum < 2.2*GTree.globalLowBound){
+        }else if (elemNum < 2.2*tree.globalLowBound){
             if (isRoot()) {
                 dirNode = fourSplit(elemNum / 4, (int)(0.9*elemNum/4), elemNum / 4);
                 return dirNode;
             }else {
                 return this;
             }
-        }else if (elemNum >= 2.2*GTree.globalLowBound && elemNum < 5*M){
+        }else if (elemNum >= 2.2*tree.globalLowBound && elemNum < 5*M){
             if ( elemNum > 4*M )
                 dirNode = fourSplit((int)(0.95*elemNum/4), (int)(0.90*elemNum/4), (int)(0.98*elemNum/4));
             else if ( elemNum > 3*M )
@@ -62,7 +62,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
             else
                 dirNode = fourSplit((int)(0.85*elemNum/4), (int)(0.9*elemNum/4), (int)(0.9*elemNum/4));
         }else if (elemNum >= 5*M && elemNum < 7*M){
-            int m = GTree.globalLowBound;
+            int m = tree.globalLowBound;
             dirNode = fourSplit( (int) (0.95*m), (int) (1.0*m), (int) (0.85*m));
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 7*M && elemNum < 8*M){
@@ -72,7 +72,7 @@ public class GDataNode extends GNode implements Comparable<GDataNode>, Serializa
             dirNode = fourSplit( (int)(1.2*M), (int)(1.0*M), (int)(1.1*M));
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
         }else if (elemNum >= 8.5*M && elemNum < 11*M){
-            int tmp = (int) (GTree.globalLowBound*1.2);
+            int tmp = (int) (tree.globalLowBound*1.2);
             dirNode = fourSplit( tmp, tmp, (elemNum - tmp*2)/2);
             dirNode.child[2] = ((GDataNode) dirNode.child[2]).adjustNode();
             dirNode.child[3] = ((GDataNode) dirNode.child[3]).adjustNode();
