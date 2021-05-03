@@ -11,14 +11,12 @@ import com.ada.geometry.TrackPoint;
 import com.ada.model.common.input.InputItem;
 import com.ada.random_function.RandomIndexProcess;
 import com.ada.random_function.RandomInputItemFMP;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.util.Collector;
 import redis.clients.jedis.Jedis;
 
@@ -28,7 +26,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Properties;
 
 
 public class StreamingJob {
@@ -51,7 +48,7 @@ public class StreamingJob {
             throw new IllegalArgumentException("frame error.");
         }
 
-		env.execute("Distributed index");
+		env.execute(Constants.frame + " Distributed index");
 	}
 
 	private static void windowCount(){
@@ -158,6 +155,7 @@ public class StreamingJob {
 			list.add(point);
 			str = br.readLine();
 		} while (point.timestamp < Constants.winStartTime + Constants.windowSize*Constants.logicWindow && str != null);
+		br.close();
 		STRTree tree = new STRTree(list);
 		source.map(new XieInputItemMF())
 				.setParallelism(Constants.inputPartition)

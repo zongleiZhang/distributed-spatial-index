@@ -1,7 +1,5 @@
 package com.ada.GQ_QBS_function;
 
-import com.ada.common.Arrays;
-import com.ada.common.Constants;
 import com.ada.common.collections.Collections;
 import com.ada.geometry.Rectangle;
 import com.ada.geometry.Segment;
@@ -24,7 +22,6 @@ import java.util.*;
 public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, GlobalToLocalElem, Integer, TimeWindow> {
     private int subTask;
     private GTree globalTree;
-    private Queue<int[][]> densityQueue;
 
     public  GlobalTreePF(){ }
 
@@ -32,18 +29,13 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
     public void process(Integer key,
                         Context context,
                         Iterable<DensityToGlobalElem> elements,
-                        Collector<GlobalToLocalElem> out) throws Exception {
+                        Collector<GlobalToLocalElem> out) {
         //根据Global Index给输入项分区
         int[][] density = processElemAndDensity(elements, out);
 
         // 调整Global Index, 然后将调整结果同步到相关的Local Index中。
         if (density != null){
-            densityQueue.add(density);
-            Arrays.addArrsToArrs(globalTree.density, density, true);
-            if (densityQueue.size() > Constants.logicWindow / Constants.balanceFre) {
-                int[][] removed = densityQueue.remove();
-                Arrays.addArrsToArrs(globalTree.density, removed, false);
-            }
+            globalTree.density = density;
 
             //调整Global Index
             Map<GNode, GNode> nodeMap = globalTree.updateTree();
@@ -120,7 +112,6 @@ public class GlobalTreePF extends ProcessWindowFunction<DensityToGlobalElem, Glo
     private void openWindow() {
         try {
             subTask = getRuntimeContext().getIndexOfThisSubtask();
-            densityQueue = new ArrayDeque<>();
             globalTree = new GTree();
         }catch (Exception e){
             e.printStackTrace();

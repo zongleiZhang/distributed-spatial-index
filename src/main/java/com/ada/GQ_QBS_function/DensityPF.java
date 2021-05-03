@@ -29,7 +29,7 @@ public class DensityPF extends ProcessAllWindowFunction<InputItem, DensityToGlob
             }
             out.collect(element);
         }
-        if (context.window().getStart()%(Constants.balanceFre*Constants.windowSize) == 0){
+        if (context.window().getStart()%(Constants.logicWindow*Constants.windowSize) == 0){
           for (int i = 0; i < Constants.globalPartition; i++)
               out.collect(new Density(Arrays.cloneIntMatrix(grids), i));
           grids = new int[Constants.gridDensity+1][Constants.gridDensity+1];
